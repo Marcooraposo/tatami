@@ -1,0 +1,3199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Tatami — Student</title>
+  <style>
+    :root {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --surface-alt: #f1f3f5;
+      --border: #e4e6ea;
+      --text: #0f172a;
+      --text-muted: #5b6472;
+      --text-faint: #9aa0ab;
+      --primary: #0f172a;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --accent-bg: #eff6ff;
+      --success: #16a34a;
+      --success-bg: #ecfdf5;
+      --warn: #b45309;
+      --warn-bg: #fef3c7;
+
+      --r-sm: 8px;
+      --r-md: 12px;
+      --r-lg: 16px;
+
+      --nav-h: 64px;
+
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif;
+      --shadow-sm: 0 1px 3px rgba(15,23,42,.06);
+      --shadow-card: 0 2px 8px rgba(15,23,42,.07), 0 1px 2px rgba(15,23,42,.04);
+    }
+
+    [data-theme="dark"] {
+      --bg:          #0f1117;
+      --surface:     #1a1d27;
+      --surface-alt: #21252f;
+      --border:      #2d3141;
+      --text:        #e8eaf0;
+      --text-muted:  #8b90a0;
+      --text-faint:  #555c70;
+      --primary:     #3b4263;
+      --accent:      #4f80f0;
+      --accent-hover:#3b6de0;
+      --accent-bg:   #1a2340;
+      --success:     #22c55e;
+      --success-bg:  #0c2218;
+      --warn:        #d97706;
+      --warn-bg:     #1f1308;
+      --shadow-sm:   0 1px 2px rgba(0,0,0,0.3);
+      --shadow-card: 0 2px 8px rgba(0,0,0,0.4);
+      color-scheme: dark;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+      line-height: 1.5;
+      overscroll-behavior: none;
+    }
+
+    /* ── App shell ─────────────────────────────────────────────────────────── */
+    #app {
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+      background: var(--bg);
+      position: relative;
+    }
+
+    .screen {
+      padding-bottom: calc(var(--nav-h) + 16px);
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ───────────────────────────────────────────────────────────── */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .topbar-title {
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: -0.2px;
+    }
+    .topbar-back {
+      font-size: 15px;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 0;
+      font-family: var(--font);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .topbar-right { font-size: 13px; color: var(--text-muted); }
+
+    /* ── Bottom nav ────────────────────────────────────────────────────────── */
+    .bottom-nav {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 430px;
+      height: var(--nav-h);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      z-index: 20;
+      padding-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    .nav-item {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 500;
+      border: none;
+      background: none;
+      padding: 8px 4px;
+      font-family: var(--font);
+      transition: color .15s;
+    }
+    .nav-item.active { color: var(--accent); }
+    .nav-icon { font-size: 22px; line-height: 1; }
+
+    /* ── Cards ─────────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+    }
+    .card + .card { margin-top: 12px; }
+
+    /* ── Section header ────────────────────────────────────────────────────── */
+    .section-hd {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      padding: 0 4px;
+      margin: 24px 0 8px;
+    }
+
+    /* ── Content wrapper ───────────────────────────────────────────────────── */
+    .content { padding: 16px 16px 0; }
+
+    /* ── Buttons ───────────────────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 11px 20px;
+      border-radius: var(--r-md);
+      font-size: 15px;
+      font-weight: 600;
+      font-family: var(--font);
+      cursor: pointer;
+      border: none;
+      transition: background .15s, transform .08s;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn-full { width: 100%; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: var(--accent-hover); }
+    .btn-primary:disabled { background: var(--border); color: var(--text-muted); cursor: default; transform: none; }
+    .btn-ghost {
+      background: var(--surface-alt);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--border); }
+    .btn-danger { background: #fee2e2; color: #b91c1c; }
+    .btn-danger:hover { background: #fecaca; }
+
+    /* ── Form inputs ───────────────────────────────────────────────────────── */
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field + .field { margin-top: 16px; }
+    .label {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: var(--r-md);
+      font-size: 15px;
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--surface);
+      outline: none;
+      transition: border-color .15s;
+      -webkit-appearance: none;
+    }
+    .input:focus { border-color: var(--accent); }
+    .input::placeholder { color: var(--text-faint); }
+
+    select.input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' viewBox='0 0 24 24'%3E%3Cpath d='M6 9l6 6 6-6' stroke='%235b6472' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+
+    /* ── Class row ─────────────────────────────────────────────────────────── */
+    .class-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: background .1s;
+    }
+    .class-row:not(:last-child) { border-bottom: 1px solid var(--border); }
+    .class-row:active { background: var(--surface-alt); }
+
+    .class-date-col {
+      width: 42px;
+      flex-shrink: 0;
+      text-align: center;
+    }
+    .class-day { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.4px; }
+    .class-num { font-size: 22px; font-weight: 700; line-height: 1.1; color: var(--text); }
+
+    .class-info { flex: 1; min-width: 0; }
+    .class-type { font-size: 15px; font-weight: 600; }
+    .class-meta { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+
+    .class-badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .badge-booked { background: var(--accent-bg); color: var(--accent); }
+    .badge-open   { background: var(--success-bg); color: var(--success); }
+    .badge-full   { background: var(--surface-alt); color: var(--text-muted); }
+
+    /* ── Belt pill ─────────────────────────────────────────────────────────── */
+    .belt-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .belt-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* ── Stat card ─────────────────────────────────────────────────────────── */
+    .stat-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+    .stat-card { background: var(--surface); border-radius: var(--r-md); padding: 14px 12px; box-shadow: var(--shadow-card); text-align: center; }
+    .stat-val { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Avatar ────────────────────────────────────────────────────────────── */
+    .avatar {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 22px;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Empty state ───────────────────────────────────────────────────────── */
+    .empty {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+    }
+    .empty-icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+
+    /* ── Login screen ──────────────────────────────────────────────────────── */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 32px 24px;
+      background: var(--surface);
+    }
+    .login-logo {
+      margin-bottom: 32px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .login-logo-mark {
+      width: 44px;
+      height: 44px;
+      background: var(--primary);
+      border-radius: 12px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+    }
+    .login-logo-name { font-size: 24px; font-weight: 700; letter-spacing: -0.4px; }
+
+    /* ── Class detail hero ─────────────────────────────────────────────────── */
+    .class-hero {
+      background: var(--primary);
+      color: #fff;
+      padding: 24px 20px;
+    }
+    .class-hero-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; opacity: .6; margin-bottom: 6px; }
+    .class-hero-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+    .class-hero-sub { font-size: 14px; opacity: .7; margin-top: 6px; }
+
+    /* ── Divider ───────────────────────────────────────────────────────────── */
+    .divider { height: 1px; background: var(--border); margin: 0; }
+
+    /* ── Toast ─────────────────────────────────────────────────────────────── */
+    #toast {
+      position: fixed;
+      bottom: calc(var(--nav-h) + 12px);
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      background: var(--primary);
+      color: #fff;
+      padding: 10px 20px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 100;
+      transition: transform .25s cubic-bezier(.34,1.56,.64,1);
+      white-space: nowrap;
+      max-width: 90%;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+
+<div id="app"></div>
+<div id="toast"></div>
+
+<script src="data.js"></script>
+<script>
+// ─── Persistence (shared key with admin.html) ─────────────────────────────────
+const DATA_KEY = 'tatami_v1_data';
+function loadPersistedData() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(DATA_KEY));
+    if (!saved || !saved.students) return;
+    const replace = (arr, data) => { arr.splice(0, arr.length, ...(data || [])); };
+    replace(STUDENTS,            saved.students);
+    replace(ENROLLMENTS,         saved.enrollments);
+    replace(CLASSES,             saved.classes);
+    replace(BOOKINGS,            saved.bookings);
+    replace(ATTENDANCE,          saved.attendance);
+    replace(RECURRING_TEMPLATES, saved.templates);
+    replace(ANNOUNCEMENTS,       saved.announcements || []);
+    replace(EVENTS,              saved.events || []);
+  } catch(e) {}
+}
+function persistData() {
+  try {
+    const existing = JSON.parse(localStorage.getItem(DATA_KEY)) || {};
+    localStorage.setItem(DATA_KEY, JSON.stringify({
+      ...existing,
+      students: STUDENTS, enrollments: ENROLLMENTS,
+      classes: CLASSES, bookings: BOOKINGS, attendance: ATTENDANCE,
+      templates: RECURRING_TEMPLATES,
+      events: EVENTS,
+    }));
+  } catch(e) {}
+}
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let currentStudentId = localStorage.getItem('tatami_student_id') || null;
+let currentRoute = '';
+let classTypeFilter  = 'all'; // active filter chip on the Classes screen
+
+// ─── Personal training notes (written by student, per class) ─────────────────
+// Persisted as { [studentId_classId]: { text, updatedAt } } under tatami_my_notes
+const MY_NOTES_KEY = 'tatami_my_notes';
+let MY_NOTES = {};
+function loadMyNotes() {
+  try { MY_NOTES = JSON.parse(localStorage.getItem(MY_NOTES_KEY)) || {}; } catch { MY_NOTES = {}; }
+}
+function saveMyNote(classId, text) {
+  const key = (currentStudentId || '') + '_' + classId;
+  if (text.trim()) {
+    MY_NOTES[key] = { text: text.trim(), updatedAt: new Date().toISOString() };
+  } else {
+    delete MY_NOTES[key];
+  }
+  try { localStorage.setItem(MY_NOTES_KEY, JSON.stringify(MY_NOTES)); } catch {}
+}
+function getMyNote(classId) {
+  return MY_NOTES[(currentStudentId || '') + '_' + classId] || null;
+}
+
+// ─── Session notes (written by admin, read-only for students) ─────────────────
+// Persisted as { [classId]: { text, updatedAt } } under tatami_session_notes
+const SESSION_NOTES_KEY = 'tatami_session_notes';
+let SESSION_NOTES = {};
+function loadSessionNotes() {
+  try { SESSION_NOTES = JSON.parse(localStorage.getItem(SESSION_NOTES_KEY)) || {}; } catch { SESSION_NOTES = {}; }
+}
+
+// ─── Class ratings ────────────────────────────────────────────────────────────
+// Persisted as { [classId]: [{ studentId, stars, comment, ratedAt }] }
+const CLASS_RATINGS_KEY = 'tatami_class_ratings';
+let CLASS_RATINGS = {};
+
+function loadClassRatings() {
+  try { CLASS_RATINGS = JSON.parse(localStorage.getItem(CLASS_RATINGS_KEY)) || {}; } catch { CLASS_RATINGS = {}; }
+}
+function saveClassRatings() {
+  try { localStorage.setItem(CLASS_RATINGS_KEY, JSON.stringify(CLASS_RATINGS)); } catch {}
+}
+
+function rateClass(classId, stars) {
+  const comment = (document.getElementById('rating-comment-' + classId) || {}).value || '';
+  if (!CLASS_RATINGS[classId]) CLASS_RATINGS[classId] = [];
+  const existing = CLASS_RATINGS[classId].findIndex(r => r.studentId === currentStudentId);
+  const entry = { studentId: currentStudentId, stars, comment, ratedAt: new Date().toISOString() };
+  if (existing >= 0) CLASS_RATINGS[classId][existing] = entry;
+  else CLASS_RATINGS[classId].push(entry);
+  saveClassRatings();
+  const card = document.getElementById('rating-card-' + classId);
+  if (card) card.outerHTML = buildRatingCard(classId);
+}
+
+function buildRatingCard(classId) {
+  const ratings = CLASS_RATINGS[classId] || [];
+  const myRating = ratings.find(r => r.studentId === currentStudentId);
+  if (myRating) {
+    const filled = '★'.repeat(myRating.stars) + '☆'.repeat(5 - myRating.stars);
+    return `
+      <div id="rating-card-${classId}" class="card" style="margin-top:16px;padding:16px 20px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">Your rating</div>
+        <div style="font-size:24px;color:#f59e0b;letter-spacing:2px">${filled}</div>
+        ${myRating.comment ? `<div style="font-size:13px;color:var(--text-body);margin-top:6px">"${myRating.comment}"</div>` : ''}
+        <div style="font-size:11px;color:var(--text-faint);margin-top:6px">Rated ${(myRating.ratedAt || '').slice(0, 10)}</div>
+      </div>`;
+  }
+  return `
+    <div id="rating-card-${classId}" class="card" style="margin-top:16px;padding:16px 20px">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px">How was this class?</div>
+      <textarea id="rating-comment-${classId}"
+        style="width:100%;box-sizing:border-box;font-size:13px;font-family:inherit;border:1px solid var(--border);border-radius:8px;padding:8px 12px;background:var(--surface-alt);color:var(--text);resize:none;min-height:56px;outline:none;margin-bottom:10px"
+        placeholder="Any comments? (optional)"></textarea>
+      <div style="display:flex;gap:4px">
+        ${[1,2,3,4,5].map(n => `
+          <button onclick="rateClass('${classId}', ${n})"
+            style="font-size:32px;background:none;border:none;cursor:pointer;line-height:1;padding:0 2px;color:#f59e0b"
+            title="${n} star${n > 1 ? 's' : ''}">☆</button>
+        `).join('')}
+      </div>
+      <div style="font-size:11px;color:var(--text-faint);margin-top:6px">Tap a star to submit your rating</div>
+    </div>`;
+}
+
+// ─── Events ──────────────────────────────────────────────────────────────────
+function studentRegisterEvent(eventId) {
+  const evt = EVENTS.find(e => e.id === eventId);
+  if (!evt || !currentStudentId) return;
+  if (evt.registeredStudentIds.includes(currentStudentId)) return;
+  if (evt.capacity && evt.registeredStudentIds.length >= evt.capacity) {
+    showToast('This event is full'); return;
+  }
+  evt.registeredStudentIds.push(currentStudentId);
+  persistData();
+  showToast('Registered! See you there 🥋');
+  app.innerHTML = renderHome();
+}
+
+function studentUnregisterEvent(eventId) {
+  const evt = EVENTS.find(e => e.id === eventId);
+  if (!evt || !currentStudentId) return;
+  evt.registeredStudentIds = evt.registeredStudentIds.filter(id => id !== currentStudentId);
+  persistData();
+  showToast('Registration cancelled');
+  app.innerHTML = renderHome();
+}
+
+function buildEventsSection() {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const upcoming = EVENTS
+    .filter(e => e.date >= todayStr)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, 3);
+  if (!upcoming.length) return '';
+
+  const EVENT_ICONS = { 'open-mat': '🥋', 'belt-test': '★', 'seminar': '🎓', 'tournament': '🏆', 'social': '🎉' };
+
+  const cards = upcoming.map(evt => {
+    const isRegistered = evt.registeredStudentIds.includes(currentStudentId);
+    const spotsLeft = evt.capacity ? Math.max(0, evt.capacity - evt.registeredStudentIds.length) : null;
+    const isFull = evt.capacity && spotsLeft === 0 && !isRegistered;
+    const icon = EVENT_ICONS[evt.type] || '📅';
+    const dateObj = new Date(evt.date + 'T12:00:00');
+    const dateStr = dateObj.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    const isToday = evt.date === todayStr;
+
+    const actionBtn = isRegistered
+      ? `<button onclick="studentUnregisterEvent('${evt.id}')"
+           style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:8px;border:1.5px solid var(--border);
+                  background:transparent;color:var(--text-muted);cursor:pointer;white-space:nowrap">
+           ✓ Registered
+         </button>`
+      : isFull
+        ? `<span style="font-size:11px;font-weight:700;color:var(--text-faint)">Full</span>`
+        : `<button onclick="studentRegisterEvent('${evt.id}')"
+             style="font-size:11px;font-weight:700;padding:5px 12px;border-radius:8px;border:none;
+                    background:var(--accent);color:#fff;cursor:pointer;white-space:nowrap">
+             Register →
+           </button>`;
+
+    return `
+      <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+          font-size:18px;flex-shrink:0;
+          background:${isToday ? 'var(--accent)' : isRegistered ? 'var(--success-bg)' : 'var(--surface-alt)'};
+          color:${isToday ? '#fff' : isRegistered ? 'var(--success)' : 'var(--text-muted)'}">
+          ${icon}
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${evt.title}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+            ${isToday ? '<span style="color:var(--accent);font-weight:600">Today</span> · ' : dateStr + ' · '}${evt.time}
+            ${spotsLeft !== null ? ` · <span style="color:${spotsLeft <= 3 ? '#d97706' : 'var(--text-muted)'}">${spotsLeft} spot${spotsLeft !== 1 ? 's' : ''} left</span>` : ''}
+          </div>
+        </div>
+        ${actionBtn}
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="section-hd">Upcoming events</div>
+    <div class="card" style="padding:0 16px">
+      ${cards}
+      <div style="height:4px"></div>
+    </div>`;
+}
+
+// ─── Router ──────────────────────────────────────────────────────────────────
+function go(route) {
+  location.hash = route;
+}
+
+// ---------- Theme -----------------------------------------------------------
+const THEME_KEY = 'tatami_theme';
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+}
+function loadTheme() {
+  applyTheme(localStorage.getItem(THEME_KEY) || 'light');
+}
+function toggleTheme() {
+  const next = (document.documentElement.getAttribute('data-theme') || 'light') === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  localStorage.setItem(THEME_KEY, next);
+  // Update icon in-place if visible
+  const btn = document.getElementById('student-theme-btn');
+  if (btn) btn.textContent = next === 'dark' ? '☀' : '☾';
+}
+
+loadTheme();
+loadPersistedData();
+loadClassRatings();
+loadSessionNotes();
+loadMyNotes();
+loadHolds();
+loadPrivateLessons();
+loadStudentPackages();
+window.addEventListener('hashchange', render);
+window.addEventListener('load', render);
+
+function render() {
+  const hash = location.hash.replace('#/', '').replace('#', '') || '';
+  currentRoute = hash;
+  const app = document.getElementById('app');
+
+  // Auth guard — redirect to login if not logged in (except register/login routes)
+  const publicRoutes = ['', 'login', 'register'];
+  if (!currentStudentId && !publicRoutes.includes(hash.split('/')[0])) {
+    location.hash = '';
+    return;
+  }
+
+  // Reset class-type filter when leaving the classes list
+  if (!hash.startsWith('classes')) classTypeFilter = 'all';
+
+  if (hash === '' || hash === 'login') {
+    app.innerHTML = renderLogin();
+  } else if (hash === 'register') {
+    app.innerHTML = renderRegister();
+  } else if (hash === 'home') {
+    app.innerHTML = renderHome();
+  } else if (hash === 'classes') {
+    app.innerHTML = renderClasses();
+  } else if (hash.startsWith('classes/')) {
+    const classId = hash.replace('classes/', '');
+    app.innerHTML = renderClassDetail(classId);
+  } else if (hash === 'schedule') {
+    app.innerHTML = renderSchedule();
+  } else if (hash === 'me') {
+    app.innerHTML = renderMe();
+  } else if (hash === 'news') {
+    app.innerHTML = renderNews();
+  } else if (hash === 'progress') {
+    app.innerHTML = renderProgress();
+  } else if (hash === 'edit-profile') {
+    app.innerHTML = renderEditProfile();
+  } else if (hash === 'history') {
+    app.innerHTML = renderHistory();
+  } else {
+    go('home');
+  }
+}
+
+// ─── Bottom nav ───────────────────────────────────────────────────────────────
+function bottomNav(active) {
+  if (!currentStudentId) return '';
+  const now = Date.now();
+  const activeAnns = ANNOUNCEMENTS.filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now);
+  const tabs = [
+    { id: 'home',     icon: '🏠', label: 'Home' },
+    { id: 'classes',  icon: '🥋', label: 'Classes' },
+    { id: 'schedule', icon: '📅', label: 'Schedule' },
+    { id: 'progress', icon: '📋', label: 'Progress' },
+    { id: 'news',     icon: '📢', label: 'News', badge: activeAnns.length },
+    { id: 'me',       icon: '👤', label: 'Profile' },
+  ];
+  return `
+    <nav class="bottom-nav">
+      ${tabs.map(t => `
+        <button class="nav-item ${active === t.id ? 'active' : ''}" onclick="go('${t.id}')">
+          <span class="nav-icon" style="position:relative;display:inline-block">
+            ${t.icon}
+            ${t.badge && active !== t.id ? `<span style="position:absolute;top:-4px;right:-6px;background:var(--danger,#e53e3e);color:#fff;border-radius:999px;font-size:9px;min-width:14px;height:14px;line-height:14px;text-align:center;padding:0 2px">${t.badge}</span>` : ''}
+          </span>
+          <span>${t.label}</span>
+        </button>
+      `).join('')}
+    </nav>
+  `;
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function fmtDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+}
+function fmtTime(iso) {
+  const d = new Date(iso);
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+}
+function dayName(iso) {
+  return new Date(iso).toLocaleDateString('en-GB', { weekday: 'short' }).toUpperCase();
+}
+function dayNum(iso) {
+  return new Date(iso).getDate();
+}
+function isToday(isoDate) {
+  const d = new Date(isoDate), now = new Date();
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+}
+function hasCheckedIn(classId, studentId) {
+  return ATTENDANCE.some(a => a.classId === classId && a.studentId === studentId && a.attended);
+}
+// ─── Virtual slot resolver ────────────────────────────────────────────────────
+// Returns the class object for a given ID — real or virtual.
+function resolveClass(classId) {
+  const real = CLASSES.find(c => c.id === classId);
+  if (real) return real;
+  // Fall back to virtual slots generated from RECURRING_TEMPLATES
+  if (classId && classId.startsWith('virt-')) {
+    return getUpcomingSlots(60).find(s => s.id === classId) || null;
+  }
+  return null;
+}
+
+// Materialises a virtual slot into CLASSES (in-memory + persist) so that
+// attendance history, streak, and admin-side queries all see it.
+function materializeVirtualClass(classId) {
+  if (!classId.startsWith('virt-')) return;
+  if (CLASSES.find(c => c.id === classId)) return; // already real
+  const slot = getUpcomingSlots(60).find(s => s.id === classId);
+  if (!slot) return;
+  const realClass = Object.assign({}, slot, { _virtual: false });
+  delete realClass._templateId;
+  CLASSES.push(realClass);
+  persistData();
+}
+
+function checkIn(classId) {
+  materializeVirtualClass(classId); // ensure it's in CLASSES for history/streak
+  const existing = ATTENDANCE.find(a => a.classId === classId && a.studentId === currentStudentId);
+  if (existing) {
+    existing.attended = true;
+  } else {
+    ATTENDANCE.push({ classId, studentId: currentStudentId, attended: true, checkedInAt: new Date().toISOString() });
+  }
+  persistData();
+  document.getElementById('app').innerHTML = renderClassDetail(classId);
+}
+function isBooked(classId, studentId) {
+  return BOOKINGS.some(b => b.classId === classId && b.studentId === studentId && b.status === 'booked');
+}
+function bookedCount(classId) {
+  return BOOKINGS.filter(b => b.classId === classId && b.status === 'booked').length;
+}
+function isOnWaitlist(classId, studentId) {
+  return WAITLIST.some(w => w.classId === classId && w.studentId === studentId);
+}
+function waitlistPosition(classId, studentId) {
+  const list = WAITLIST.filter(w => w.classId === classId).sort((a, b) => (a.addedAt || '').localeCompare(b.addedAt || ''));
+  const idx = list.findIndex(w => w.studentId === studentId);
+  return idx === -1 ? null : idx + 1;
+}
+function joinWaitlist(classId) {
+  if (isOnWaitlist(classId, currentStudentId)) return;
+  materializeVirtualClass(classId);
+  WAITLIST.push({ id: 'wl-' + Date.now(), classId, studentId: currentStudentId, addedAt: new Date().toISOString() });
+  persistData();
+  showToast("You're on the waitlist — we'll notify you if a spot opens.");
+  render();
+}
+function leaveWaitlist(classId) {
+  const idx = WAITLIST.findIndex(w => w.classId === classId && w.studentId === currentStudentId);
+  if (idx !== -1) { WAITLIST.splice(idx, 1); persistData(); }
+  showToast('Removed from waitlist');
+  render();
+}
+
+function beltColor(levelId) {
+  const map = {
+    'bjj-white':  { bg: '#f1f5f9', text: '#334155', dot: '#94a3b8' },
+    'bjj-blue':   { bg: '#eff6ff', text: '#1d4ed8', dot: '#3b82f6' },
+    'bjj-purple': { bg: '#f5f3ff', text: '#6d28d9', dot: '#8b5cf6' },
+    'bjj-brown':  { bg: '#fef3c7', text: '#92400e', dot: '#d97706' },
+    'bjj-black':  { bg: '#1e293b', text: '#f8fafc', dot: '#f8fafc' },
+  };
+  return map[levelId] || { bg: '#f1f5f9', text: '#334155', dot: '#94a3b8' };
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ─── Training Hold ────────────────────────────────────────────────────────────
+// Persisted as [{ id, studentId, startDate, endDate, reason, status, createdAt }]
+// status: 'pending' | 'cancelled'
+const HOLDS_KEY = 'tatami_holds';
+let HOLDS = [];
+let holdFormVisible = false;
+
+function loadHolds() {
+  try { HOLDS = JSON.parse(localStorage.getItem(HOLDS_KEY)) || []; } catch { HOLDS = []; }
+}
+function saveHolds() {
+  try { localStorage.setItem(HOLDS_KEY, JSON.stringify(HOLDS)); } catch {}
+}
+
+// ─── Class Packages (read-only from admin) ───────────────────────────────────
+const STUDENT_PACKAGES_KEY = 'tatami_packages_v1';
+let _STU_PKG_TYPES = [];
+let _STU_PKGS = [];
+
+function loadStudentPackages() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STUDENT_PACKAGES_KEY));
+    if (saved) {
+      _STU_PKG_TYPES = saved.types  || CLASS_PACKAGE_TYPE_SEEDS || [];
+      _STU_PKGS      = saved.purchases || STUDENT_PACKAGE_SEEDS || [];
+    } else {
+      _STU_PKG_TYPES = (typeof CLASS_PACKAGE_TYPE_SEEDS !== 'undefined') ? CLASS_PACKAGE_TYPE_SEEDS : [];
+      _STU_PKGS      = (typeof STUDENT_PACKAGE_SEEDS    !== 'undefined') ? STUDENT_PACKAGE_SEEDS    : [];
+    }
+  } catch { _STU_PKG_TYPES = []; _STU_PKGS = []; }
+}
+
+function getMyActivePackages(studentId) {
+  const today = new Date().toISOString().split('T')[0];
+  return _STU_PKGS.filter(sp => {
+    if (sp.studentId !== studentId) return false;
+    const t = _STU_PKG_TYPES.find(p => p.id === sp.packageTypeId);
+    if (!t) return false;
+    if (sp.classesUsed >= t.classCount) return false;
+    return sp.expiresAt >= today;
+  });
+}
+
+// ─── Private Lessons (read-only from admin) ───────────────────────────────────
+const PRIVATE_LESSONS_KEY = 'tatami_private_lessons';
+let PRIVATE_LESSONS = [];
+
+function loadPrivateLessons() {
+  try { PRIVATE_LESSONS = JSON.parse(localStorage.getItem(PRIVATE_LESSONS_KEY)) || []; } catch { PRIVATE_LESSONS = []; }
+}
+
+// ─── Private Lesson Requests (student → admin) ────────────────────────────────
+const PL_REQUESTS_KEY = 'tatami_pl_requests';
+
+function loadPlRequests() {
+  try { return JSON.parse(localStorage.getItem(PL_REQUESTS_KEY)) || []; } catch { return []; }
+}
+function savePlRequests(reqs) {
+  try { localStorage.setItem(PL_REQUESTS_KEY, JSON.stringify(reqs)); } catch {}
+}
+function getMyPlRequests(studentId) {
+  return loadPlRequests().filter(r => r.studentId === studentId).sort((a,b) => b.requestedAt.localeCompare(a.requestedAt));
+}
+function submitPlRequest() {
+  const preferredDate = document.getElementById('plr-date').value;
+  const preferredTime = document.getElementById('plr-time').value;
+  const focus = document.getElementById('plr-focus').value.trim();
+  const notes = document.getElementById('plr-notes').value.trim();
+  if (!preferredDate) { showToast('Please pick a preferred date'); return; }
+  const reqs = loadPlRequests();
+  reqs.push({
+    id: 'plr-' + Date.now(),
+    studentId: currentStudentId,
+    preferredDate,
+    preferredTime: preferredTime || null,
+    focus: focus || null,
+    notes: notes || null,
+    status: 'pending',
+    requestedAt: new Date().toISOString(),
+  });
+  savePlRequests(reqs);
+  showToast('Request sent! Your coach will confirm the details 🥋');
+  document.getElementById('app').innerHTML = renderMe();
+}
+function cancelPlRequest(reqId) {
+  const reqs = loadPlRequests().filter(r => r.id !== reqId);
+  savePlRequests(reqs);
+  document.getElementById('app').innerHTML = renderMe();
+}
+
+function getMyPrivateLessons(studentId) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  return PRIVATE_LESSONS
+    .filter(l => l.studentId === studentId)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
+}
+
+function getNextPrivateLesson(studentId) {
+  const todayStr = new Date().toISOString().split('T')[0];
+  return PRIVATE_LESSONS
+    .filter(l => l.studentId === studentId && l.status === 'scheduled' && l.date >= todayStr)
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0] || null;
+}
+
+function getActiveHold(studentId) {
+  const today = new Date().toISOString().split('T')[0];
+  return HOLDS.find(h => h.studentId === studentId && h.status !== 'cancelled' && h.startDate <= today && h.endDate >= today);
+}
+
+function getPendingFutureHold(studentId) {
+  const today = new Date().toISOString().split('T')[0];
+  return HOLDS.find(h => h.studentId === studentId && h.status !== 'cancelled' && h.startDate > today);
+}
+
+function submitHold() {
+  const start  = (document.getElementById('hold-start') || {}).value;
+  const end    = (document.getElementById('hold-end')   || {}).value;
+  const reason = ((document.getElementById('hold-reason') || {}).value || '').trim();
+  if (!start || !end)  { showToast('Please select start and end dates.'); return; }
+  if (end < start)     { showToast('End date must be after start date.'); return; }
+  HOLDS.push({ id: 'hold-' + Date.now(), studentId: currentStudentId, startDate: start, endDate: end, reason, status: 'pending', createdAt: new Date().toISOString() });
+  saveHolds();
+  holdFormVisible = false;
+  const sec = document.getElementById('hold-section');
+  if (sec) sec.outerHTML = renderHoldCard();
+  showToast('Hold request submitted ✓');
+}
+
+function cancelHold(holdId) {
+  const h = HOLDS.find(h => h.id === holdId);
+  if (h) { h.status = 'cancelled'; saveHolds(); }
+  const sec = document.getElementById('hold-section');
+  if (sec) sec.outerHTML = renderHoldCard();
+}
+
+function toggleHoldForm() {
+  holdFormVisible = !holdFormVisible;
+  const sec = document.getElementById('hold-section');
+  if (sec) sec.outerHTML = renderHoldCard();
+}
+
+function renderHoldCard() {
+  const today   = new Date().toISOString().split('T')[0];
+  const maxDate = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0];
+  const myHolds = HOLDS.filter(h => h.studentId === currentStudentId)
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const activeHold  = getActiveHold(currentStudentId);
+  const futureHold  = getPendingFutureHold(currentStudentId);
+  const hasLive     = !!(activeHold || futureHold);
+
+  const holdRows = myHolds.filter(h => h.endDate >= today || h.status !== 'cancelled').slice(0, 3).map(h => {
+    const isCurrent   = h.status !== 'cancelled' && h.startDate <= today && h.endDate >= today;
+    const isUpcoming  = h.status !== 'cancelled' && h.startDate > today;
+    const isCancelled = h.status === 'cancelled';
+    const color = isCurrent ? 'var(--warn)' : isUpcoming ? '#6366f1' : '#94a3b8';
+    const label = isCurrent ? '🏖 Active' : isUpcoming ? '⏳ Upcoming' : '✕ Cancelled';
+    const dateRange = `${h.startDate} → ${h.endDate}`;
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:${color}">${label}</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${dateRange}${h.reason ? ` · ${h.reason}` : ''}</div>
+        </div>
+        ${!isCancelled ? `<button onclick="cancelHold('${h.id}')"
+          style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer;color:var(--text-muted)">Cancel</button>` : ''}
+      </div>`;
+  }).join('');
+
+  const form = holdFormVisible ? `
+    <div style="padding-top:12px;border-top:1px solid var(--border);margin-top:${holdRows ? '4px' : '0'}">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">START DATE</label>
+          <input id="hold-start" type="date" min="${today}" max="${maxDate}" value="${today}"
+            style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box">
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">END DATE</label>
+          <input id="hold-end" type="date" min="${today}" max="${maxDate}"
+            style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box">
+        </div>
+      </div>
+      <div style="margin-bottom:10px">
+        <label style="font-size:11px;font-weight:600;color:var(--text-muted);display:block;margin-bottom:3px">REASON (optional)</label>
+        <input id="hold-reason" type="text" placeholder="e.g. Vacation, Injury…" maxlength="80"
+          style="width:100%;padding:7px;border:1px solid var(--border);border-radius:6px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div style="display:flex;gap:8px">
+        <button onclick="submitHold()" class="btn btn-primary" style="flex:1">Submit request</button>
+        <button onclick="toggleHoldForm()" class="btn btn-ghost">Cancel</button>
+      </div>
+    </div>
+  ` : '';
+
+  return `
+    <div id="hold-section">
+      <div class="section-hd" style="display:flex;align-items:center;justify-content:space-between">
+        <span>Training Hold</span>
+        ${!hasLive && !holdFormVisible
+          ? `<button onclick="toggleHoldForm()"
+               style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;
+                      font-size:12px;cursor:pointer;color:var(--text-body);font-weight:600">+ Request</button>`
+          : ''}
+      </div>
+      <div class="card" style="padding:16px 20px">
+        ${holdRows || (!holdFormVisible ? `<div style="font-size:13px;color:var(--text-muted);padding:2px 0">No holds on record.</div>` : '')}
+        ${form}
+        ${hasLive && !holdFormVisible
+          ? `<div style="margin-top:${holdRows ? '8px' : '0'};font-size:12px;color:var(--text-muted)">
+               Contact the academy to modify your hold.
+             </div>`
+          : ''}
+      </div>
+    </div>
+  `;
+}
+
+// ─── Belt Test Request ────────────────────────────────────────────────────────
+const STUDENT_NOTES_KEY = 'tatami_student_notes';
+
+function getBeltTestRequestDate(studentId) {
+  try {
+    const notes = JSON.parse(localStorage.getItem(STUDENT_NOTES_KEY) || '{}');
+    const studentNotes = notes[studentId] || [];
+    const req = studentNotes.find(n => n.type === '🥋' && n.text && n.text.includes('belt test'));
+    return req ? req.createdAt : null;
+  } catch { return null; }
+}
+
+function requestBeltTest(studentId, studentName) {
+  const existing = getBeltTestRequestDate(studentId);
+  if (existing) {
+    showToast('Request already sent on ' + new Date(existing).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
+    return;
+  }
+  try {
+    const notes = JSON.parse(localStorage.getItem(STUDENT_NOTES_KEY) || '{}');
+    if (!notes[studentId]) notes[studentId] = [];
+    notes[studentId].unshift({
+      id: 'btr-' + Date.now(),
+      type: '🥋',
+      text: 'Student requested belt test evaluation',
+      createdAt: new Date().toISOString(),
+    });
+    localStorage.setItem(STUDENT_NOTES_KEY, JSON.stringify(notes));
+    showToast('Belt test request sent to your instructor!');
+    render(); // refresh to show "request sent" state
+  } catch { showToast('Could not send request — try again.'); }
+}
+
+// ─── Login Screen ─────────────────────────────────────────────────────────────
+function renderLogin() {
+  const studentRows = STUDENTS.map(s => `
+    <div onclick="loginAs('${s.id}')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;border-radius:var(--r-md);transition:background .1s;" onmouseover="this.style.background='var(--surface-alt)'" onmouseout="this.style.background=''">
+      <div style="width:40px;height:40px;border-radius:50%;background:var(--primary);color:#fff;font-size:14px;font-weight:700;display:grid;place-items:center;flex-shrink:0">${s.initials}</div>
+      <div>
+        <div style="font-weight:600;font-size:15px">${s.name}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${s.contact}</div>
+      </div>
+    </div>
+  `).join('');
+
+  return `
+    <div class="login-wrap">
+      <div class="login-logo">
+        <div class="login-logo-mark">🥋</div>
+        <div class="login-logo-name">Tatami</div>
+      </div>
+
+      <h1 style="font-size:24px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px">Student App</h1>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:32px">Sign in or create a new account.</p>
+
+      <button class="btn btn-primary btn-full" onclick="go('register')" style="margin-bottom:20px">
+        Create account
+      </button>
+
+      <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">Demo — pick a student</div>
+      <div class="card">${studentRows}</div>
+
+      <p style="margin-top:20px;font-size:12px;color:var(--text-faint);text-align:center">Demo mode: select any student above to log in as them.</p>
+    </div>
+  `;
+}
+
+function loginAs(studentId) {
+  currentStudentId = studentId;
+  localStorage.setItem('tatami_student_id', studentId);
+  go('home');
+}
+
+// ─── Register Screen ──────────────────────────────────────────────────────────
+function renderRegister() {
+  // Load membership plans from localStorage (synced from admin) with fallback defaults
+  const PLANS_DEFAULT = [
+    { id: 'plan-monthly',   label: 'Monthly',   price: '€80/mo' },
+    { id: 'plan-unlimited', label: 'Unlimited', price: '€120/mo' },
+    { id: 'plan-annual',    label: 'Annual',    price: '€800/yr' },
+  ];
+  let plans = PLANS_DEFAULT;
+  try {
+    const saved = JSON.parse(localStorage.getItem('tatami_membership_plans_v1'));
+    if (Array.isArray(saved) && saved.length > 0) plans = saved;
+  } catch {}
+  const planOptions = plans.map(p => `<option value="${p.id}">${p.label} — ${p.price}</option>`).join('');
+
+  const sportOptions = SPORTS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+  return `
+    <div class="screen" style="padding-bottom:32px">
+      <div class="topbar">
+        <button class="topbar-back" onclick="history.back()">← Back</button>
+        <div class="topbar-title">Create account</div>
+        <div></div>
+      </div>
+
+      <div class="content">
+        <div class="card" style="padding:20px;margin-top:16px">
+          <div class="field">
+            <label class="label">Full name *</label>
+            <input id="reg-name" class="input" placeholder="Your full name" />
+          </div>
+          <div class="field">
+            <label class="label">Email *</label>
+            <input id="reg-email" class="input" type="email" placeholder="you@example.com" />
+          </div>
+          <div class="field">
+            <label class="label">Phone</label>
+            <input id="reg-phone" class="input" type="tel" placeholder="+351 900 000 000" />
+          </div>
+          <div class="field">
+            <label class="label">Date of birth</label>
+            <input id="reg-dob" class="input" type="date" />
+          </div>
+          <div class="field">
+            <label class="label">Martial art</label>
+            <select id="reg-sport" class="input">${sportOptions}</select>
+          </div>
+          <div class="field">
+            <label class="label">Membership plan</label>
+            <select id="reg-plan" class="input">${planOptions}</select>
+          </div>
+          <div style="margin-top:24px">
+            <button class="btn btn-primary btn-full" onclick="submitRegister()">Create account →</button>
+          </div>
+        </div>
+
+        <p style="font-size:12px;color:var(--text-faint);text-align:center;margin-top:16px;padding:0 8px">
+          By registering you agree to the academy's terms &amp; conditions.
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+function submitRegister() {
+  const name  = document.getElementById('reg-name').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  if (!name || !email) { showToast('Name and email are required'); return; }
+
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const id = 'stu-' + Date.now();
+  const planId = document.getElementById('reg-plan').value;
+  const sportId = document.getElementById('reg-sport').value;
+  const dob   = document.getElementById('reg-dob').value || null;
+  const phone = document.getElementById('reg-phone').value.trim() || null;
+
+  STUDENTS.push({ id, name, initials, dob, weightKg: null, phone, joinedAt: new Date().toISOString().slice(0, 10), contact: email });
+
+  const gradingSystem = GRADING_SYSTEMS.find(g => g.sportId === sportId);
+  if (gradingSystem) {
+    ENROLLMENTS.push({
+      id: 'enr-' + id,
+      studentId: id,
+      sportId,
+      gradingSystemId: gradingSystem.id,
+      currentLevelId: gradingSystem.levels[0]?.id || null,
+      currentStripes: 0,
+      levelSince: new Date().toISOString().slice(0, 10),
+      lastPromotionAt: null,
+      membership: planId,
+    });
+  }
+
+  persistData();
+  currentStudentId = id;
+  localStorage.setItem('tatami_student_id', id);
+  showToast('Welcome to Tatami, ' + name.split(' ')[0] + '! 🥋');
+  setTimeout(() => go('home'), 500);
+}
+
+// ─── Upcoming slots from RECURRING_TEMPLATES (covers future weeks w/ no seeded classes)
+function getUpcomingSlots(maxDays = 21) {
+  const now = Date.now();
+  const endMs = now + maxDays * 24 * 60 * 60 * 1000;
+  const slots = [];
+  for (let dayMs = now; dayMs < endMs; dayMs += 24 * 60 * 60 * 1000) {
+    const dayDate = new Date(dayMs);
+    const dow = dayDate.getDay();
+    RECURRING_TEMPLATES.filter(rt => rt.dow === dow).forEach(rt => {
+      const [h, m] = rt.time.split(':').map(Number);
+      const slotDate = new Date(dayMs);
+      slotDate.setHours(h, m, 0, 0);
+      if (slotDate.getTime() <= now) return;
+      const existing = CLASSES.find(c => {
+        const cd = new Date(c.startsAt);
+        return cd.getFullYear() === slotDate.getFullYear()
+          && cd.getMonth() === slotDate.getMonth()
+          && cd.getDate() === slotDate.getDate()
+          && cd.getHours() === h
+          && c.classType === rt.classType;
+      });
+      if (existing?.status === 'cancelled') return;
+      slots.push(existing || {
+        id: 'virt-' + rt.id + '-' + slotDate.toISOString().slice(0,10),
+        classType: rt.classType, startsAt: slotDate.toISOString(),
+        durationMin: rt.durationMin, instructorId: rt.instructorId,
+        capacity: rt.capacity, status: 'scheduled', plannedItemIds: [],
+        _virtual: true, _templateId: rt.id,
+      });
+    });
+  }
+  return slots.sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+}
+
+// ─── Home Screen ─────────────────────────────────────────────────────────────
+function renderHome() {
+  const student    = STUDENTS.find(s => s.id === currentStudentId);
+  if (!student) { go(''); return ''; }
+
+  const enrollment = ENROLLMENTS.find(e => e.studentId === currentStudentId);
+  const grading    = enrollment ? GRADING_SYSTEMS.find(g => g.id === enrollment.gradingSystemId) : null;
+  const level      = enrollment && grading ? grading.levels.find(l => l.id === enrollment.currentLevelId) : null;
+  const beltColors = level ? beltColor(level.id) : null;
+
+  // Greeting
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+  // Stats
+  const totalAttended = ATTENDANCE.filter(a => a.studentId === currentStudentId && a.attended).length;
+  const streak        = getAttendanceStreak(currentStudentId);
+
+  // Today's classes (booked + scheduled + today)
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const todaysBookings = BOOKINGS
+    .filter(b => b.studentId === currentStudentId && b.status === 'booked')
+    .map(b => resolveClass(b.classId))
+    .filter(c => c && c.status === 'scheduled' && c.startsAt.startsWith(todayISO))
+    .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+
+  // Next upcoming booking (not today)
+  const nextBooking = BOOKINGS
+    .filter(b => b.studentId === currentStudentId && b.status === 'booked')
+    .map(b => resolveClass(b.classId))
+    .filter(c => c && c.status === 'scheduled' && !c.startsAt.startsWith(todayISO) && new Date(c.startsAt) > new Date())
+    .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt))[0] || null;
+
+  // Cancelled class alerts — bookings the student has where the class was later cancelled
+  const cancelledBookings = BOOKINGS
+    .filter(b => b.studentId === currentStudentId && b.status === 'booked')
+    .map(b => ({ booking: b, cls: resolveClass(b.classId) }))
+    .filter(({ cls }) => cls && cls.status === 'cancelled' && new Date(cls.startsAt) > new Date() - 7 * 86400000)
+    .sort((a, b) => new Date(a.cls.startsAt) - new Date(b.cls.startsAt));
+
+  const cancelledAlerts = cancelledBookings.map(({ cls }) => {
+    const dateStr = new Date(cls.startsAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+    const timeStr = fmtTime(cls.startsAt);
+    return `
+      <div style="display:flex;align-items:center;gap:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:12px;
+                  padding:12px 14px;margin-bottom:8px">
+        <span style="font-size:20px;flex-shrink:0">🚫</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:#b91c1c">Class cancelled</div>
+          <div style="font-size:12px;color:#991b1b;margin-top:1px">${cls.classType} · ${dateStr} at ${timeStr}</div>
+        </div>
+        <button onclick="go('classes')" style="background:#ef4444;color:#fff;border:none;border-radius:8px;
+          padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0">Book another →</button>
+      </div>`;
+  }).join('');
+
+  // Latest announcement (pinned first, max 1 shown)
+  const now = Date.now();
+  const latestAnn = ANNOUNCEMENTS
+    .filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now)
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.createdAt) - new Date(a.createdAt))[0];
+
+  // Promotion progress
+  let promotionStrip = '';
+  if (enrollment && grading) {
+    const currLvl = grading.levels.find(l => l.id === enrollment.currentLevelId);
+    const nextLvl = grading.levels.find(l => l.order === (currLvl?.order ?? -1) + 1);
+    if (currLvl && nextLvl) {
+      const ruleKey = `${currLvl.id}-to-${nextLvl.id}`;
+      const rule    = grading.promotionRules?.[ruleKey];
+      if (rule && rule.minClassesAtLevel) {
+        const levelSinceMs   = enrollment.levelSince ? new Date(enrollment.levelSince).getTime() : 0;
+        const classesAtLevel = ATTENDANCE.filter(a => {
+          if (!a.attended || a.studentId !== currentStudentId) return false;
+          const cls = CLASSES.find(c => c.id === a.classId);
+          return cls && new Date(cls.startsAt).getTime() >= levelSinceMs;
+        }).length;
+        const pct      = Math.min(100, Math.round((classesAtLevel / rule.minClassesAtLevel) * 100));
+        const nc       = beltColor(nextLvl.id);
+        const nextName = typeof nextLvl.name === 'object' ? t(nextLvl.name) : nextLvl.name;
+        promotionStrip = `
+          <div class="card" style="padding:14px 16px;margin-bottom:12px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+              <span style="font-size:13px;font-weight:600">Progress to
+                <span style="padding:2px 8px;border-radius:12px;font-size:12px;
+                  background:${nc.bg};color:${nc.text};margin-left:4px">${nextName}</span>
+              </span>
+              <span style="font-size:12px;font-weight:700;color:${pct >= 100 ? 'var(--success)' : 'var(--text-muted)'}">${pct}%</span>
+            </div>
+            <div style="height:6px;background:var(--surface-alt);border-radius:3px;overflow:hidden">
+              <div style="height:100%;width:${pct}%;background:${pct >= 100 ? 'var(--success)' : 'var(--accent)'};border-radius:3px;transition:width .4s"></div>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:6px">${classesAtLevel} / ${rule.minClassesAtLevel} classes · tap Profile for details</div>
+          </div>`;
+      }
+    }
+  }
+
+  // Today's class cards
+  const todayCards = todaysBookings.map(cls => {
+    const checkedIn = hasCheckedIn(cls.id, currentStudentId);
+    const actionBtn = checkedIn
+      ? `<span style="font-size:12px;font-weight:700;color:var(--success)">✓ Checked in</span>`
+      : `<button onclick="checkIn('${cls.id}')" style="background:var(--accent);color:#fff;border:none;border-radius:8px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer">Check in →</button>`;
+    return `
+      <div style="background:linear-gradient(135deg,var(--accent),#1d4ed8);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:10px;color:#fff">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;opacity:0.8;margin-bottom:6px">Today</div>
+        <div style="font-size:18px;font-weight:800;margin-bottom:2px">${cls.classType}</div>
+        <div style="font-size:13px;opacity:0.85;margin-bottom:12px">${fmtTime(cls.startsAt)} · ${cls.durationMin} min</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <button onclick="go('classes/${cls.id}')" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:8px;padding:7px 14px;font-size:12px;font-weight:600;cursor:pointer">Details</button>
+          ${actionBtn}
+        </div>
+      </div>`;
+  }).join('');
+
+  const noClassToday = todaysBookings.length === 0
+    ? `<div class="card" style="padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;gap:12px;opacity:0.7">
+         <span style="font-size:22px">🛋️</span>
+         <div>
+           <div style="font-size:14px;font-weight:600">Rest day</div>
+           <div style="font-size:12px;color:var(--text-muted)">No classes booked for today</div>
+         </div>
+         <button onclick="go('classes')" style="margin-left:auto;background:none;border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--text)">Book →</button>
+       </div>`
+    : '';
+
+  // Next class card
+  const nextCard = nextBooking ? `
+    <div class="section-hd">Up next</div>
+    <div class="card" style="padding:14px 16px;margin-bottom:12px" onclick="go('classes/${nextBooking.id}')" style="cursor:pointer">
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="min-width:44px;text-align:center;border-right:2px solid var(--border);padding-right:12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-muted)">${dayName(nextBooking.startsAt).slice(0,3)}</div>
+          <div style="font-size:20px;font-weight:800;line-height:1">${dayNum(nextBooking.startsAt)}</div>
+        </div>
+        <div style="flex:1">
+          <div style="font-size:15px;font-weight:700">${nextBooking.classType}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${fmtTime(nextBooking.startsAt)} · ${nextBooking.durationMin} min</div>
+        </div>
+        <span class="class-badge badge-booked">Booked</span>
+        <span style="color:var(--text-faint);font-size:18px">›</span>
+      </div>
+    </div>` : '';
+
+  // Announcement
+  const annCard = latestAnn ? `
+    <div class="section-hd">Latest news</div>
+    <div onclick="go('news')" style="background:${latestAnn.pinned ? 'var(--accent)' : 'var(--surface)'};
+      color:${latestAnn.pinned ? '#fff' : 'var(--text)'};
+      border-radius:var(--r-md);padding:12px 14px;margin-bottom:12px;cursor:pointer;
+      border:1px solid ${latestAnn.pinned ? 'transparent' : 'var(--border)'}">
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px">${latestAnn.pinned ? '📌 ' : '📢 '}${latestAnn.title}</div>
+      ${latestAnn.body ? `<div style="font-size:12px;opacity:0.85;white-space:pre-wrap;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${latestAnn.body}</div>` : ''}
+    </div>` : '';
+
+  return `
+    <div class="screen">
+      <div class="topbar">
+        <div class="topbar-title">Home</div>
+        <div class="topbar-right" style="font-size:12px;color:var(--text-muted)">${beltColors && level ? `<span style="padding:2px 8px;border-radius:12px;background:${beltColors.bg};color:${beltColors.text};font-weight:700;font-size:11px">${level.name}</span>` : ''}</div>
+      </div>
+      <div class="content" style="padding-top:16px">
+
+        <!-- Greeting -->
+        <div style="margin-bottom:16px">
+          <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px">${greeting},</div>
+          <div style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:var(--accent)">${student.name.split(' ')[0]} 👋</div>
+        </div>
+
+        <!-- Quick stats row -->
+        <div class="stat-row" style="margin-bottom:16px">
+          <div class="stat-card">
+            <div class="stat-val">${totalAttended}</div>
+            <div class="stat-lbl">Classes</div>
+          </div>
+          <div class="stat-card" style="${streak >= 3 ? 'background:linear-gradient(135deg,#fff7ed,#fff);border-color:#fed7aa' : ''}">
+            <div class="stat-val" style="${streak >= 3 ? 'color:#ea580c' : ''}">${streak >= 1 ? '🔥' : '—'}${streak > 0 ? '&thinsp;' + streak : ''}</div>
+            <div class="stat-lbl">Wk streak</div>
+          </div>
+          <div class="stat-card" onclick="go('classes')" style="cursor:pointer">
+            <div class="stat-val">${BOOKINGS.filter(b => { const c = resolveClass(b.classId); return b.studentId === currentStudentId && b.status === 'booked' && c?.status === 'scheduled' && new Date(c.startsAt) > new Date(); }).length}</div>
+            <div class="stat-lbl">Upcoming</div>
+          </div>
+        </div>
+
+        <!-- Cancelled class alerts -->
+        ${cancelledAlerts ? `<div style="margin-bottom:4px">${cancelledAlerts}</div>` : ''}
+
+        <!-- Weekly training goal -->
+        ${buildHomeGoalCard()}
+
+        <!-- Focus technique this week -->
+        ${buildHomeFocusCard()}
+
+        <!-- Today's class -->
+        ${todayCards || noClassToday}
+
+        <!-- Next booking -->
+        ${nextCard}
+
+        <!-- Upcoming private lesson -->
+        ${(() => {
+          const pl = getNextPrivateLesson(currentStudentId);
+          if (!pl) return '';
+          const inst = INSTRUCTORS.find(i => i.id === pl.instructorId);
+          const plDateStr = new Date(pl.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+          const isToday2 = pl.date === todayISO;
+          return `
+            <div class="section-hd">Private lesson</div>
+            <div class="card" style="padding:14px 16px;margin-bottom:12px">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;
+                  background:${isToday2 ? 'var(--accent)' : '#ede9fe'};color:${isToday2 ? '#fff' : '#6d28d9'}">🥋</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:15px;font-weight:700">${pl.type || 'Private lesson'}</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:1px">${plDateStr} · ${pl.time}${pl.durationMin ? ` · ${pl.durationMin} min` : ''}${inst ? ` · ${inst.name}` : ''}</div>
+                  ${pl.notes ? `<div style="font-size:11px;color:var(--text-faint);margin-top:2px;font-style:italic">${pl.notes}</div>` : ''}
+                </div>
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;
+                  background:${isToday2 ? 'var(--accent)' : '#ede9fe'};color:${isToday2 ? '#fff' : '#6d28d9'}">
+                  ${isToday2 ? 'Today!' : 'Upcoming'}
+                </span>
+              </div>
+            </div>`;
+        })()}
+
+        <!-- Homework reminder -->
+        ${(() => {
+          let hw = [];
+          try {
+            const raw = JSON.parse(localStorage.getItem('tatami_homework') || '{}');
+            hw = (raw[currentStudentId] || []);
+          } catch {}
+          const active = hw.filter(h => !h.practicedAt);
+          if (!active.length) return '';
+          const overdueCount = active.filter(h => h.dueDate && h.dueDate < todayISO).length;
+          const firstItem = active[0] ? CURRICULUM_ITEMS.find(i => i.id === active[0].itemId) : null;
+          const firstLabel = firstItem ? (typeof firstItem.name === 'object' ? t(firstItem.name) : firstItem.name) : 'Assigned by coach';
+          return `
+            <div class="section-hd">📚 Homework from coach</div>
+            <div class="card" onclick="go('me')" style="padding:14px 16px;margin-bottom:12px;cursor:pointer;
+              ${overdueCount > 0 ? 'border-color:#ef4444;' : ''}">
+              <div style="display:flex;align-items:center;gap:12px">
+                <div style="width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+                  font-size:20px;flex-shrink:0;
+                  background:${overdueCount > 0 ? '#fef2f2' : '#f0fdf4'};
+                  color:${overdueCount > 0 ? '#dc2626' : '#16a34a'}">📚</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:15px;font-weight:700">
+                    ${active.length} technique${active.length !== 1 ? 's' : ''} to practice
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:1px">
+                    ${overdueCount > 0 ? `<span style="color:#dc2626;font-weight:600">${overdueCount} overdue · </span>` : ''}
+                    ${firstLabel}${active.length > 1 ? ` +${active.length - 1} more` : ''}
+                  </div>
+                </div>
+                <span style="color:var(--text-faint);font-size:18px">›</span>
+              </div>
+            </div>`;
+        })()}
+
+        <!-- Belt progress strip -->
+        ${promotionStrip}
+
+        <!-- Latest announcement -->
+        ${annCard}
+
+        <!-- Upcoming events -->
+        ${buildEventsSection()}
+
+      </div>
+    </div>
+    ${bottomNav('home')}
+  `;
+}
+
+// ─── Classes Screen ───────────────────────────────────────────────────────────
+function _classListRows(slots) {
+  if (!slots.length) {
+    const label = classTypeFilter === 'all' ? 'No upcoming classes' : `No upcoming ${classTypeFilter} classes`;
+    return `<div class="empty" style="padding:32px 0"><div class="empty-icon">📅</div><div class="empty-title">${label}</div><p>Check back soon.</p></div>`;
+  }
+  return slots.map(cls => {
+    const booked     = isBooked(cls.id, currentStudentId);
+    const waitlisted = !booked && isOnWaitlist(cls.id, currentStudentId);
+    const count      = bookedCount(cls.id);
+    const full       = !booked && count >= cls.capacity;
+    const badge      = booked
+      ? `<span class="class-badge badge-booked">Booked</span>`
+      : waitlisted
+        ? `<span class="class-badge" style="background:#fff7ed;color:#92400e;border:1px solid #fed7aa">⏳ Waitlisted</span>`
+        : full
+          ? `<span class="class-badge badge-full">Full</span>`
+          : `<span class="class-badge badge-open">Open</span>`;
+    return `
+      <div class="class-row" onclick="go('classes/${cls.id}')">
+        <div class="class-date-col">
+          <div class="class-day">${dayName(cls.startsAt)}</div>
+          <div class="class-num">${dayNum(cls.startsAt)}</div>
+        </div>
+        <div class="class-info">
+          <div class="class-type">${cls.classType}</div>
+          <div class="class-meta">${fmtTime(cls.startsAt)} · ${cls.durationMin} min · ${count}/${cls.capacity} booked</div>
+        </div>
+        ${badge}
+        <span style="color:var(--text-faint);font-size:18px;margin-left:4px">›</span>
+      </div>`;
+  }).join('');
+}
+
+function setClassTypeFilter(type) {
+  classTypeFilter = type;
+  const all     = getUpcomingSlots(21);
+  const types   = [...new Set(all.map(c => c.classType))].sort();
+  const filtered = type === 'all' ? all : all.filter(c => c.classType === type);
+
+  // Re-render chips
+  document.getElementById('class-filter-chips').innerHTML = _classFilterChips(types);
+  // Re-render list + count
+  document.getElementById('class-list-body').innerHTML = _classListRows(filtered);
+  document.getElementById('class-list-count').textContent = `${filtered.length} upcoming`;
+}
+
+function _classFilterChips(types) {
+  const chipStyle = (active) =>
+    `display:inline-block;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:1.5px solid ${active ? 'var(--accent)' : 'var(--border)'};background:${active ? 'var(--accent)' : 'var(--surface)'};color:${active ? '#fff' : 'var(--text)'};white-space:nowrap;transition:all .15s`;
+  const chips = [
+    `<span style="${chipStyle(classTypeFilter === 'all')}" onclick="setClassTypeFilter('all')">All</span>`,
+    ...types.map(t => `<span style="${chipStyle(classTypeFilter === t)}" onclick="setClassTypeFilter('${t.replace(/'/g, "\\'")}')">${t}</span>`)
+  ];
+  return chips.join('');
+}
+
+function renderClasses() {
+  const now = new Date().toISOString();
+  const activeAnn = ANNOUNCEMENTS
+    .filter(a => !a.expiresAt || a.expiresAt > now)
+    .sort((a, b) => {
+      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+      return (b.createdAt || '').localeCompare(a.createdAt || '');
+    });
+
+  const annBanner = activeAnn.length === 0 ? '' : activeAnn.map(a => `
+    <div style="background:${a.pinned ? 'var(--accent)' : 'var(--surface-alt)'};
+                color:${a.pinned ? '#fff' : 'var(--text-body)'};
+                border-radius:12px;padding:12px 14px;margin-bottom:10px">
+      <div style="font-weight:700;font-size:14px;margin-bottom:4px">${a.pinned ? '📌 ' : '📢 '}${a.title}</div>
+      ${a.body ? `<div style="font-size:13px;opacity:0.9;white-space:pre-wrap">${a.body}</div>` : ''}
+    </div>`).join('');
+
+  const all      = getUpcomingSlots(21);
+  const types    = [...new Set(all.map(c => c.classType))].sort();
+  const filtered = classTypeFilter === 'all' ? all : all.filter(c => c.classType === classTypeFilter);
+
+  return `
+    <div class="screen">
+      <div class="topbar">
+        <div class="topbar-title">Classes</div>
+        <div id="class-list-count" class="topbar-right">${filtered.length} upcoming</div>
+      </div>
+      <div class="content">
+        ${annBanner ? `<div style="margin-top:12px">${annBanner}</div>` : ''}
+
+        <!-- Filter chips -->
+        ${types.length > 1 ? `
+          <div id="class-filter-chips" style="display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+            ${_classFilterChips(types)}
+          </div>` : '<div id="class-filter-chips"></div>'}
+
+        <div id="class-list-body" class="card" style="margin-top:8px">
+          ${_classListRows(filtered)}
+        </div>
+      </div>
+    </div>
+    ${bottomNav('classes')}
+  `;
+}
+
+// ─── Schedule Screen ─────────────────────────────────────────────────────────
+// Shows the weekly recurring timetable from RECURRING_TEMPLATES,
+// grouped by day, with the student's booked status for the next occurrence.
+function renderSchedule() {
+  const DOW_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const DOW_FULL  = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+  // For each template find the next real CLASSES entry (or virtual slot) so we
+  // can show booking counts and the student's own booked state.
+  const now = Date.now();
+
+  function nextClassForTemplate(rt) {
+    // Walk forward up to 14 days to find a matching scheduled class
+    for (let d = 0; d < 14; d++) {
+      const dayMs = now + d * 86400000;
+      const dayDate = new Date(dayMs);
+      if (dayDate.getDay() !== rt.dow) continue;
+      const [h, m] = rt.time.split(':').map(Number);
+      const slotDate = new Date(dayMs);
+      slotDate.setHours(h, m, 0, 0);
+      if (slotDate.getTime() <= now) continue;
+      // Look for a real class
+      const cls = CLASSES.find(c => {
+        const cd = new Date(c.startsAt);
+        return cd.getDay() === rt.dow
+          && cd.getHours() === h && cd.getMinutes() === m
+          && c.classType === rt.classType
+          && c.status !== 'cancelled'
+          && Math.abs(cd.getTime() - slotDate.getTime()) < 86400000;
+      });
+      return { cls, startsAt: slotDate.toISOString() };
+    }
+    return null;
+  }
+
+  // Group templates by dow
+  const byDow = {};
+  RECURRING_TEMPLATES.forEach(rt => {
+    if (!byDow[rt.dow]) byDow[rt.dow] = [];
+    byDow[rt.dow].push(rt);
+  });
+
+  const TYPE_COLORS = {
+    'Fundamentals': { bg: '#eff6ff', color: '#2563eb' },
+    'Open Class':   { bg: '#f0fdf4', color: '#16a34a' },
+    'Advanced':     { bg: '#faf5ff', color: '#7c3aed' },
+  };
+
+  const rows = [1,2,3,4,5,6,0]
+    .filter(dow => byDow[dow])
+    .map(dow => {
+      const dayTemplates = byDow[dow];
+      const cards = dayTemplates.map(rt => {
+        const next = nextClassForTemplate(rt);
+        const cls  = next?.cls;
+        const booked = cls ? isBooked(cls.id, currentStudentId) : false;
+        const count  = cls ? bookedCount(cls.id) : 0;
+        const full   = !booked && count >= rt.capacity;
+        const tc = TYPE_COLORS[rt.classType] || { bg: '#f1f5f9', color: '#475569' };
+        const inst = INSTRUCTORS.find(i => i.id === rt.instructorId);
+
+        // Inline booking action for schedule cards
+        let actionHtml = '';
+        if (cls) {
+          if (booked) {
+            actionHtml = `
+              <button class="btn btn-sm"
+                style="font-size:12px;padding:4px 12px;background:var(--surface-2);border-color:var(--border);color:var(--text-muted);white-space:nowrap;flex-shrink:0"
+                onclick="event.stopPropagation();unbookClass('${cls.id}')">✓ Booked</button>`;
+          } else if (full) {
+            actionHtml = `<span style="font-size:11px;color:var(--text-faint);flex-shrink:0;padding:4px 0">Full</span>`;
+          } else {
+            actionHtml = `
+              <button class="btn btn-primary btn-sm"
+                style="font-size:12px;padding:4px 12px;white-space:nowrap;flex-shrink:0"
+                onclick="event.stopPropagation();bookClass('${cls.id}')">+ Book</button>`;
+          }
+        }
+
+        const clickAction = cls
+          ? `onclick="go('classes/${cls.id}')"`
+          : '';
+
+        return `
+          <div class="class-row" ${clickAction} style="${cls ? 'cursor:pointer' : 'opacity:.7'}">
+            <div style="width:40px;height:40px;border-radius:10px;background:${tc.bg};
+                        display:flex;align-items:center;justify-content:center;
+                        font-size:11px;font-weight:700;color:${tc.color};text-align:center;
+                        line-height:1.2;flex-shrink:0">
+              ${rt.classType.split(' ').map(w => w[0]).join('')}
+            </div>
+            <div class="class-info">
+              <div class="class-type">${rt.classType}</div>
+              <div class="class-meta">${rt.time} · ${rt.durationMin} min${inst ? ' · ' + inst.name : ''}${cls ? ' · ' + count + '/' + rt.capacity : ''}</div>
+            </div>
+            ${cls ? actionHtml : '<span style="font-size:11px;color:var(--text-faint)">No class yet</span>'}
+            ${cls && !booked && !full ? '<span style="color:var(--text-faint);font-size:18px;margin-left:4px">›</span>' : ''}
+          </div>`;
+      }).join('');
+
+      return `
+        <div style="margin-bottom:20px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;
+                      color:var(--text-muted);letter-spacing:.06em;
+                      margin-bottom:8px;padding:0 2px">${DOW_FULL[dow]}</div>
+          <div class="card" style="padding:0">
+            <div style="padding:0 4px">${cards}</div>
+          </div>
+        </div>`;
+    }).join('');
+
+  const empty = RECURRING_TEMPLATES.length === 0
+    ? `<div class="empty"><div class="empty-icon">📋</div><div class="empty-title">No schedule set up yet</div><p>Your instructor will add classes soon.</p></div>`
+    : '';
+
+  return `
+    <div class="screen">
+      <div class="topbar">
+        <div class="topbar-title">Schedule</div>
+        <div class="topbar-right">${RECURRING_TEMPLATES.length} weekly class${RECURRING_TEMPLATES.length !== 1 ? 'es' : ''}</div>
+      </div>
+      <div class="content">
+        <p style="font-size:13px;color:var(--text-muted);margin:12px 0 16px">Weekly recurring timetable. Tap a class to book.</p>
+        ${rows || empty}
+      </div>
+    </div>
+    ${bottomNav('schedule')}
+  `;
+}
+
+// ─── Class Detail ─────────────────────────────────────────────────────────────
+function renderClassDetail(classId) {
+  const cls = resolveClass(classId);
+  if (!cls) return `<div class="content"><p>Class not found.</p></div>`;
+
+  const booked = isBooked(cls.id, currentStudentId);
+  const count  = bookedCount(cls.id);
+  const full   = !booked && count >= cls.capacity;
+
+  const instructorObj = INSTRUCTORS.find(i => i.id === cls.instructorId);
+  const instructor = instructorObj?.name || '—';
+
+  const planned = (cls.plannedItemIds || []).map(iid => {
+    const item = DB.item(iid);
+    const section = item ? DB.section(item.sectionId) : null;
+    return item ? `
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:16px">${section?.icon || '•'}</span>
+        <div>
+          <div style="font-size:14px;font-weight:600">${item.name}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${section?.name || ''}</div>
+        </div>
+      </div>
+    ` : '';
+  }).join('');
+
+  const onWaitlist = isOnWaitlist(cls.id, currentStudentId);
+  const wlPos      = onWaitlist ? waitlistPosition(cls.id, currentStudentId) : null;
+  const wlCount    = WAITLIST.filter(w => w.classId === cls.id).length;
+  const actionBtn  = booked
+    ? `<button class="btn btn-danger btn-full" onclick="unbookClass('${cls.id}')">Cancel booking</button>`
+    : onWaitlist
+      ? `<div>
+           <button class="btn btn-ghost btn-full" onclick="leaveWaitlist('${cls.id}')" style="color:var(--text-muted)">Leave waitlist</button>
+           <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px">You're #${wlPos} on the waitlist · ${wlCount} waiting</div>
+         </div>`
+      : full
+        ? `<div>
+             <button class="btn btn-secondary btn-full" onclick="joinWaitlist('${cls.id}')">Join waitlist →</button>
+             <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px">${wlCount} already waiting · you'll be notified if a spot opens</div>
+           </div>`
+        : `<button class="btn btn-primary btn-full" onclick="bookClass('${cls.id}')">Book this class →</button>`;
+
+  return `
+    <div class="screen" style="padding-bottom:32px">
+      <div class="topbar">
+        <button class="topbar-back" onclick="go('classes')">← Classes</button>
+        <div class="topbar-title">${cls.classType}</div>
+        <div></div>
+      </div>
+
+      <div class="class-hero">
+        <div class="class-hero-label">${fmtDate(cls.startsAt)}</div>
+        <div class="class-hero-title">${cls.classType}</div>
+        <div class="class-hero-sub">${fmtTime(cls.startsAt)} · ${cls.durationMin} min</div>
+      </div>
+
+      <div class="content" style="margin-top:16px">
+        <div class="card" style="padding:16px 20px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div>
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Instructor</div>
+              <div style="font-size:15px;font-weight:600">${instructor}</div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Spots</div>
+              <div style="font-size:15px;font-weight:600">${cls.capacity - count} remaining</div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Duration</div>
+              <div style="font-size:15px;font-weight:600">${cls.durationMin} min</div>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:4px">Booked</div>
+              <div style="font-size:15px;font-weight:600">${count} / ${cls.capacity}</div>
+            </div>
+          </div>
+        </div>
+
+        ${planned ? `
+          <div class="section-hd">On the lesson plan</div>
+          <div class="card" style="padding:0 16px">
+            ${planned}
+            <div style="height:1px"></div>
+          </div>
+        ` : ''}
+
+        ${(() => {
+          // Self check-in — shown for today's scheduled classes where student is booked
+          if (cls.status !== 'completed' && isToday(cls.startsAt) && booked) {
+            const checkedIn = hasCheckedIn(cls.id, currentStudentId);
+            if (checkedIn) {
+              return `
+                <div class="card" style="margin-top:16px;padding:20px;text-align:center;background:var(--success-bg,#f0fdf4);border:1.5px solid #86efac">
+                  <div style="font-size:32px;margin-bottom:8px">✅</div>
+                  <div style="font-weight:700;font-size:16px;color:#166534">Checked in!</div>
+                  <div style="font-size:13px;color:#4ade80;margin-top:4px">Your attendance has been recorded</div>
+                </div>`;
+            } else {
+              return `
+                <div style="margin-top:16px">
+                  <button class="btn btn-primary btn-full" onclick="checkIn('${cls.id}')"
+                    style="background:#7c3aed;font-size:16px;padding:16px;border-radius:14px;letter-spacing:0.3px">
+                    ✓ Check in to this class
+                  </button>
+                  <div style="text-align:center;font-size:12px;color:var(--text-muted);margin-top:8px">
+                    Today's class · tap to record your attendance
+                  </div>
+                </div>`;
+            }
+          }
+          return '';
+        })()}
+
+        ${(() => {
+          const note = SESSION_NOTES[cls.id];
+          if (!note || !note.text || !note.text.trim()) return '';
+          const dateStr = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString('en-GB', { day:'numeric', month:'short' }) : '';
+          return `
+            <div style="margin-top:16px">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">
+                📝 Coach's notes${dateStr ? ' · ' + dateStr : ''}
+              </div>
+              <div class="card" style="padding:16px 20px;background:var(--surface-alt,#f8fafc);border-left:3px solid var(--accent)">
+                <div style="font-size:14px;line-height:1.6;color:var(--text);white-space:pre-wrap">${note.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+              </div>
+            </div>`;
+        })()}
+
+        ${(() => {
+          const isCompleted = cls.status === 'completed';
+          const attended = ATTENDANCE.find(a => a.classId === cls.id && a.studentId === currentStudentId && a.attended);
+          return (isCompleted && attended) ? buildRatingCard(cls.id) : '';
+        })()}
+
+        ${(() => {
+          const isCompleted = cls.status === 'completed';
+          const attended = ATTENDANCE.find(a => a.classId === cls.id && a.studentId === currentStudentId && a.attended);
+          if (!isCompleted && !attended) return '';
+          const note = getMyNote(cls.id);
+          return `
+            <div style="margin-top:16px">
+              <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">
+                ✏️ My training notes
+              </div>
+              <div class="card" style="padding:14px 16px">
+                <textarea id="my-note-${cls.id}"
+                  placeholder="What did you work on? Any techniques to remember?"
+                  style="width:100%;border:none;outline:none;resize:none;font-size:13px;line-height:1.6;color:var(--text);background:transparent;font-family:inherit;min-height:72px;"
+                  onblur="saveMyNote('${cls.id}', this.value)"
+                >${note ? note.text.replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''}</textarea>
+                ${note ? `<div style="font-size:11px;color:var(--text-faint);margin-top:4px;text-align:right">Saved ${new Date(note.updatedAt).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</div>` : ''}
+              </div>
+            </div>`;
+        })()}
+
+        <div style="margin-top:24px">${actionBtn}</div>
+      </div>
+    </div>
+  `;
+}
+
+function bookClass(classId) {
+  materializeVirtualClass(classId); // persist virtual slot so admin can see the booking
+  const existing = BOOKINGS.find(b => b.classId === classId && b.studentId === currentStudentId);
+  if (existing) { existing.status = 'booked'; }
+  else {
+    BOOKINGS.push({ id: `bk-${currentStudentId}-${classId}`, classId, studentId: currentStudentId, bookedAt: new Date().toISOString(), status: 'booked' });
+  }
+  persistData();
+  showToast('Booked! See you on the mat 🥋');
+  render();
+}
+
+function unbookClass(classId) {
+  const b = BOOKINGS.find(b => b.classId === classId && b.studentId === currentStudentId);
+  if (b) { b.status = 'cancelled'; persistData(); }
+  showToast('Booking cancelled');
+  render();
+}
+
+// ─── Attendance streak helper ─────────────────────────────────────────────────
+function getAttendanceStreak(studentId) {
+  const records = ATTENDANCE.filter(a => a.studentId === studentId && a.attended);
+  if (!records.length) return 0;
+
+  // Build a Set of Monday timestamps for each attended week
+  const attendedWeeks = new Set();
+  records.forEach(a => {
+    const cls = CLASSES.find(c => c.id === a.classId);
+    if (!cls) return;
+    const d = new Date(cls.startsAt);
+    d.setHours(0, 0, 0, 0);
+    const diffToMon = d.getDay() === 0 ? 6 : d.getDay() - 1;
+    d.setDate(d.getDate() - diffToMon);
+    attendedWeeks.add(d.getTime());
+  });
+
+  // Start from the current week's Monday
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diffToMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  now.setDate(now.getDate() - diffToMon);
+  let check = now.getTime();
+
+  // If current week has no attendance yet, try starting from last week
+  if (!attendedWeeks.has(check)) {
+    check -= 7 * 24 * 60 * 60 * 1000;
+    if (!attendedWeeks.has(check)) return 0;
+  }
+
+  // Walk backwards counting consecutive attended weeks
+  let streak = 0;
+  while (attendedWeeks.has(check)) {
+    streak++;
+    check -= 7 * 24 * 60 * 60 * 1000;
+  }
+  return streak;
+}
+
+// ─── Training Goal ────────────────────────────────────────────────────────────
+const TRAINING_GOAL_KEY = 'tatami_training_goal';
+
+function getTrainingGoal(studentId) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(TRAINING_GOAL_KEY) || '{}');
+    return stored[studentId] ?? null;   // returns a number (1-5) or null
+  } catch { return null; }
+}
+
+function setTrainingGoal(studentId, n) {
+  try {
+    const stored = JSON.parse(localStorage.getItem(TRAINING_GOAL_KEY) || '{}');
+    stored[studentId] = Number(n);
+    localStorage.setItem(TRAINING_GOAL_KEY, JSON.stringify(stored));
+  } catch {}
+}
+
+// Count classes attended this Monday–Sunday week
+function getThisWeekAttended(studentId) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const diffToMon = now.getDay() === 0 ? 6 : now.getDay() - 1;
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - diffToMon);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekStart.getDate() + 7);
+
+  const records = ATTENDANCE.filter(a => a.studentId === studentId && a.attended);
+  return records.filter(a => {
+    const cls = CLASSES.find(c => c.id === a.classId);
+    if (!cls) return false;
+    const t = new Date(cls.startsAt).getTime();
+    return t >= weekStart.getTime() && t < weekEnd.getTime();
+  }).length;
+}
+
+// Render goal dots (filled / empty circles)
+function goalDots(done, target) {
+  const dots = [];
+  for (let i = 1; i <= target; i++) {
+    dots.push(i <= done
+      ? `<span style="width:18px;height:18px;border-radius:50%;background:var(--success);display:inline-block"></span>`
+      : `<span style="width:18px;height:18px;border-radius:50%;background:var(--surface-alt);border:2px solid var(--border);display:inline-block"></span>`
+    );
+  }
+  return dots.join('');
+}
+
+// Called from goal selector buttons (profile screen)
+function selectTrainingGoal(n) {
+  setTrainingGoal(currentStudentId, n);
+  // Re-render the goal section in-place (profile page)
+  const el = document.getElementById('training-goal-section');
+  if (el) el.outerHTML = buildTrainingGoalSection(true);
+  // Update home screen goal card if visible
+  const hel = document.getElementById('home-goal-card');
+  if (hel) hel.outerHTML = buildHomeGoalCard();
+  showToast('Goal set: ' + n + 'x per week 🎯');
+}
+
+// ─── Attendance heatmap ───────────────────────────────────────────────────────
+// Shows the last 52 weeks as coloured squares (GitHub-style), scroll on mobile.
+function buildAttendanceHeatmap(studentId) {
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const now     = new Date();
+  // Snap to Monday 00:00 of the current week
+  const dow = (now.getDay() + 6) % 7; // Mon=0 … Sun=6
+  const todayMidnight = new Date(now); todayMidnight.setHours(0, 0, 0, 0);
+  const thisWeekStartMs = todayMidnight.getTime() - dow * 86400000;
+
+  const NUM_WEEKS = 52;
+
+  // Collect the timestamps of all attended classes for this student
+  const attendedTimes = [];
+  ATTENDANCE.filter(a => a.studentId === studentId && a.attended).forEach(a => {
+    const cls = CLASSES.find(c => c.id === a.classId);
+    if (cls) attendedTimes.push(new Date(cls.startsAt).getTime());
+  });
+
+  // Build one entry per week
+  const weeks = [];
+  for (let w = NUM_WEEKS - 1; w >= 0; w--) {
+    const wkStart = thisWeekStartMs - w * WEEK_MS;
+    const wkEnd   = wkStart + WEEK_MS;
+    const count   = attendedTimes.filter(t => t >= wkStart && t < wkEnd).length;
+    weeks.push({ d: new Date(wkStart), count });
+  }
+
+  // Month labels — show the short month name at the first week of each new month
+  const monthLabelSpans = [];
+  let prevMonth = -1;
+  const CELL = 13, GAP = 2, STEP = CELL + GAP;
+  weeks.forEach(({ d }, i) => {
+    if (d.getMonth() !== prevMonth) {
+      prevMonth = d.getMonth();
+      const lbl = d.toLocaleDateString('en-GB', { month: 'short' });
+      monthLabelSpans.push(
+        `<span style="position:absolute;left:${i * STEP}px;font-size:9px;color:var(--text-faint);white-space:nowrap">${lbl}</span>`
+      );
+    }
+  });
+
+  const cellColor = n => {
+    if (n === 0) return '#e8eef4';
+    if (n === 1) return '#bfdbfe';
+    if (n === 2) return '#60a5fa';
+    if (n === 3) return '#2563eb';
+    return '#1e40af';
+  };
+
+  const totalW = NUM_WEEKS * STEP;
+
+  const cellsHtml = weeks.map(({ d, count }) => {
+    const tip = d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) +
+      ': ' + (count === 0 ? 'no classes' : count + ' class' + (count !== 1 ? 'es' : ''));
+    return `<div title="${tip}"
+      style="width:${CELL}px;height:${CELL}px;border-radius:2px;background:${cellColor(count)};flex-shrink:0"></div>`;
+  }).join('');
+
+  const legendHtml = ['#e8eef4','#bfdbfe','#60a5fa','#2563eb','#1e40af'].map(c =>
+    `<div style="width:10px;height:10px;border-radius:2px;background:${c}"></div>`
+  ).join('');
+
+  return `
+    <div class="section-hd">Training calendar
+      <span style="font-size:11px;font-weight:400;color:var(--text-faint);margin-left:6px">last 52 weeks</span>
+    </div>
+    <div class="card" style="padding:14px 16px">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <div style="position:relative;height:16px;min-width:${totalW}px;margin-bottom:6px">
+          ${monthLabelSpans.join('')}
+        </div>
+        <div style="display:flex;gap:${GAP}px;min-width:${totalW}px">
+          ${cellsHtml}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;margin-top:10px;justify-content:flex-end">
+        <span style="font-size:10px;color:var(--text-faint)">Less</span>
+        ${legendHtml}
+        <span style="font-size:10px;color:var(--text-faint)">More</span>
+      </div>
+    </div>`;
+}
+
+function buildTrainingGoalSection(inline) {
+  const goal    = getTrainingGoal(currentStudentId);
+  const done    = getThisWeekAttended(currentStudentId);
+  const goalSet = goal !== null;
+
+  const goalButtons = [1,2,3,4,5].map(n => `
+    <button onclick="selectTrainingGoal(${n})"
+      style="width:36px;height:36px;border-radius:50%;border:2px solid ${goal===n ? 'var(--accent)' : 'var(--border)'};
+        background:${goal===n ? 'var(--accent)' : 'transparent'};
+        color:${goal===n ? '#fff' : 'var(--text)'};
+        font-weight:700;font-size:14px;cursor:pointer;transition:background .15s">${n}</button>
+  `).join('');
+
+  const progress = goalSet ? `
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+      ${goalDots(done, goal)}
+      <span style="font-size:13px;font-weight:600;color:${done>=goal ? 'var(--success)' : 'var(--text-muted)'};margin-left:4px">
+        ${done}/${goal}${done >= goal ? ' ✓ Goal hit!' : ''}
+      </span>
+    </div>` : '';
+
+  return `
+    <div id="training-goal-section">
+      <div class="section-hd">Training goal
+        <span style="font-size:11px;font-weight:400;color:var(--text-faint);margin-left:6px">this week</span>
+      </div>
+      <div class="card" style="padding:16px 20px">
+        ${progress}
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:10px">Classes per week:</div>
+        <div style="display:flex;gap:10px;align-items:center">${goalButtons}</div>
+      </div>
+    </div>`;
+}
+
+// ─── "Focus this week" card — top curriculum gap for the student ──────────────
+function buildHomeFocusCard() {
+  if (!currentStudentId) return '';
+  try {
+    const enrollment = ENROLLMENTS.find(e => e.studentId === currentStudentId);
+    if (!enrollment) return '';
+    const steps = computeNextSteps(currentStudentId, enrollment.sportId || 'sport-bjj', 1);
+    if (!steps || !steps.length) return '';
+    const top = steps[0];
+    const name = typeof top.item.name === 'object' ? t(top.item.name) : (top.item.name || '');
+    const secName = top.section ? (typeof top.section.name === 'object' ? t(top.section.name) : (top.section.name || '')) : '';
+    const timesLabel = top.count === 0
+      ? 'Never drilled in class'
+      : `Drilled ${top.count} time${top.count !== 1 ? 's' : ''} so far`;
+    const lastStr = top.lastSeenAt
+      ? ` · last ${new Date(top.lastSeenAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}`
+      : '';
+    return `
+      <div class="card" onclick="go('progress')" style="padding:14px 16px;margin-bottom:12px;cursor:pointer;
+        border-left:3px solid var(--accent)">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:40px;height:40px;border-radius:10px;background:#eff6ff;color:#2563eb;
+            display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0">🎯</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;
+              color:var(--accent);margin-bottom:2px">Focus this week</div>
+            <div style="font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+            <div style="font-size:12px;color:var(--text-muted);margin-top:1px">
+              ${secName ? secName + ' · ' : ''}${timesLabel}${lastStr}
+            </div>
+          </div>
+          <span style="color:var(--text-faint);font-size:18px;flex-shrink:0">›</span>
+        </div>
+      </div>`;
+  } catch (e) {
+    return '';
+  }
+}
+
+function buildHomeGoalCard() {
+  const goal = getTrainingGoal(currentStudentId);
+  if (goal === null) {
+    return `<div id="home-goal-card" class="card" onclick="go('me')"
+      style="padding:14px 16px;margin-bottom:12px;display:flex;align-items:center;gap:12px;cursor:pointer">
+      <span style="font-size:20px">🎯</span>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">Set a weekly training goal</div>
+        <div style="font-size:12px;color:var(--text-muted)">Track your consistency</div>
+      </div>
+      <span style="color:var(--text-faint);font-size:18px">›</span>
+    </div>`;
+  }
+  const done = getThisWeekAttended(currentStudentId);
+  const hit  = done >= goal;
+  return `<div id="home-goal-card" class="card" onclick="go('me')"
+    style="padding:14px 16px;margin-bottom:12px;cursor:pointer;
+      ${hit ? 'background:var(--success-bg);border-color:#86efac' : ''}">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:13px;font-weight:700">🎯 This week's goal</span>
+      <span style="font-size:12px;font-weight:700;color:${hit ? 'var(--success)' : 'var(--text-muted)'}">
+        ${done}/${goal}${hit ? ' ✓' : ''}
+      </span>
+    </div>
+    <div style="display:flex;gap:6px">${goalDots(done, goal)}</div>
+    ${hit ? `<div style="font-size:11px;color:var(--success);font-weight:600;margin-top:8px">Goal achieved this week! 🏆</div>` : ''}
+  </div>`;
+}
+
+// ─── Profile Screen ───────────────────────────────────────────────────────────
+function renderMe() {
+  const student = STUDENTS.find(s => s.id === currentStudentId);
+  if (!student) { go(''); return ''; }
+
+  const enrollment = ENROLLMENTS.find(e => e.studentId === currentStudentId);
+  const gradingSystem = enrollment ? GRADING_SYSTEMS.find(g => g.id === enrollment.gradingSystemId) : null;
+  const level = enrollment && gradingSystem ? gradingSystem.levels.find(l => l.id === enrollment.currentLevelId) : null;
+  const sport = enrollment ? SPORTS.find(s => s.id === enrollment.sportId) : null;
+  const beltColors = level ? beltColor(level.id) : null;
+  const stripes = enrollment ? enrollment.currentStripes || 0 : 0;
+
+  // Stats
+  const attendedRecords = ATTENDANCE.filter(a => a.studentId === currentStudentId && a.attended);
+  const attended = attendedRecords.length;
+  const streak = getAttendanceStreak(currentStudentId);
+
+  // Upcoming bookings
+  const myBookings = BOOKINGS
+    .filter(b => b.studentId === currentStudentId && b.status === 'booked')
+    .map(b => resolveClass(b.classId))
+    .filter(c => c && c.status === 'scheduled' && new Date(c.startsAt) > new Date())
+    .sort((a, b) => new Date(a.startsAt) - new Date(b.startsAt));
+
+  // Attendance history — past classes attended, newest first
+  const attendedClasses = attendedRecords
+    .map(a => resolveClass(a.classId))
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.startsAt) - new Date(a.startsAt));
+
+  const membershipLabel = {
+    'plan-monthly': 'Monthly',
+    'plan-unlimited': 'Unlimited',
+    'plan-annual': 'Annual',
+  }[enrollment?.membership] || 'Active';
+
+  // Membership price + next renewal date
+  const _PLAN_DEFAULTS = [
+    { id: 'plan-monthly',   price: '€80/mo',  period: 'monthly' },
+    { id: 'plan-unlimited', price: '€120/mo', period: 'monthly' },
+    { id: 'plan-annual',    price: '€800/yr', period: 'annual'  },
+  ];
+  let _storedPlans = _PLAN_DEFAULTS;
+  try {
+    const _sp = JSON.parse(localStorage.getItem('tatami_membership_plans_v1'));
+    if (Array.isArray(_sp) && _sp.length) _storedPlans = _sp;
+  } catch {}
+  const _myPlanInfo = _storedPlans.find(p => p.id === enrollment?.membership) || _PLAN_DEFAULTS.find(p => p.id === enrollment?.membership);
+  const _membershipPrice = _myPlanInfo?.price || null;
+  const _isAnnual = enrollment?.membership === 'plan-annual';
+
+  function _nextRenewalDate(joinedAt, annual) {
+    if (!joinedAt) return null;
+    const joined = new Date(joinedAt);
+    const now = new Date();
+    const dayOfMonth = joined.getDate();
+    if (annual) {
+      // Next anniversary of joinedAt year
+      let yr = now.getFullYear();
+      const thisYear = new Date(yr, joined.getMonth(), dayOfMonth);
+      if (thisYear <= now) yr++;
+      return new Date(yr, joined.getMonth(), dayOfMonth);
+    } else {
+      // Next monthly recurrence
+      let d = new Date(joined);
+      while (d <= now) {
+        d = new Date(d.getFullYear(), d.getMonth() + 1, dayOfMonth);
+      }
+      return d;
+    }
+  }
+  const _renewalDate = _nextRenewalDate(student.joinedAt, _isAnnual);
+  const _renewalStr = _renewalDate
+    ? _renewalDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
+  const _daysToRenewal = _renewalDate
+    ? Math.ceil((_renewalDate - new Date()) / 86400000)
+    : null;
+  const _renewalUrgent = _daysToRenewal !== null && _daysToRenewal <= 7;
+  const _memberSinceStr = student.joinedAt
+    ? new Date(student.joinedAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : null;
+
+  // Belt progression — current belt card + level history
+  const levelIdx = gradingSystem ? gradingSystem.levels.findIndex(l => l.id === enrollment?.currentLevelId) : -1;
+  const levelSinceStr = enrollment?.levelSince
+    ? new Date(enrollment.levelSince).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '';
+  const allLevels = gradingSystem?.levels || [];
+  const pastLevels = levelIdx > 0 ? allLevels.slice(0, levelIdx).reverse() : [];
+
+  // Promotion progress card
+  let promotionProgressCard = '';
+  if (enrollment && gradingSystem) {
+    const currentLvl = gradingSystem.levels.find(l => l.id === enrollment.currentLevelId);
+    const nextLvl    = gradingSystem.levels.find(l => l.order === (currentLvl?.order ?? -1) + 1);
+    if (currentLvl && nextLvl) {
+      const ruleKey = `${currentLvl.id}-to-${nextLvl.id}`;
+      const rule    = gradingSystem.promotionRules?.[ruleKey];
+      if (rule) {
+        const levelSinceMs = enrollment.levelSince ? new Date(enrollment.levelSince).getTime() : 0;
+        const classesAtLevel = ATTENDANCE.filter(a => {
+          if (!a.attended || a.studentId !== currentStudentId) return false;
+          const cls = CLASSES.find(c => c.id === a.classId);
+          return cls && new Date(cls.startsAt).getTime() >= levelSinceMs;
+        }).length;
+        const nowMs = CONFIG.today instanceof Date ? CONFIG.today.getTime() : Date.now();
+        const monthsAtLevel = enrollment.levelSince
+          ? Math.floor((nowMs - new Date(enrollment.levelSince).getTime()) / (30.5 * 24 * 60 * 60 * 1000))
+          : 0;
+        const classReq  = rule.minClassesAtLevel  || 0;
+        const monthReq  = rule.minMonthsAtLevel   || 0;
+        const classPct  = classReq  > 0 ? Math.min(100, Math.round((classesAtLevel / classReq) * 100)) : 100;
+        const monthPct  = monthReq  > 0 ? Math.min(100, Math.round((monthsAtLevel  / monthReq) * 100)) : 100;
+        const isReady   = classPct >= 100 && monthPct >= 100;
+        const nextColor = beltColor(nextLvl.id);
+
+        const nextLvlName = typeof nextLvl.name === 'object' ? t(nextLvl.name) : nextLvl.name;
+        const currLvlName = typeof currentLvl.name === 'object' ? t(currentLvl.name) : currentLvl.name;
+        promotionProgressCard = `
+          <div class="section-hd">Progress to ${nextLvlName}</div>
+          <div class="card" style="padding:16px 20px">
+            ${isReady ? (() => {
+              const reqDate = getBeltTestRequestDate(currentStudentId);
+              const reqLabel = reqDate
+                ? `<span style="font-size:11px;color:var(--success);font-weight:600">✓ Request sent ${new Date(reqDate).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>`
+                : `<button onclick="requestBeltTest('${currentStudentId}','${student.name.replace(/'/g,"\\'")}')"
+                     style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
+                     🥋 Request belt test
+                   </button>`;
+              return `
+              <div style="background:var(--success-bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+                <span style="font-size:20px;flex-shrink:0">🎖</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:700;color:var(--success)">You may be ready for promotion!</div>
+                  <div style="font-size:11px;color:var(--success);margin-top:1px">Notify your instructor to schedule a grading session.</div>
+                </div>
+                ${reqLabel}
+              </div>`;
+            })() : ''}
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
+              <span style="font-size:12px;color:var(--text-muted)">Working towards</span>
+              <span style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:20px;
+                background:${nextColor.bg};color:${nextColor.text}">
+                ${nextLvlName}
+              </span>
+            </div>
+            ${classReq > 0 ? `
+              <div style="margin-bottom:12px">
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+                  <span style="color:var(--text-muted)">Classes at ${currLvlName} belt</span>
+                  <span style="font-weight:700;color:${classPct >= 100 ? 'var(--success)' : 'var(--text)'}">${classesAtLevel} / ${classReq}</span>
+                </div>
+                <div style="height:6px;background:var(--surface-alt);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${classPct}%;background:${classPct >= 100 ? 'var(--success)' : 'var(--accent)'};border-radius:3px;transition:width .4s"></div>
+                </div>
+              </div>
+            ` : ''}
+            ${monthReq > 0 ? `
+              <div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px">
+                  <span style="color:var(--text-muted)">Time at ${currLvlName} belt</span>
+                  <span style="font-weight:700;color:${monthPct >= 100 ? 'var(--success)' : 'var(--text)'}">${monthsAtLevel} / ${monthReq} months</span>
+                </div>
+                <div style="height:6px;background:var(--surface-alt);border-radius:3px;overflow:hidden">
+                  <div style="height:100%;width:${monthPct}%;background:${monthPct >= 100 ? 'var(--success)' : 'var(--accent)'};border-radius:3px;transition:width .4s"></div>
+                </div>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+    }
+  }
+
+  const progressionRows = pastLevels.map(lvl => {
+    const c = beltColor(lvl.id);
+    return `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span style="width:10px;height:10px;border-radius:50%;background:${c.dot};flex-shrink:0"></span>
+        <span style="font-size:14px;color:var(--text-muted)">${lvl.name}</span>
+      </div>`;
+  }).join('');
+
+  const upcomingRows = myBookings.slice(0, 5).map(cls => `
+    <div class="class-row" onclick="go('classes/${cls.id}')">
+      <div class="class-date-col">
+        <div class="class-day">${dayName(cls.startsAt)}</div>
+        <div class="class-num">${dayNum(cls.startsAt)}</div>
+      </div>
+      <div class="class-info">
+        <div class="class-type">${cls.classType}</div>
+        <div class="class-meta">${fmtTime(cls.startsAt)} · ${cls.durationMin} min</div>
+      </div>
+      <span class="class-badge badge-booked">Booked</span>
+      <span style="color:var(--text-faint);font-size:18px;margin-left:4px">›</span>
+    </div>
+  `).join('');
+
+  const historyRows = attendedClasses.slice(0, 20).map(cls => {
+    const myNote = getMyNote(cls.id);
+    return `
+    <div onclick="go('classes/${cls.id}')" style="display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer">
+      <div style="min-width:44px;text-align:center">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-faint)">${dayName(cls.startsAt).slice(0,3)}</div>
+        <div style="font-size:17px;font-weight:700;line-height:1.1">${dayNum(cls.startsAt)}</div>
+        <div style="font-size:10px;color:var(--text-faint)">${new Date(cls.startsAt).toLocaleDateString('en-GB',{month:'short',year:'numeric'})}</div>
+      </div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600">${cls.classType}</div>
+        <div style="font-size:12px;color:var(--text-muted)">${fmtTime(cls.startsAt)} · ${cls.durationMin} min</div>
+        ${myNote ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px">✏️ ${myNote.text}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+        <span style="font-size:12px;font-weight:600;color:var(--success)">✓</span>
+        <span style="color:var(--text-faint);font-size:16px">›</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="screen">
+      <div class="topbar">
+        <div class="topbar-title">My Profile</div>
+        <div style="display:flex;gap:10px;align-items:center">
+          <button id="student-theme-btn" onclick="toggleTheme()" title="Toggle dark / light mode"
+            style="background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:14px;padding:4px 9px;color:var(--text);font-family:var(--font);line-height:1"
+          >${(localStorage.getItem('tatami_theme') || 'light') === 'dark' ? '☀' : '☾'}</button>
+          <button style="background:none;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text);padding:5px 10px;font-family:var(--font)" onclick="go('edit-profile')">✏ Edit</button>
+          <button style="background:none;border:none;cursor:pointer;font-size:13px;color:var(--text-muted);font-family:var(--font)" onclick="logout()">Log out</button>
+        </div>
+      </div>
+
+      <div class="content" style="padding-top:20px">
+        <!-- Identity -->
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px">
+          <div class="avatar">${student.initials}</div>
+          <div>
+            <div style="font-size:20px;font-weight:700;letter-spacing:-0.3px">${student.name}</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:2px">${student.contact || ''}${student.phone ? ' · ' + student.phone : ''}</div>
+            ${level && beltColors ? `
+              <div style="margin-top:6px">
+                <span class="belt-pill" style="background:${beltColors.bg};color:${beltColors.text}">
+                  <span class="belt-dot" style="background:${beltColors.dot}"></span>
+                  ${level.name}${stripes > 0 ? ' · ' + '●'.repeat(stripes) : ''}
+                </span>
+              </div>` : ''}
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stat-row">
+          <div class="stat-card">
+            <div class="stat-val">${attended}</div>
+            <div class="stat-lbl">Classes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${stripes}</div>
+            <div class="stat-lbl">Stripes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">${myBookings.length}</div>
+            <div class="stat-lbl">Upcoming</div>
+          </div>
+          <div class="stat-card" style="${streak >= 3 ? 'background:linear-gradient(135deg,#fff7ed,#fff);border-color:#fed7aa' : ''}">
+            <div class="stat-val" style="${streak >= 3 ? 'color:#ea580c' : ''}">${streak >= 1 ? '🔥' : '—'}&thinsp;${streak > 0 ? streak : ''}</div>
+            <div class="stat-lbl">Wk streak</div>
+          </div>
+        </div>
+
+        <!-- Attendance heatmap -->
+        ${buildAttendanceHeatmap(currentStudentId)}
+
+        <!-- Training goal -->
+        ${buildTrainingGoalSection(false)}
+
+        <!-- Belt progression -->
+        <div class="section-hd">Belt progression</div>
+        <div class="card" style="padding:0 16px">
+          <!-- Current belt -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;align-items:center;gap:12px">
+              ${beltColors ? `<span style="width:12px;height:12px;border-radius:50%;background:${beltColors.dot}"></span>` : ''}
+              <div>
+                <div style="font-size:15px;font-weight:700">${level?.name || '—'}</div>
+                ${levelSinceStr ? `<div style="font-size:11px;color:var(--text-muted)">Since ${levelSinceStr}</div>` : ''}
+              </div>
+            </div>
+            <span style="font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--accent-bg);color:var(--accent)">Current</span>
+          </div>
+          ${progressionRows || `<div style="padding:12px 0;font-size:13px;color:var(--text-muted)">Starting belt — keep training!</div>`}
+        </div>
+
+        <!-- Promotion progress -->
+        ${promotionProgressCard}
+
+        <!-- Technique progress shortcut -->
+        ${(() => {
+          const totalItems = CURRICULUM_ITEMS.length;
+          if (totalItems === 0) return '';
+          let mastered = new Set();
+          try {
+            const raw = JSON.parse(localStorage.getItem('tatami_student_mastery') || '{}');
+            mastered = new Set(raw[currentStudentId] || []);
+          } catch {}
+          const masteredCount = CURRICULUM_ITEMS.filter(i => mastered.has(i.id)).length;
+          const pct = totalItems ? Math.round((masteredCount / totalItems) * 100) : 0;
+          const enr2 = ENROLLMENTS.find(e => e.studentId === currentStudentId);
+          const beltBarColor = enr2 ? (beltColor(enr2.currentLevelId || '')?.dot || 'var(--accent)') : 'var(--accent)';
+          return `
+            <div class="section-hd">Technique progress</div>
+            <div class="card" onclick="go('progress')" style="padding:16px 20px;cursor:pointer;display:flex;align-items:center;gap:14px">
+              <div style="flex:1">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+                  <span style="font-size:14px;font-weight:600">Overall mastery</span>
+                  <span style="font-size:16px;font-weight:800;color:${pct === 100 ? 'var(--success)' : 'var(--text)'}">${pct}%</span>
+                </div>
+                <div style="height:6px;background:var(--surface-alt);border-radius:3px;overflow:hidden;margin-bottom:6px">
+                  <div style="height:100%;width:${pct}%;background:${beltBarColor === '#e5e7eb' ? 'var(--accent)' : beltBarColor};border-radius:3px;transition:width .4s ease"></div>
+                </div>
+                <div style="font-size:12px;color:var(--text-muted)">${masteredCount} of ${totalItems} techniques · tap to view all</div>
+              </div>
+              <span style="color:var(--text-faint);font-size:22px">›</span>
+            </div>`;
+        })()}
+
+        <!-- Achievements -->
+        ${(() => {
+          const totalAtt = attendedRecords.length;
+          const joinedMs2 = student.joinedAt ? new Date(student.joinedAt).getTime() : 0;
+          const monthsJoined2 = joinedMs2 ? Math.floor((Date.now() - joinedMs2) / (30.5 * 24 * 60 * 60 * 1000)) : 0;
+          let compResults2 = [];
+          try {
+            // Read from shared tatami_v1_data if available
+            const saved = JSON.parse(localStorage.getItem('tatami_v1_data') || '{}');
+            compResults2 = (saved.competitionResults || []).filter(r => r.studentId === currentStudentId);
+          } catch {}
+          const hasGold2   = compResults2.some(r => r.medal === 'gold');
+          const hasPodium2 = compResults2.some(r => ['gold','silver','bronze'].includes(r.medal));
+          const levelIdx2  = gradingSystem ? gradingSystem.levels.findIndex(l => l.id === enrollment?.currentLevelId) : 0;
+          const hasPromo2  = !!enrollment?.lastPromotionAt;
+
+          const allBadges = [
+            { icon:'🎯', label:'First Step',      desc:'Attended first class',          earned: totalAtt >= 1 },
+            { icon:'💪', label:'10 Classes',       desc:'Attended 10 classes',           earned: totalAtt >= 10 },
+            { icon:'⚡', label:'50 Classes',       desc:'Attended 50 classes',           earned: totalAtt >= 50 },
+            { icon:'🔥', label:'100 Classes',      desc:'Attended 100 classes',          earned: totalAtt >= 100 },
+            { icon:'⭐', label:'200 Classes',      desc:'Attended 200 classes',          earned: totalAtt >= 200 },
+            { icon:'📅', label:'3 Month Member',   desc:'Member for 3+ months',          earned: monthsJoined2 >= 3 },
+            { icon:'📅', label:'6 Month Member',   desc:'Member for 6+ months',          earned: monthsJoined2 >= 6 },
+            { icon:'🏠', label:'1 Year Member',    desc:'Member for 1+ year',            earned: monthsJoined2 >= 12 },
+            { icon:'🏆', label:'2 Year Member',    desc:'Member for 2+ years',           earned: monthsJoined2 >= 24 },
+            { icon:'🥋', label:'First Promotion',  desc:'Earned first belt promotion',   earned: hasPromo2 },
+            { icon:'🎖', label:'Double Stripe',    desc:'Promoted at least twice',       earned: levelIdx2 >= 2 },
+            { icon:'🎽', label:'Competitor',       desc:'Entered a competition',         earned: compResults2.length > 0 },
+            { icon:'🥈', label:'Podium Finish',    desc:'Top 3 in competition',          earned: hasPodium2 },
+            { icon:'🥇', label:'Gold Medalist',    desc:'Won gold in competition',       earned: hasGold2 },
+          ];
+          const earnedCount2 = allBadges.filter(b => b.earned).length;
+          const badgePills = allBadges.map(b => `
+            <div title="${b.desc}" style="display:flex;flex-direction:column;align-items:center;gap:4px;min-width:60px;opacity:${b.earned?'1':'0.25'};filter:${b.earned?'none':'grayscale(1)'}">
+              <div style="font-size:26px;line-height:1">${b.icon}</div>
+              <div style="font-size:9px;font-weight:600;text-align:center;color:${b.earned?'var(--text)':'var(--text-muted)'};line-height:1.3">${b.label}</div>
+            </div>`).join('');
+          return `
+            <div class="section-hd">Achievements <span style="font-weight:400;color:var(--text-muted);font-size:12px">${earnedCount2} / ${allBadges.length}</span></div>
+            <div class="card" style="padding:16px 20px">
+              <div style="display:flex;flex-wrap:wrap;gap:14px 10px;justify-content:flex-start">
+                ${badgePills}
+              </div>
+            </div>`;
+        })()}
+
+        <!-- Membership -->
+        <div class="section-hd">Membership</div>
+        <div class="card" style="padding:16px 20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${_renewalStr || _memberSinceStr ? '12px' : '0'}">
+            <div>
+              <div style="font-size:15px;font-weight:600">${membershipLabel} plan${_membershipPrice ? ` <span style="font-size:13px;font-weight:400;color:var(--text-muted)">· ${_membershipPrice}</span>` : ''}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${sport?.name || 'BJJ'}</div>
+            </div>
+            <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--success-bg);color:var(--success)">Active</span>
+          </div>
+          ${_renewalStr || _memberSinceStr ? `
+          <div style="display:flex;gap:16px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:12px">
+            ${_renewalStr ? `
+            <div style="flex:1;min-width:120px">
+              <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:var(--text-faint);letter-spacing:.05em;margin-bottom:2px">Next renewal</div>
+              <div style="font-size:13px;font-weight:600;color:${_renewalUrgent ? '#d97706' : 'var(--text)'}">
+                ${_renewalStr}${_renewalUrgent ? ` <span style="font-size:11px;color:#d97706">· in ${_daysToRenewal}d</span>` : _daysToRenewal !== null ? ` <span style="font-size:11px;color:var(--text-faint)">· in ${_daysToRenewal}d</span>` : ''}
+              </div>
+            </div>` : ''}
+            ${_memberSinceStr ? `
+            <div style="flex:1;min-width:120px">
+              <div style="font-size:10px;text-transform:uppercase;font-weight:700;color:var(--text-faint);letter-spacing:.05em;margin-bottom:2px">Member since</div>
+              <div style="font-size:13px;font-weight:600;color:var(--text)">${_memberSinceStr}</div>
+            </div>` : ''}
+          </div>` : ''}
+        </div>
+
+        <!-- Training Hold -->
+        ${renderHoldCard()}
+
+        <!-- Class packages -->
+        ${(() => {
+          const myPkgs = getMyActivePackages(currentStudentId);
+          if (!myPkgs.length) return '';
+          const rows = myPkgs.map(sp => {
+            const t = _STU_PKG_TYPES.find(p => p.id === sp.packageTypeId);
+            if (!t) return '';
+            const remaining = Math.max(0, t.classCount - sp.classesUsed);
+            const pct = Math.round((sp.classesUsed / t.classCount) * 100);
+            const today = new Date().toISOString().split('T')[0];
+            const daysLeft = Math.round((new Date(sp.expiresAt) - new Date(today)) / 86400000);
+            const urgentColor = daysLeft <= 7 ? '#d97706' : 'var(--accent)';
+            return `
+              <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+                <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:#eff6ff;color:#2563eb">🎟</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600">${t.name}</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+                    <span style="color:${urgentColor};font-weight:600">${remaining} class${remaining===1?'':'es'} left</span>
+                    · expires ${daysLeft <= 7 ? `<span style="color:#d97706">in ${daysLeft}d</span>` : sp.expiresAt}
+                  </div>
+                  <div style="margin-top:6px;height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+                    <div style="width:${pct}%;height:100%;background:${urgentColor};border-radius:3px;transition:width .3s"></div>
+                  </div>
+                </div>
+              </div>`;
+          }).join('');
+          return `
+            <div class="section-hd">Class packs</div>
+            <div class="card" style="padding:0 16px">
+              ${rows}
+              <div style="height:4px"></div>
+            </div>`;
+        })()}
+
+        <!-- Homework -->
+        ${(() => {
+          let hw = [];
+          try {
+            const raw = JSON.parse(localStorage.getItem('tatami_homework') || '{}');
+            hw = (raw[currentStudentId] || []);
+          } catch {}
+          const active = hw.filter(h => !h.practicedAt);
+          if (!active.length) return '';
+          const todayStr = new Date().toISOString().slice(0, 10);
+
+          function markPractised(hwId) {
+            try {
+              const raw = JSON.parse(localStorage.getItem('tatami_homework') || '{}');
+              const arr = raw[currentStudentId] || [];
+              const entry = arr.find(h => h.id === hwId);
+              if (entry) entry.practicedAt = new Date().toISOString().slice(0, 10);
+              raw[currentStudentId] = arr;
+              localStorage.setItem('tatami_homework', JSON.stringify(raw));
+            } catch {}
+            app.innerHTML = renderMe();
+          }
+          window._hwMarkPractised = markPractised;
+
+          const rows = active.map(h => {
+            const item = CURRICULUM_ITEMS.find(i => i.id === h.itemId);
+            const sec  = item ? CURRICULUM_SECTIONS.find(s => s.id === item.sectionId) : null;
+            const overdue = h.dueDate && h.dueDate < todayStr;
+            return `
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+                <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;
+                  font-size:18px;flex-shrink:0;background:${overdue ? '#fef2f2' : '#f0fdf4'};color:${overdue ? '#dc2626' : '#16a34a'}">📚</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-weight:600;font-size:14px">${item?.name?.en || h.itemId}</div>
+                  ${sec ? `<div style="font-size:12px;color:var(--text-muted)">${sec.name?.en || ''}</div>` : ''}
+                  ${h.note ? `<div style="font-size:12px;color:var(--text-muted);font-style:italic;margin-top:2px">"${h.note}"</div>` : ''}
+                  ${h.dueDate ? `<div style="font-size:11px;margin-top:3px;color:${overdue ? '#dc2626' : 'var(--text-muted)'};font-weight:${overdue ? '700' : '400'}">${overdue ? '⚠ Overdue · ' : ''}Due ${h.dueDate}</div>` : ''}
+                </div>
+                <button onclick="_hwMarkPractised('${h.id}')"
+                  style="flex-shrink:0;font-size:12px;font-weight:600;padding:6px 12px;border-radius:8px;
+                  border:1.5px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer">
+                  ✓ Done
+                </button>
+              </div>`;
+          }).join('');
+
+          return `
+            <div class="section-hd">📚 Homework <span style="font-weight:400;color:var(--text-muted);font-size:12px">${active.length} pending</span></div>
+            <div class="card" style="padding:0 16px">
+              ${rows}
+              <div style="height:4px"></div>
+            </div>`;
+        })()}
+
+        <!-- Private lessons -->
+        ${(() => {
+          const myPL = getMyPrivateLessons(currentStudentId);
+          if (!myPL.length) return '';
+          const todayStr = new Date().toISOString().split('T')[0];
+          const upcoming = myPL.filter(l => l.status === 'scheduled' && l.date >= todayStr);
+          const past     = myPL.filter(l => l.status !== 'scheduled' || l.date < todayStr).slice(0, 3);
+          const rows = upcoming.concat(past).slice(0, 5).map(l => {
+            const inst = INSTRUCTORS.find(i => i.id === l.instructorId);
+            const isPast = l.status === 'completed' || l.date < todayStr;
+            const isToday2 = l.date === todayStr;
+            const dateLabel = isToday2 ? 'Today' : new Date(l.date + 'T12:00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+            return `
+              <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+                <div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;
+                  background:${isPast ? 'var(--surface-alt)' : isToday2 ? 'var(--accent)' : '#ede9fe'};
+                  color:${isPast ? 'var(--text-muted)' : isToday2 ? '#fff' : '#6d28d9'}">🥋</div>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:13px;font-weight:600;color:${isPast ? 'var(--text-muted)' : 'var(--text)'}">${l.type || 'Private lesson'}</div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:1px">
+                    ${dateLabel} · ${l.time}${l.durationMin ? ` · ${l.durationMin} min` : ''}${inst ? ` · ${inst.name}` : ''}
+                  </div>
+                  ${l.notes ? `<div style="font-size:11px;color:var(--text-faint);margin-top:2px;font-style:italic">${l.notes}</div>` : ''}
+                </div>
+                <div>
+                  <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;
+                    background:${l.status==='completed'?'var(--success-bg)':isToday2?'var(--accent)':'#ede9fe'};
+                    color:${l.status==='completed'?'var(--success)':isToday2?'#fff':'#6d28d9'}">
+                    ${l.status==='completed'?'Done':isToday2?'Today':'Upcoming'}
+                  </span>
+                </div>
+              </div>`;
+          }).join('');
+          return `
+            <div class="section-hd">Private lessons <span style="font-weight:400;color:var(--text-muted);font-size:12px">${upcoming.length} upcoming</span></div>
+            <div class="card" style="padding:0 16px">
+              ${rows}
+              <div style="height:4px"></div>
+            </div>`;
+        })()}
+
+        <!-- Request private lesson -->
+        ${(() => {
+          const myReqs = getMyPlRequests(currentStudentId);
+          const pendingReqs = myReqs.filter(r => r.status === 'pending');
+          const FOCUS_OPTIONS = ['Technique Review','Competition Prep','Fundamentals','Sparring','Conditioning','Video Review'];
+          const reqRows = pendingReqs.map(r => `
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+              <div style="width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;background:#fef3c7;color:#d97706">⏳</div>
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:600">Private lesson request</div>
+                <div style="font-size:12px;color:var(--text-muted);margin-top:2px">
+                  Preferred: ${r.preferredDate}${r.preferredTime ? ' at ' + r.preferredTime : ''}
+                  ${r.focus ? ' · ' + r.focus : ''}
+                </div>
+                ${r.notes ? `<div style="font-size:11px;color:var(--text-faint);margin-top:2px;font-style:italic">${r.notes}</div>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+                <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;background:#fef3c7;color:#d97706">Pending</span>
+                <button onclick="cancelPlRequest('${r.id}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--text-muted);cursor:pointer">Cancel</button>
+              </div>
+            </div>`).join('');
+          const reqCard = pendingReqs.length > 0 ? `
+            <div class="card" style="padding:0 16px;margin-bottom:8px">
+              ${reqRows}
+              <div style="height:4px"></div>
+            </div>` : '';
+          return `
+            <div class="section-hd" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Private lessons</span>
+              <button id="plr-toggle-btn" onclick="
+                const f=document.getElementById('plr-form');
+                const b=document.getElementById('plr-toggle-btn');
+                if(f.style.display==='none'){f.style.display='block';b.textContent='✕ Cancel';}
+                else{f.style.display='none';b.textContent='+ Request';}
+              " style="font-size:12px;font-weight:600;background:none;border:1px solid var(--border);border-radius:6px;padding:3px 10px;cursor:pointer;color:var(--accent)">+ Request</button>
+            </div>
+            ${reqCard}
+            <div id="plr-form" style="display:none;margin-bottom:12px">
+              <div class="card" style="padding:16px;border:2px solid var(--accent)">
+                <div style="font-size:14px;font-weight:700;margin-bottom:12px">Request a private lesson</div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="label" style="font-size:12px">Preferred date</label>
+                  <input id="plr-date" type="date" class="input" style="width:100%" min="${new Date().toISOString().slice(0,10)}" />
+                </div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="label" style="font-size:12px">Preferred time (optional)</label>
+                  <input id="plr-time" type="time" class="input" style="width:100%" />
+                </div>
+                <div class="field" style="margin-bottom:10px">
+                  <label class="label" style="font-size:12px">Focus area (optional)</label>
+                  <select id="plr-focus" class="input" style="width:100%">
+                    <option value="">Any</option>
+                    ${FOCUS_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('')}
+                  </select>
+                </div>
+                <div class="field" style="margin-bottom:14px">
+                  <label class="label" style="font-size:12px">Notes (optional)</label>
+                  <input id="plr-notes" type="text" class="input" style="width:100%" placeholder="What you'd like to work on…" />
+                </div>
+                <button class="btn btn-primary btn-full" onclick="submitPlRequest()">Send request</button>
+              </div>
+            </div>`;
+        })()}
+
+        <!-- Upcoming bookings -->
+        ${myBookings.length > 0 ? `
+          <div class="section-hd">Upcoming classes</div>
+          <div class="card">${upcomingRows}</div>
+        ` : ''}
+
+        <!-- Attendance history -->
+        <div class="section-hd" style="display:flex;align-items:center;justify-content:space-between">
+          <span>Attendance history</span>
+          ${attendedClasses.length > 20 ? `<button onclick="go('history')" style="font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;color:var(--accent);padding:0;font-family:var(--font)">See all ${attendedClasses.length} →</button>` : ''}
+        </div>
+        ${attendedClasses.length > 0 ? `
+          <div class="card" style="padding:0 16px">
+            ${historyRows}
+            ${attendedClasses.length > 20 ? `<div style="padding:12px 0;text-align:center"><button onclick="go('history')" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 20px;font-size:13px;font-weight:600;cursor:pointer;color:var(--accent);font-family:var(--font)">View all ${attendedClasses.length} sessions →</button></div>` : '<div style="height:1px"></div>'}
+          </div>
+        ` : `
+          <div class="empty" style="padding:28px 16px">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">No classes yet</div>
+            <p style="font-size:13px">Your attendance history will appear here.</p>
+          </div>
+        `}
+      </div>
+    </div>
+    ${bottomNav('me')}
+  `;
+}
+
+// ─── Edit Profile ─────────────────────────────────────────────────────────────
+function renderEditProfile() {
+  const student = STUDENTS.find(s => s.id === currentStudentId);
+  if (!student) { go('me'); return ''; }
+
+  return `
+    <div class="screen">
+      <div class="topbar">
+        <button class="topbar-back" onclick="go('me')">← Back</button>
+        <div class="topbar-title">Edit Profile</div>
+        <div></div>
+      </div>
+      <div class="content" style="padding:16px">
+        <div class="card" style="padding:20px;margin-bottom:12px">
+          <div class="field">
+            <label class="label">Full name</label>
+            <input id="ep-name" class="input" value="${escHtml(student.name)}" placeholder="Your full name" />
+          </div>
+          <div class="field">
+            <label class="label">Email</label>
+            <input id="ep-email" class="input" type="email" value="${escHtml(student.contact || '')}" placeholder="you@example.com" />
+          </div>
+          <div class="field">
+            <label class="label">Phone</label>
+            <input id="ep-phone" class="input" type="tel" value="${escHtml(student.phone || '')}" placeholder="+351 900 000 000" />
+          </div>
+          <div class="field">
+            <label class="label">Date of birth</label>
+            <input id="ep-dob" class="input" type="date" value="${student.dob || ''}" />
+          </div>
+          <div class="field">
+            <label class="label">Weight (kg)</label>
+            <input id="ep-weight" class="input" type="number" min="20" max="300" value="${student.weightKg || ''}" placeholder="e.g. 75" />
+          </div>
+          <div style="margin-top:20px;display:flex;gap:10px">
+            <button class="btn btn-primary" style="flex:1" onclick="saveProfileEdits()">Save changes</button>
+            <button class="btn btn-secondary" onclick="go('me')">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Training History Screen ───────────────────────────────────────────────────
+function renderHistory() {
+  loadMyNotes();
+  const attendedRecords = ATTENDANCE.filter(a => a.studentId === currentStudentId && a.attended);
+  const allClasses = attendedRecords
+    .map(a => resolveClass(a.classId))
+    .filter(Boolean)
+    .sort((a, b) => new Date(b.startsAt) - new Date(a.startsAt));
+
+  // Build unique class type list for filter
+  const types = ['All', ...Array.from(new Set(allClasses.map(c => c.classType))).sort()];
+
+  // Group by month for display
+  function monthKey(isoStr) {
+    const d = new Date(isoStr);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+  function monthLabel(key) {
+    const [y, m] = key.split('-');
+    return new Date(parseInt(y), parseInt(m) - 1, 1).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  }
+
+  const byMonth = {};
+  allClasses.forEach(cls => {
+    const mk = monthKey(cls.startsAt);
+    if (!byMonth[mk]) byMonth[mk] = [];
+    byMonth[mk].push(cls);
+  });
+
+  const monthKeys = Object.keys(byMonth).sort().reverse();
+
+  const monthSections = monthKeys.map(mk => {
+    const classes = byMonth[mk];
+    const rows = classes.map(cls => {
+      const myNote = getMyNote(cls.id);
+      const sessionNote = SESSION_NOTES[cls.id];
+      return `
+        <div onclick="go('classes/${cls.id}')" style="display:flex;align-items:flex-start;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer" class="hist-row" data-type="${cls.classType}">
+          <div style="min-width:44px;text-align:center;flex-shrink:0">
+            <div style="font-size:11px;font-weight:600;text-transform:uppercase;color:var(--text-faint)">${dayName(cls.startsAt).slice(0,3)}</div>
+            <div style="font-size:17px;font-weight:700;line-height:1.1">${dayNum(cls.startsAt)}</div>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600">${cls.classType}</div>
+            <div style="font-size:12px;color:var(--text-muted)">${fmtTime(cls.startsAt)} · ${cls.durationMin || 60} min</div>
+            ${myNote ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">✏️ ${myNote.text}</div>` : ''}
+            ${sessionNote && !myNote ? `<div style="font-size:11px;color:var(--text-faint);margin-top:3px;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:220px">📋 ${sessionNote.text}</div>` : ''}
+          </div>
+          <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;padding-top:2px">
+            ${myNote ? '<span style="font-size:12px" title="Has note">✏️</span>' : ''}
+            <span style="font-size:12px;font-weight:600;color:var(--success)">✓</span>
+            <span style="color:var(--text-faint);font-size:16px">›</span>
+          </div>
+        </div>`;
+    }).join('');
+    return `
+      <div class="month-group" data-month="${mk}">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:var(--text-faint);padding:14px 0 4px">${monthLabel(mk)} <span style="font-weight:400">(${classes.length})</span></div>
+        <div class="card" style="padding:0 16px">
+          ${rows}
+          <div style="height:1px"></div>
+        </div>
+      </div>`;
+  }).join('');
+
+  const typeFilterBtns = types.map(type =>
+    `<button onclick="histFilterType('${type}')" id="hist-filter-${type.replace(/\s/g,'_')}"
+      style="white-space:nowrap;padding:6px 14px;border-radius:20px;border:1px solid var(--border);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);
+        background:${type === 'All' ? 'var(--accent)' : 'transparent'};
+        color:${type === 'All' ? '#fff' : 'var(--text-muted)'}">
+      ${type}
+    </button>`
+  ).join('');
+
+  return `
+    <div class="screen">
+      <div class="topbar">
+        <button class="topbar-back" onclick="go('me')">← Back</button>
+        <div class="topbar-title">Training History</div>
+        <div style="font-size:12px;color:var(--text-muted);font-weight:600">${allClasses.length} sessions</div>
+      </div>
+      <div class="content" style="padding:0 16px 24px">
+
+        <!-- Type filter -->
+        ${types.length > 2 ? `
+        <div style="display:flex;gap:8px;overflow-x:auto;padding:14px 0 10px;-webkit-overflow-scrolling:touch;scrollbar-width:none">
+          ${typeFilterBtns}
+        </div>` : '<div style="height:14px"></div>'}
+
+        <!-- Stats strip -->
+        <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+          <div style="flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border)">
+            <div style="font-size:20px;font-weight:800">${allClasses.length}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Total</div>
+          </div>
+          <div style="flex:1;text-align:center;padding:12px 8px;border-right:1px solid var(--border)">
+            <div style="font-size:20px;font-weight:800">${monthKeys.length}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em">Months</div>
+          </div>
+          <div style="flex:1;text-align:center;padding:12px 8px">
+            <div style="font-size:20px;font-weight:800">${allClasses.filter(c => getMyNote(c.id)).length}</div>
+            <div style="font-size:10px;color:var(--text-muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em">With notes</div>
+          </div>
+        </div>
+
+        ${allClasses.length === 0
+          ? `<div class="empty" style="padding:48px 0">
+               <div class="empty-icon">📋</div>
+               <div class="empty-title">No classes yet</div>
+               <p style="font-size:13px">Your training history will appear here after attending classes.</p>
+             </div>`
+          : `<div id="hist-months">${monthSections}</div>`}
+      </div>
+    </div>
+    ${bottomNav('me')}
+  `;
+}
+
+let _histCurrentFilter = 'All';
+function histFilterType(type) {
+  _histCurrentFilter = type;
+  // Update button styles
+  document.querySelectorAll('[id^="hist-filter-"]').forEach(btn => {
+    const isActive = btn.id === 'hist-filter-' + type.replace(/\s/g,'_');
+    btn.style.background = isActive ? 'var(--accent)' : 'transparent';
+    btn.style.color      = isActive ? '#fff' : 'var(--text-muted)';
+  });
+  // Show/hide rows
+  document.querySelectorAll('.hist-row').forEach(row => {
+    const match = type === 'All' || row.dataset.type === type;
+    row.style.display = match ? '' : 'none';
+  });
+  // Show/hide month groups that have no visible rows
+  document.querySelectorAll('.month-group').forEach(group => {
+    const visible = Array.from(group.querySelectorAll('.hist-row')).some(r => r.style.display !== 'none');
+    group.style.display = visible ? '' : 'none';
+  });
+}
+
+function saveProfileEdits() {
+  const student = STUDENTS.find(s => s.id === currentStudentId);
+  if (!student) return;
+
+  const name   = document.getElementById('ep-name').value.trim();
+  const email  = document.getElementById('ep-email').value.trim();
+  const phone  = document.getElementById('ep-phone').value.trim();
+  const dob    = document.getElementById('ep-dob').value || null;
+  const weight = parseFloat(document.getElementById('ep-weight').value) || null;
+
+  if (!name) { showToast('Name is required'); return; }
+
+  student.name      = name;
+  student.initials  = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  student.contact   = email || student.contact;
+  student.phone     = phone || null;
+  student.dob       = dob;
+  student.weightKg  = weight;
+
+  persistData();
+  showToast('Profile updated ✓');
+  setTimeout(() => go('me'), 400);
+}
+
+// ─── News / Announcements ─────────────────────────────────────────────────────
+function renderProgress() {
+  // Read mastery data — same localStorage key as admin MasteryCard
+  let mastered = new Set();
+  try {
+    const raw = JSON.parse(localStorage.getItem('tatami_student_mastery') || '{}');
+    mastered = new Set(raw[currentStudentId] || []);
+  } catch {}
+
+  const totalItems = CURRICULUM_ITEMS.length;
+  const masteredCount = CURRICULUM_ITEMS.filter(i => mastered.has(i.id)).length;
+  const pct = totalItems ? Math.round((masteredCount / totalItems) * 100) : 0;
+
+  // Belt color for progress bar
+  const enr = ENROLLMENTS.find(e => e.studentId === currentStudentId);
+  const beltColors = { 'bjj-white': '#e5e7eb', 'bjj-blue': '#3b82f6', 'bjj-purple': '#8b5cf6', 'bjj-brown': '#92400e', 'bjj-black': '#1f2937' };
+  const barColor = (enr && beltColors[enr.currentLevelId]) || 'var(--primary)';
+
+  // Complexity badge colors
+  const cxColor = { beginner: '#d1fae5', intermediate: '#fef3c7', advanced: '#fee2e2' };
+  const cxText  = { beginner: '#065f46', intermediate: '#92400e', advanced: '#991b1b' };
+
+  // Group items by section
+  const sectionCards = CURRICULUM_SECTIONS.map(sec => {
+    const items = CURRICULUM_ITEMS.filter(i => i.sectionId === sec.id).sort((a, b) => a.order - b.order);
+    const doneCnt = items.filter(i => mastered.has(i.id)).length;
+    const allDone = doneCnt === items.length;
+    return `
+      <div class="card" style="margin-bottom:12px;padding:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div style="font-weight:700;font-size:14px">${sec.name.en}</div>
+          <div style="font-size:12px;font-weight:600;color:${allDone ? '#059669' : 'var(--text-muted)'}">${doneCnt}/${items.length}${allDone ? ' ✓' : ''}</div>
+        </div>
+        ${items.map(item => {
+          const done = mastered.has(item.id);
+          return `
+            <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--border-color)">
+              <div style="width:20px;height:20px;border-radius:50%;border:2px solid ${done ? '#059669' : 'var(--border-color)'};background:${done ? '#059669' : 'transparent'};flex-shrink:0;display:flex;align-items:center;justify-content:center">
+                ${done ? '<svg width="10" height="10" viewBox="0 0 10 10"><polyline points="1.5,5 4,7.5 8.5,2.5" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+              </div>
+              <div style="flex:1;font-size:13px;color:${done ? 'var(--text-muted)' : 'var(--text-body)'};${done ? 'text-decoration:line-through' : ''}">${item.name.en}</div>
+              <span style="font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;background:${cxColor[item.complexity]||'#f3f4f6'};color:${cxText[item.complexity]||'#374151'}">${item.complexity}</span>
+            </div>`;
+        }).join('')}
+      </div>`;
+  }).join('');
+
+  // ---- Attendance: last 8 weeks ----
+  const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  const nowMs = Date.now();
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+  const dowNow = todayDate.getDay();
+  const thisWeekStart = todayDate.getTime() - dowNow * 86400000;
+  const attendWeeks = Array.from({ length: 8 }, (_, i) => {
+    const wkStart = thisWeekStart - (7 - i) * WEEK_MS;
+    const wkEnd   = wkStart + WEEK_MS;
+    const count   = ATTENDANCE.filter(a => {
+      if (!a.attended || a.studentId !== currentStudentId) return false;
+      const cls = CLASSES.find(c => c.id === a.classId);
+      if (!cls) return false;
+      const t = new Date(cls.startsAt).getTime();
+      return t >= wkStart && t < wkEnd;
+    }).length;
+    const d = new Date(wkStart);
+    const label = i === 7 ? 'This wk' : d.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' });
+    return { label, count };
+  });
+  const totalAttended = ATTENDANCE.filter(a => a.studentId === currentStudentId && a.attended).length;
+  const streak = getAttendanceStreak(currentStudentId);
+  const maxWk = Math.max(...attendWeeks.map(w => w.count), 1);
+  const attendBars = attendWeeks.map((w, i) => {
+    const isNow = i === 7;
+    const pctH  = Math.max(Math.round((w.count / maxWk) * 100), w.count > 0 ? 8 : 0);
+    return `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+        <div style="font-size:10px;font-weight:600;color:${isNow ? 'var(--accent,#4f46e5)' : 'var(--text-muted)'}">${w.count > 0 ? w.count : ''}</div>
+        <div style="width:100%;background:var(--surface-alt);border-radius:4px;height:44px;display:flex;align-items:flex-end;overflow:hidden">
+          <div style="width:100%;height:${pctH}%;background:${isNow ? 'var(--accent,#4f46e5)' : 'var(--border-color,#cbd5e1)'};border-radius:3px 3px 0 0;transition:height .3s"></div>
+        </div>
+        <div style="font-size:9px;color:var(--text-faint);white-space:nowrap;overflow:hidden;max-width:30px;text-overflow:ellipsis">${isNow ? 'Now' : w.label.split(' ')[0]}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="screen">
+      <div class="top-bar">
+        <span class="top-bar-title">Technique Progress</span>
+      </div>
+      <div class="content" style="padding:16px">
+        <!-- Attendance stats card -->
+        <div class="card" style="margin-bottom:16px;padding:16px">
+          <div style="font-weight:700;font-size:14px;margin-bottom:12px">Attendance — last 8 weeks</div>
+          <div style="display:flex;gap:4px;align-items:flex-end;height:60px;margin-bottom:12px">
+            ${attendBars}
+          </div>
+          <div style="display:flex;gap:0;border-top:1px solid var(--border-color);padding-top:10px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:20px;font-weight:800">${totalAttended}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Total classes</div>
+            </div>
+            <div style="width:1px;background:var(--border-color)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:20px;font-weight:800;color:${streak > 0 ? 'var(--success,#059669)' : 'var(--text-muted)'}">${streak}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">Week streak 🔥</div>
+            </div>
+            <div style="width:1px;background:var(--border-color)"></div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:20px;font-weight:800">${attendWeeks[7].count}</div>
+              <div style="font-size:11px;color:var(--text-muted);margin-top:2px">This week</div>
+            </div>
+          </div>
+        </div>
+        <!-- Overall mastery card -->
+        <div class="card" style="margin-bottom:16px;padding:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-weight:700;font-size:15px">Overall mastery</div>
+            <div style="font-size:22px;font-weight:800;color:${pct === 100 ? '#059669' : 'var(--primary)'}">${pct}%</div>
+          </div>
+          <div style="height:10px;background:var(--surface-alt);border-radius:99px;overflow:hidden;margin-bottom:6px">
+            <div style="height:100%;width:${pct}%;background:${barColor === '#e5e7eb' ? 'var(--primary)' : barColor};border-radius:99px;transition:width .4s ease"></div>
+          </div>
+          <div style="font-size:12px;color:var(--text-muted)">${masteredCount} of ${totalItems} techniques marked by your coach</div>
+        </div>
+        ${CURRICULUM_ITEMS.length === 0 ? `
+          <div class="empty" style="padding:48px 16px">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">No curriculum yet</div>
+            <p style="font-size:13px">Your coach hasn't set up curriculum items yet.</p>
+          </div>` : sectionCards}
+      </div>
+    </div>
+    ${bottomNav('progress')}
+  `;
+}
+
+function renderNews() {
+  const now = Date.now();
+  const active = ANNOUNCEMENTS
+    .filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now)
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || new Date(b.createdAt) - new Date(a.createdAt));
+
+  const fmtAnnDate = iso => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+
+  const cards = active.length ? active.map(ann => `
+    <div class="card" style="margin-bottom:12px;padding:16px">
+      ${ann.pinned ? `<div style="font-size:11px;font-weight:700;color:var(--primary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">📌 Pinned</div>` : ''}
+      <div style="font-weight:600;font-size:15px;margin-bottom:6px">${ann.title}</div>
+      <div style="font-size:14px;color:var(--text-muted);line-height:1.5;margin-bottom:10px">${ann.body}</div>
+      <div style="font-size:11px;color:var(--text-muted)">${fmtAnnDate(ann.createdAt)}${ann.expiresAt ? ` · expires ${fmtAnnDate(ann.expiresAt)}` : ''}</div>
+    </div>
+  `).join('') : `
+    <div class="empty" style="padding:48px 16px">
+      <div class="empty-icon">📢</div>
+      <div class="empty-title">No announcements</div>
+      <p style="font-size:13px">Check back later for updates from your academy.</p>
+    </div>
+  `;
+
+  return `
+    <div class="screen">
+      <div class="top-bar">
+        <span class="top-bar-title">News</span>
+      </div>
+      <div class="content" style="padding:16px">
+        ${cards}
+      </div>
+    </div>
+    ${bottomNav('news')}
+  `;
+}
+
+function logout() {
+  currentStudentId = null;
+  localStorage.removeItem('tatami_student_id');
+  go('');
+}
+</script>
+</body>
+</html>

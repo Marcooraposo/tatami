@@ -1,0 +1,2296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OSS — Academy Management</title>
+  <style>
+    /* =============================================================================
+       Design tokens + base components
+       ========================================================================== */
+
+    :root {
+      --bg: #f7f7f8;
+      --surface: #ffffff;
+      --surface-alt: #f1f3f5;
+      --border: #e4e6ea;
+      --border-strong: #cfd2d8;
+      --text: #0f172a;
+      --text-muted: #5b6472;
+      --text-faint: #8a92a1;
+      --primary: #0f172a;
+      --primary-hover: #1f2937;
+      --accent: #2563eb;
+      --accent-hover: #1d4ed8;
+      --success: #16a34a;
+      --success-bg: #ecfdf5;
+      --warn: #b45309;
+      --warn-bg: #fef3c7;
+      --danger: #b91c1c;
+      --danger-bg: #fee2e2;
+
+      --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+      --sp-5: 24px; --sp-6: 32px; --sp-7: 48px;
+
+      --r-sm: 6px; --r-md: 10px; --r-lg: 14px; --r-xl: 20px;
+
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+
+      --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
+      --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+
+      --sidebar-w: 240px;
+      --topbar-h: 56px;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .app { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: var(--sp-5) var(--sp-3);
+      position: fixed; left: 0; top: 0; bottom: 0;
+      overflow-y: auto;
+    }
+    .sidebar .brand {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: 0 var(--sp-3) var(--sp-5);
+    }
+    .sidebar .brand-mark {
+      width: 36px; height: 36px; border-radius: var(--r-md);
+      background: var(--primary); color: white;
+      display: grid; place-items: center;
+      font-weight: 700; font-size: 13px; letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+    .sidebar .brand-text { overflow: hidden; }
+    .sidebar .brand-name { font-weight: 700; font-size: 15px; letter-spacing: 0.5px; }
+    .sidebar .brand-sub  {
+      font-size: 10px; color: var(--text-faint); margin-top: 2px;
+      font-weight: 600; letter-spacing: 0.3px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    .nav { display: flex; flex-direction: column; gap: 2px; }
+    .nav-item {
+      display: flex; align-items: center; gap: var(--sp-3);
+      padding: var(--sp-3) var(--sp-3);
+      border-radius: var(--r-md);
+      color: var(--text-muted);
+      cursor: pointer; font-weight: 500; user-select: none;
+    }
+    .nav-item:hover { background: var(--surface-alt); color: var(--text); }
+    .nav-item.active { background: var(--primary); color: white; }
+    .nav-item .nav-icon { width: 18px; opacity: 0.9; display: inline-grid; place-items: center; }
+
+    .main { flex: 1; margin-left: var(--sidebar-w); min-height: 100vh; display: flex; flex-direction: column; }
+    .topbar {
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 var(--sp-5);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .topbar .crumb { font-size: 14px; color: var(--text-muted); }
+    .topbar .topbar-right { display: flex; align-items: center; gap: var(--sp-3); }
+    .academy-pill {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      padding: 4px 10px 4px 4px;
+      background: var(--surface-alt);
+      border-radius: 999px;
+      font-size: 12px; font-weight: 600;
+    }
+    .academy-pill .avatar { width: 24px; height: 24px; font-size: 10px; }
+
+    .content { padding: var(--sp-5); flex: 1; }
+
+    /* common components */
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: var(--sp-5);
+      box-shadow: var(--shadow-sm);
+    }
+    .card + .card { margin-top: var(--sp-4); }
+
+    .card-title { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 var(--sp-4); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--sp-4); }
+    @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+    .row { display: flex; align-items: center; gap: var(--sp-3); }
+    .row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+    .stack { display: flex; flex-direction: column; gap: var(--sp-3); }
+    .stack-tight { display: flex; flex-direction: column; gap: var(--sp-2); }
+
+    .muted { color: var(--text-muted); }
+    .faint { color: var(--text-faint); }
+    .h1 { font-size: 22px; font-weight: 600; margin: 0; }
+    .h2 { font-size: 16px; font-weight: 600; margin: 0; }
+    .h3 { font-size: 13px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; margin: 0; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: var(--sp-2);
+      padding: var(--sp-2) var(--sp-4);
+      background: var(--primary); color: white;
+      border: none; border-radius: var(--r-md);
+      font: inherit; font-weight: 500;
+      cursor: pointer;
+    }
+    .btn:hover { background: var(--primary-hover); }
+    .btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border-strong); }
+    .btn-secondary:hover { background: var(--surface-alt); }
+    .btn-accent { background: var(--accent); }
+    .btn-accent:hover { background: var(--accent-hover); }
+    .btn-sm { padding: var(--sp-1) var(--sp-3); font-size: 13px; }
+
+    .input, .select {
+      padding: var(--sp-2) var(--sp-3);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      font: inherit; color: var(--text);
+      width: 100%;
+    }
+    .input:focus, .select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+    .belt {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border-strong);
+      font-size: 12px; font-weight: 600;
+      background: var(--surface);
+    }
+    .belt .belt-color { width: 14px; height: 14px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.1); }
+    .belt .stripes { display: inline-flex; gap: 2px; margin-left: 2px; }
+    .belt .stripes span { width: 4px; height: 10px; background: #c0a26a; border-radius: 1px; }
+
+    .avatar {
+      width: 36px; height: 36px;
+      border-radius: 999px;
+      background: var(--surface-alt);
+      color: var(--text);
+      display: grid; place-items: center;
+      font-weight: 600; font-size: 13px;
+      border: 1px solid var(--border);
+    }
+    .avatar.lg { width: 56px; height: 56px; font-size: 18px; }
+
+    .list { display: flex; flex-direction: column; }
+    .list-row {
+      display: grid;
+      grid-template-columns: 36px 1.4fr 1fr 0.8fr 0.8fr 0.8fr;
+      align-items: center;
+      gap: var(--sp-4);
+      padding: var(--sp-3) var(--sp-4);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .list-row:hover { background: var(--surface-alt); }
+    .list-row:last-child { border-bottom: none; }
+    .list-header {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;
+      color: var(--text-faint); font-weight: 600;
+      cursor: default;
+    }
+    .list-header:hover { background: transparent; }
+
+    .bar {
+      height: 8px; width: 100%;
+      background: var(--surface-alt);
+      border-radius: 999px; overflow: hidden;
+    }
+    .bar > div {
+      height: 100%; background: var(--accent);
+      border-radius: 999px;
+      transition: width 200ms ease;
+    }
+    .bar.success > div { background: var(--success); }
+
+    .banner {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: var(--sp-4) var(--sp-5);
+      border-radius: var(--r-lg);
+      background: var(--success-bg);
+      border: 1px solid #a7f3d0;
+      color: #064e3b;
+    }
+    .banner .banner-title { font-weight: 600; }
+    .banner .banner-sub { font-size: 13px; opacity: 0.8; margin-top: 2px; }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--surface-alt);
+      border: 1px solid var(--border);
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .tag-basics       { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .tag-intermediate { background: #fef3c7; border-color: #fde68a; color: #92400e; }
+    .tag-advanced     { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
+
+    .class-type-pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .week-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: var(--sp-2);
+    }
+    .week-col {
+      background: var(--surface);
+      border-radius: var(--r-md);
+      min-height: 160px;
+      overflow: hidden;
+    }
+    .week-col.is-today { background: #eff6ff; }
+    .week-col-header {
+      padding: var(--sp-2);
+      border-bottom: 1px solid var(--border);
+      text-align: center;
+    }
+    .week-col-body {
+      padding: var(--sp-2);
+      display: flex; flex-direction: column; gap: var(--sp-2);
+    }
+    .week-class {
+      padding: var(--sp-2);
+      background: var(--surface-alt);
+      border-radius: var(--r-sm);
+      border-left: 3px solid var(--accent);
+      cursor: pointer;
+      transition: background 120ms ease;
+    }
+    .week-class:hover { background: var(--border); }
+
+    @media (max-width: 900px) {
+      .week-grid { grid-template-columns: 1fr; }
+      .week-col { min-height: auto; }
+    }
+
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 100;
+      display: grid; place-items: center;
+      padding: var(--sp-5);
+    }
+    .modal {
+      background: var(--surface);
+      border-radius: var(--r-lg);
+      box-shadow: var(--shadow-md);
+      max-width: 560px; width: 100%;
+      max-height: 90vh; overflow-y: auto;
+    }
+    .modal-header {
+      padding: var(--sp-5);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-body { padding: var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-4); }
+    .modal-footer {
+      padding: var(--sp-4) var(--sp-5);
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3);
+    }
+    .field { display: flex; flex-direction: column; gap: var(--sp-2); }
+    .field-label { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
+    .day-toggle {
+      display: inline-grid; place-items: center;
+      width: 40px; height: 40px;
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      font-size: 12px; font-weight: 600;
+      cursor: pointer; user-select: none;
+    }
+    .day-toggle.on { background: var(--primary); color: white; border-color: var(--primary); }
+    .day-toggles { display: flex; gap: var(--sp-2); flex-wrap: wrap; }
+    .btn-danger { background: var(--danger); }
+    .btn-danger:hover { background: #991b1b; }
+
+    .sport-tabs {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: var(--sp-5);
+      gap: var(--sp-1);
+    }
+    .sport-tab {
+      padding: var(--sp-3) var(--sp-4);
+      cursor: pointer;
+      color: var(--text-muted);
+      font-weight: 500;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      user-select: none;
+      transition: color 120ms ease, border-color 120ms ease;
+    }
+    .sport-tab:hover { color: var(--text); }
+    .sport-tab.active {
+      color: var(--text);
+      border-bottom-color: var(--primary);
+    }
+
+    .lang-switch { display: inline-flex; gap: 2px; background: var(--surface-alt); border-radius: var(--r-md); padding: 2px; }
+    .lang-switch button {
+      border: none; background: transparent;
+      padding: 4px 10px;
+      border-radius: var(--r-sm);
+      font: inherit; font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .lang-switch button.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+
+    .empty {
+      text-align: center;
+      padding: var(--sp-7) var(--sp-5);
+      color: var(--text-muted);
+    }
+    .empty .empty-title { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: var(--sp-2); }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 100%; position: static;
+        border-right: none; border-bottom: 1px solid var(--border);
+        padding: var(--sp-3);
+      }
+      .sidebar .brand { padding: 0 0 var(--sp-3); }
+      .nav { flex-direction: row; flex-wrap: wrap; }
+      .nav-item { padding: var(--sp-2) var(--sp-3); font-size: 13px; }
+      .main { margin-left: 0; }
+      .app { flex-direction: column; }
+      .list-row { grid-template-columns: 36px 1fr 0.6fr; }
+      .list-row .list-col-hide { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app"></div>
+
+  <script>
+  // =============================================================================
+  // OSS — Academy Management (single-file prototype)
+  // =============================================================================
+
+  // ---------- Config & i18n -------------------------------------------------
+
+  const CONFIG = {
+    defaultLocale: 'en',
+    supportedLocales: [
+      { code: 'en', label: 'English' },
+      { code: 'pt', label: 'Português' }
+    ],
+    today: new Date('2026-05-12T12:00:00')
+  };
+
+  let CURRENT_LOCALE = (typeof localStorage !== 'undefined' && localStorage.getItem('oss_locale')) || CONFIG.defaultLocale;
+
+  function setLocale(code) {
+    CURRENT_LOCALE = code;
+    if (typeof localStorage !== 'undefined') localStorage.setItem('oss_locale', code);
+    renderApp();
+  }
+
+  function t(field) {
+    if (field == null) return '';
+    if (typeof field === 'string') return field;
+    return field[CURRENT_LOCALE] || field[CONFIG.defaultLocale] || Object.values(field)[0] || '';
+  }
+
+  const UI = {
+    appName: { en: 'OSS', pt: 'OSS' },
+    tagline: { en: 'Academy Management', pt: 'Gestão de Academia' },
+    nav: {
+      dashboard:  { en: 'Dashboard',  pt: 'Painel' },
+      schedule:   { en: 'Schedule',   pt: 'Horário' },
+      classes:    { en: 'Classes',    pt: 'Aulas' },
+      curriculum: { en: 'Curriculum', pt: 'Currículo' },
+      students:   { en: 'Students',   pt: 'Alunos' }
+    },
+    labels: {
+      students:           { en: 'Students',              pt: 'Alunos' },
+      addStudent:         { en: '+ Add student',         pt: '+ Adicionar aluno' },
+      search:             { en: 'Search students...',    pt: 'Procurar alunos...' },
+      level:              { en: 'Level',                 pt: 'Nível' },
+      sport:              { en: 'Sport',                 pt: 'Modalidade' },
+      joined:             { en: 'Joined',                pt: 'Inscrito' },
+      classesAttended:    { en: 'Classes attended',      pt: 'Aulas presentes' },
+      timeAtLevel:        { en: 'Time at current level', pt: 'Tempo no nível' },
+      coverageOverview:   { en: 'Curriculum coverage',   pt: 'Cobertura do currículo' },
+      recentlyCovered:    { en: 'Recently covered',      pt: 'Coberto recentemente' },
+      gaps:               { en: 'Key gaps',              pt: 'Lacunas principais' },
+      nextSteps:          { en: 'Recommended next steps',pt: 'Próximos passos' },
+      promotionReady:     { en: 'Ready for promotion',   pt: 'Pronto para graduação' },
+      promotionReadyMsg:  { en: 'Meets the requirements for the next level.', pt: 'Cumpre os requisitos para o próximo nível.' },
+      promote:            { en: 'Promote',               pt: 'Graduar' },
+      times:              { en: 'times',                 pt: 'vezes' },
+      monthsShort:        { en: 'mo',                    pt: 'mes' },
+      daysShort:          { en: 'd',                     pt: 'd' },
+      backToList:         { en: '← Back to students',    pt: '← Voltar aos alunos' },
+      stripes:            { en: 'stripes',               pt: 'graus' },
+      stripe:             { en: 'stripe',                pt: 'grau' },
+      daysAgo:            { en: 'd ago',                 pt: 'd atrás' },
+      monthsAgo:          { en: 'mo ago',                pt: 'mes atrás' },
+      never:              { en: 'never',                 pt: 'nunca' },
+      comingSoon:         { en: 'Coming soon',           pt: 'Em breve' },
+      comingSoonMsg:      { en: 'This screen will be built next.', pt: 'Este ecrã será construído a seguir.' },
+      upcoming:           { en: 'Upcoming',              pt: 'Próximas' },
+      today:              { en: 'Today',                 pt: 'Hoje' },
+      recent:             { en: 'Recent',                pt: 'Recentes' },
+      later:              { en: 'Later',                 pt: 'Mais tarde' },
+      instructor:         { en: 'Instructor',            pt: 'Professor' },
+      bookedStudents:     { en: 'Booked students',       pt: 'Alunos inscritos' },
+      roster:             { en: 'Roster',                pt: 'Lista de presenças' },
+      plannedPlan:        { en: 'Planned curriculum',    pt: 'Plano de aula' },
+      recommendedAdditions: { en: 'Suggested additions', pt: 'Sugestões adicionais' },
+      recommendBasedOn:   { en: 'Based on the curriculum gaps of students booked into this class', pt: 'Com base nas lacunas curriculares dos alunos inscritos' },
+      noBookings:         { en: 'No students booked yet', pt: 'Sem inscrições ainda' },
+      noPlannedItems:     { en: 'No curriculum items planned yet', pt: 'Sem itens de currículo planeados' },
+      addToPlan:          { en: '+ Add to plan',         pt: '+ Adicionar ao plano' },
+      saveAttendance:     { en: 'Save attendance',       pt: 'Guardar presenças' },
+      attended:           { en: 'attended',              pt: 'presentes' },
+      of:                 { en: 'of',                    pt: 'de' },
+      wouldBenefit:       { en: 'would benefit',         pt: 'beneficiariam' },
+      completed:          { en: 'Completed',             pt: 'Concluída' },
+      scheduled:          { en: 'Scheduled',             pt: 'Agendada' },
+      capacity:           { en: 'Capacity',              pt: 'Capacidade' },
+      backToClasses:      { en: '← Back to classes',     pt: '← Voltar às aulas' },
+      // Curriculum
+      sections:           { en: 'sections',                pt: 'secções' },
+      items:              { en: 'items',                   pt: 'itens' },
+      basicsLevel:        { en: 'Basics',                  pt: 'Básicos' },
+      intermediateLevel:  { en: 'Intermediate',            pt: 'Intermédio' },
+      advancedLevel:      { en: 'Advanced',                pt: 'Avançado' },
+      searchCurriculum:   { en: 'Search curriculum...',    pt: 'Procurar no currículo...' },
+      addSection:         { en: '+ Add section',           pt: '+ Adicionar secção' },
+      addItem:            { en: '+ Add item',              pt: '+ Adicionar item' },
+      noResults:          { en: 'No matches.',             pt: 'Sem resultados.' },
+      itemsCount:         { en: 'items',                   pt: 'itens' },
+      // Schedule / templates / weekly objective
+      weeklyFocus:        { en: "This week's focus",       pt: 'Foco da semana' },
+      noFocusSet:         { en: 'No focus set this week — running default rotation.', pt: 'Sem foco esta semana — rotação predefinida.' },
+      setFocus:           { en: 'Set focus',               pt: 'Definir foco' },
+      editFocus:          { en: 'Edit focus',              pt: 'Editar foco' },
+      save:               { en: 'Save',                    pt: 'Guardar' },
+      cancel:             { en: 'Cancel',                  pt: 'Cancelar' },
+      focusNotePlaceholder:{ en: 'Optional note for the week...', pt: 'Nota opcional para a semana...' },
+      recurringClasses:   { en: 'Recurring classes',       pt: 'Aulas recorrentes' },
+      newRecurringClass:  { en: '+ New recurring class',   pt: '+ Nova aula recorrente' },
+      classType:          { en: 'Type',                    pt: 'Tipo' },
+      audience:           { en: 'Audience',                pt: 'Público' },
+      days:               { en: 'Days',                    pt: 'Dias' },
+      time:               { en: 'Time',                    pt: 'Hora' },
+      thisWeek:           { en: 'This week',               pt: 'Esta semana' },
+      prevWeek:           { en: '←',                       pt: '←' },
+      nextWeek:           { en: '→',                       pt: '→' },
+      weekOf:             { en: 'Week of',                 pt: 'Semana de' },
+      weeklyCalendar:     { en: 'Weekly calendar',         pt: 'Calendário semanal' },
+      noClassesThisWeek:  { en: 'No classes scheduled.',   pt: 'Sem aulas agendadas.' },
+      editTemplate:       { en: 'Edit',                    pt: 'Editar' },
+      // Template modal
+      newTemplateTitle:   { en: 'New recurring class',     pt: 'Nova aula recorrente' },
+      editTemplateTitle:  { en: 'Edit recurring class',    pt: 'Editar aula recorrente' },
+      duration:           { en: 'Duration (minutes)',      pt: 'Duração (minutos)' },
+      capacityFull:       { en: 'Capacity (students)',     pt: 'Capacidade (alunos)' },
+      selectDays:         { en: 'Pick the days this class runs', pt: 'Escolha os dias em que decorre' },
+      delete:             { en: 'Delete',                  pt: 'Eliminar' },
+      confirmDelete:      { en: 'Delete this recurring class? Future scheduled instances will be removed.', pt: 'Eliminar esta aula recorrente? As instâncias futuras agendadas serão removidas.' },
+      classTab:           { en: 'Class types',             pt: 'Tipos de aula' },
+      manageClasses:      { en: 'Manage your recurring classes', pt: 'Gerir aulas recorrentes' },
+      noTemplates:        { en: 'No recurring classes yet. Click "+ New recurring class" to set one up.', pt: 'Sem aulas recorrentes. Clique "+ Nova aula recorrente" para criar uma.' },
+      requiredDays:       { en: 'Select at least one day of the week.', pt: 'Selecione pelo menos um dia da semana.' }
+    }
+  };
+
+  // ---------- Academy --------------------------------------------------------
+
+  const ACADEMY = {
+    id: 'academy-1',
+    name: 'Academia RZ',
+    sportIds: ['sport-bjj', 'sport-muaythai'],
+    sportConfigs: [
+      { sportId: 'sport-bjj',      gradingSystemId: 'grading-bjj-adult-default' },
+      { sportId: 'sport-muaythai', gradingSystemId: 'grading-muaythai-armband' }
+    ]
+  };
+
+  function academyInitials(name) {
+    const clean = name.replace(/[^A-Za-z0-9]/g, '');
+    return clean.slice(0, 2).toUpperCase() || '··';
+  }
+
+  // ---------- Class types & audiences ---------------------------------------
+  // Class types control which curriculum levels are appropriate for a class.
+  // Audiences segment classes for adult / kids / women-only programs.
+
+  const CLASS_TYPES = [
+    { id: 'beginner',     label: { en: 'Beginner',     pt: 'Iniciantes'   }, color: '#2563eb', allowedLevels: ['basics'] },
+    { id: 'intermediate', label: { en: 'Intermediate', pt: 'Intermédios'  }, color: '#7c3aed', allowedLevels: ['basics', 'intermediate'] },
+    { id: 'advanced',     label: { en: 'Advanced',     pt: 'Avançados'    }, color: '#dc2626', allowedLevels: ['intermediate', 'advanced'] },
+    { id: 'competition',  label: { en: 'Competition',  pt: 'Competição'   }, color: '#ea580c', allowedLevels: ['intermediate', 'advanced'] },
+    { id: 'open-mat',     label: { en: 'Open Mat',     pt: 'Treino Livre' }, color: '#16a34a', allowedLevels: ['basics', 'intermediate', 'advanced'] }
+  ];
+
+  const AUDIENCES = [
+    { id: 'adults', label: { en: 'Adults',   pt: 'Adultos'  } },
+    { id: 'kids',   label: { en: 'Kids',     pt: 'Crianças' } },
+    { id: 'women',  label: { en: 'Women',    pt: 'Mulheres' } }
+  ];
+
+  // ---------- Sports & Grading -----------------------------------------------
+
+  const SPORTS = [
+    {
+      id: 'sport-bjj',
+      name: { en: 'Brazilian Jiu-Jitsu', pt: 'Jiu-Jitsu Brasileiro' },
+      defaultGradingSystemId: 'grading-bjj-adult-default'
+    },
+    {
+      id: 'sport-muaythai',
+      name: { en: 'Muay Thai', pt: 'Muay Thai' },
+      defaultGradingSystemId: 'grading-muaythai-armband'
+    }
+  ];
+
+  const GRADING_SYSTEMS = [
+    {
+      id: 'grading-bjj-adult-default',
+      name: { en: 'BJJ Adult Belts (IBJJF)', pt: 'Faixas Adulto BJJ (IBJJF)' },
+      sportId: 'sport-bjj',
+      isDefault: true,
+      academyId: null,
+      type: 'belt-stripe',
+      levels: [
+        { id: 'bjj-white',  name: { en: 'White',  pt: 'Branca'   }, order: 0, color: '#f8fafc', maxStripes: 4 },
+        { id: 'bjj-blue',   name: { en: 'Blue',   pt: 'Azul'     }, order: 1, color: '#1e40af', maxStripes: 4 },
+        { id: 'bjj-purple', name: { en: 'Purple', pt: 'Roxa'     }, order: 2, color: '#6b21a8', maxStripes: 4 },
+        { id: 'bjj-brown',  name: { en: 'Brown',  pt: 'Castanha' }, order: 3, color: '#78350f', maxStripes: 4 },
+        { id: 'bjj-black',  name: { en: 'Black',  pt: 'Preta'    }, order: 4, color: '#0f172a', maxStripes: 6 }
+      ],
+      promotionRules: {
+        'bjj-white-to-bjj-blue': {
+          minMonthsAtLevel: 12,
+          minStripes: 4,
+          minBasicsCoveragePct: 0.80,
+          minClassesAtLevel: 80
+        }
+      }
+    },
+    {
+      id: 'grading-muaythai-armband',
+      name: { en: 'Muay Thai Pra Jiad (Armbands)', pt: 'Muay Thai Pra Jiad (Faixas)' },
+      sportId: 'sport-muaythai',
+      isDefault: true,
+      academyId: null,
+      type: 'level',
+      levels: [
+        { id: 'mt-white',  name: { en: 'White',  pt: 'Branca'   }, order: 0, color: '#f8fafc', maxStripes: 0 },
+        { id: 'mt-yellow', name: { en: 'Yellow', pt: 'Amarela'  }, order: 1, color: '#facc15', maxStripes: 0 },
+        { id: 'mt-green',  name: { en: 'Green',  pt: 'Verde'    }, order: 2, color: '#16a34a', maxStripes: 0 },
+        { id: 'mt-blue',   name: { en: 'Blue',   pt: 'Azul'     }, order: 3, color: '#2563eb', maxStripes: 0 },
+        { id: 'mt-brown',  name: { en: 'Brown',  pt: 'Castanha' }, order: 4, color: '#78350f', maxStripes: 0 },
+        { id: 'mt-black',  name: { en: 'Black',  pt: 'Preta'    }, order: 5, color: '#0f172a', maxStripes: 0 }
+      ],
+      promotionRules: {}
+    }
+  ];
+
+  // ---------- Curriculum -----------------------------------------------------
+
+  // BJJ curriculum — drafted as a realistic academy syllabus from white through purple/brown belt material.
+  // Organized by position/category, in order of typical teaching progression.
+  const CURRICULUM_SECTIONS = [
+    // ---- BASICS (white belt) ----
+    { id: 'sec-standup',     sportId: 'sport-bjj', name: { en: 'Stand-up',          pt: 'De Pé'                 }, level: 'basics',       order: 1 },
+    { id: 'sec-mount',       sportId: 'sport-bjj', name: { en: 'Mount',             pt: 'Montada'               }, level: 'basics',       order: 2 },
+    { id: 'sec-sidecontrol', sportId: 'sport-bjj', name: { en: 'Side Control',      pt: 'Cem Quilos'            }, level: 'basics',       order: 3 },
+    { id: 'sec-back',        sportId: 'sport-bjj', name: { en: 'Back Control',      pt: 'Pegada das Costas'     }, level: 'basics',       order: 4 },
+    { id: 'sec-closedguard', sportId: 'sport-bjj', name: { en: 'Closed Guard',      pt: 'Guarda Fechada'        }, level: 'basics',       order: 5 },
+    { id: 'sec-openguard',   sportId: 'sport-bjj', name: { en: 'Open Guard',        pt: 'Guarda Aberta'         }, level: 'basics',       order: 6 },
+    { id: 'sec-halfguard',   sportId: 'sport-bjj', name: { en: 'Half Guard',        pt: 'Meia Guarda'           }, level: 'basics',       order: 7 },
+    { id: 'sec-escapes',     sportId: 'sport-bjj', name: { en: 'Escapes',           pt: 'Saídas'                }, level: 'basics',       order: 8 },
+    { id: 'sec-passing',     sportId: 'sport-bjj', name: { en: 'Guard Passing',     pt: 'Passagem de Guarda'    }, level: 'basics',       order: 9 },
+
+    // ---- INTERMEDIATE (blue belt) ----
+    { id: 'sec-adv-guards',  sportId: 'sport-bjj', name: { en: 'Advanced Guards',   pt: 'Guardas Avançadas'     }, level: 'intermediate', order: 10 },
+    { id: 'sec-adv-passing', sportId: 'sport-bjj', name: { en: 'Advanced Passing',  pt: 'Passagem Avançada'     }, level: 'intermediate', order: 11 },
+    { id: 'sec-adv-subs',    sportId: 'sport-bjj', name: { en: 'Submissions',       pt: 'Finalizações'          }, level: 'intermediate', order: 12 },
+    { id: 'sec-back-attacks',sportId: 'sport-bjj', name: { en: 'Back Attacks',      pt: 'Ataques de Costas'     }, level: 'intermediate', order: 13 },
+
+    // ---- ADVANCED (purple / brown) ----
+    { id: 'sec-leglocks',    sportId: 'sport-bjj', name: { en: 'Leg Locks',         pt: 'Chaves de Perna'       }, level: 'advanced',     order: 14 },
+    { id: 'sec-modern',      sportId: 'sport-bjj', name: { en: 'Modern Guards',     pt: 'Sistemas Modernos'     }, level: 'advanced',     order: 15 },
+
+    // ============================================================
+    // MUAY THAI
+    // ============================================================
+    // ---- BASICS (white / yellow) ----
+    { id: 'sec-mt-stance',       sportId: 'sport-muaythai', name: { en: 'Stance & Footwork',         pt: 'Postura e Movimentação' }, level: 'basics',       order: 1 },
+    { id: 'sec-mt-punches',      sportId: 'sport-muaythai', name: { en: 'Punches',                   pt: 'Socos'                  }, level: 'basics',       order: 2 },
+    { id: 'sec-mt-basickicks',   sportId: 'sport-muaythai', name: { en: 'Basic Kicks',               pt: 'Chutes Básicos'         }, level: 'basics',       order: 3 },
+    { id: 'sec-mt-basicdefense', sportId: 'sport-muaythai', name: { en: 'Basic Defense',             pt: 'Defesa Básica'          }, level: 'basics',       order: 4 },
+
+    // ---- INTERMEDIATE (green / blue) ----
+    { id: 'sec-mt-advkicks',     sportId: 'sport-muaythai', name: { en: 'Advanced Kicks',            pt: 'Chutes Avançados'       }, level: 'intermediate', order: 5 },
+    { id: 'sec-mt-knees',        sportId: 'sport-muaythai', name: { en: 'Knees',                     pt: 'Joelhadas'              }, level: 'intermediate', order: 6 },
+    { id: 'sec-mt-elbows',       sportId: 'sport-muaythai', name: { en: 'Elbows',                    pt: 'Cotoveladas'            }, level: 'intermediate', order: 7 },
+    { id: 'sec-mt-clinch',       sportId: 'sport-muaythai', name: { en: 'Clinch',                    pt: 'Clinch'                 }, level: 'intermediate', order: 8 },
+
+    // ---- ADVANCED (brown / black) ----
+    { id: 'sec-mt-counters',     sportId: 'sport-muaythai', name: { en: 'Counters & Combinations',   pt: 'Contras e Combinações'  }, level: 'advanced',     order: 9 },
+    { id: 'sec-mt-spinning',     sportId: 'sport-muaythai', name: { en: 'Spinning & Jumping',        pt: 'Técnicas Giratórias'    }, level: 'advanced',     order: 10 }
+  ];
+
+  const CURRICULUM_ITEMS = [
+    // Stand-up
+    { id: 'su-1', sectionId: 'sec-standup', order: 1, name: { en: 'Stance & grips',           pt: 'Postura e pegadas'         } },
+    { id: 'su-2', sectionId: 'sec-standup', order: 2, name: { en: 'Distance management',     pt: 'Gestão de distância'       } },
+    { id: 'su-3', sectionId: 'sec-standup', order: 3, name: { en: 'Double-leg takedown',     pt: 'Baiana (queda dupla)'      } },
+    { id: 'su-4', sectionId: 'sec-standup', order: 4, name: { en: 'Single-leg takedown',     pt: 'Queda de uma perna'        } },
+    { id: 'su-5', sectionId: 'sec-standup', order: 5, name: { en: 'Osoto gari',              pt: 'Osoto gari'                } },
+    { id: 'su-6', sectionId: 'sec-standup', order: 6, name: { en: 'Sprawl & defense',        pt: 'Espalhamento e defesa'     } },
+    { id: 'su-7', sectionId: 'sec-standup', order: 7, name: { en: 'Pulling guard',           pt: 'Puxar para a guarda'       } },
+
+    // Mount
+    { id: 'mt-1', sectionId: 'sec-mount', order: 1, name: { en: 'Mount maintenance',         pt: 'Manutenção da montada'     } },
+    { id: 'mt-2', sectionId: 'sec-mount', order: 2, name: { en: 'High mount transition',     pt: 'Transição para montada alta' } },
+    { id: 'mt-3', sectionId: 'sec-mount', order: 3, name: { en: 'Cross-collar choke',        pt: 'Estrangulamento cruzado'   } },
+    { id: 'mt-4', sectionId: 'sec-mount', order: 4, name: { en: 'Americana',                 pt: 'Americana'                 } },
+    { id: 'mt-5', sectionId: 'sec-mount', order: 5, name: { en: 'Armbar from mount',         pt: 'Chave de braço da montada' } },
+    { id: 'mt-6', sectionId: 'sec-mount', order: 6, name: { en: 'Mounted triangle',          pt: 'Triângulo da montada'      } },
+
+    // Side Control
+    { id: 'sc-1', sectionId: 'sec-sidecontrol', order: 1, name: { en: 'Side control maintenance', pt: 'Manutenção do cem quilos' } },
+    { id: 'sc-2', sectionId: 'sec-sidecontrol', order: 2, name: { en: 'Cross-face & under-hook', pt: 'Controlo de queixo e gancho' } },
+    { id: 'sc-3', sectionId: 'sec-sidecontrol', order: 3, name: { en: 'Americana',                pt: 'Americana'             } },
+    { id: 'sc-4', sectionId: 'sec-sidecontrol', order: 4, name: { en: 'Kimura',                   pt: 'Kimura'                } },
+    { id: 'sc-5', sectionId: 'sec-sidecontrol', order: 5, name: { en: 'Knee-on-belly',            pt: 'Joelho na barriga'     } },
+    { id: 'sc-6', sectionId: 'sec-sidecontrol', order: 6, name: { en: 'Bread-cutter choke',       pt: 'Estrangulamento "padaria"' } },
+
+    // Back
+    { id: 'bc-1', sectionId: 'sec-back', order: 1, name: { en: 'Hooks & seatbelt grip',      pt: 'Ganchos e cinto de segurança' } },
+    { id: 'bc-2', sectionId: 'sec-back', order: 2, name: { en: 'Back maintenance',           pt: 'Manutenção das costas'     } },
+    { id: 'bc-3', sectionId: 'sec-back', order: 3, name: { en: 'Rear naked choke',           pt: 'Mata-leão'                 } },
+    { id: 'bc-4', sectionId: 'sec-back', order: 4, name: { en: 'Bow & arrow choke',          pt: 'Estrangulamento arco e flecha' } },
+    { id: 'bc-5', sectionId: 'sec-back', order: 5, name: { en: 'Armbar from back',           pt: 'Chave de braço das costas' } },
+
+    // Closed Guard
+    { id: 'cg-1', sectionId: 'sec-closedguard', order: 1, name: { en: 'Closed guard basics',     pt: 'Fundamentos da guarda fechada' } },
+    { id: 'cg-2', sectionId: 'sec-closedguard', order: 2, name: { en: 'Posture & grip breaks',   pt: 'Quebra de postura'         } },
+    { id: 'cg-3', sectionId: 'sec-closedguard', order: 3, name: { en: 'Hip-bump sweep',          pt: 'Raspagem de subida'        } },
+    { id: 'cg-4', sectionId: 'sec-closedguard', order: 4, name: { en: 'Scissor sweep',           pt: 'Raspagem de tesoura'       } },
+    { id: 'cg-5', sectionId: 'sec-closedguard', order: 5, name: { en: 'Pendulum sweep',          pt: 'Raspagem pêndulo'          } },
+    { id: 'cg-6', sectionId: 'sec-closedguard', order: 6, name: { en: 'Cross-collar choke',      pt: 'Estrangulamento cruzado'   } },
+    { id: 'cg-7', sectionId: 'sec-closedguard', order: 7, name: { en: 'Triangle',                pt: 'Triângulo'                 } },
+    { id: 'cg-8', sectionId: 'sec-closedguard', order: 8, name: { en: 'Armbar from guard',       pt: 'Chave de braço da guarda'  } },
+    { id: 'cg-9', sectionId: 'sec-closedguard', order: 9, name: { en: 'Kimura from guard',       pt: 'Kimura da guarda'          } },
+
+    // Open Guard
+    { id: 'og-1', sectionId: 'sec-openguard', order: 1, name: { en: 'Frames & guard recovery',   pt: 'Frames e recuperação'      } },
+    { id: 'og-2', sectionId: 'sec-openguard', order: 2, name: { en: 'Spider guard introduction', pt: 'Introdução à guarda aranha' } },
+    { id: 'og-3', sectionId: 'sec-openguard', order: 3, name: { en: 'De la Riva guard',          pt: 'Guarda De la Riva'         } },
+    { id: 'og-4', sectionId: 'sec-openguard', order: 4, name: { en: 'Butterfly hooks',           pt: 'Ganchos de borboleta'      } },
+
+    // Half Guard
+    { id: 'hg-1', sectionId: 'sec-halfguard', order: 1, name: { en: 'Half guard basics',         pt: 'Meia guarda básica'        } },
+    { id: 'hg-2', sectionId: 'sec-halfguard', order: 2, name: { en: 'Under-hook recovery',       pt: 'Recuperação com gancho'    } },
+    { id: 'hg-3', sectionId: 'sec-halfguard', order: 3, name: { en: 'Old school sweep',          pt: 'Old school'                } },
+    { id: 'hg-4', sectionId: 'sec-halfguard', order: 4, name: { en: 'Knee shield',               pt: 'Joelho-escudo'             } },
+
+    // Escapes
+    { id: 'ec-1', sectionId: 'sec-escapes', order: 1, name: { en: 'Upa escape (mount)',         pt: 'Upa (saída da montada)'    } },
+    { id: 'ec-2', sectionId: 'sec-escapes', order: 2, name: { en: 'Elbow escape (mount)',       pt: 'Recomposição de cotovelo'  } },
+    { id: 'ec-3', sectionId: 'sec-escapes', order: 3, name: { en: 'Side control to knees',      pt: 'Saída do cem quilos para joelhos' } },
+    { id: 'ec-4', sectionId: 'sec-escapes', order: 4, name: { en: 'Side control to guard',      pt: 'Saída do cem quilos para guarda'  } },
+    { id: 'ec-5', sectionId: 'sec-escapes', order: 5, name: { en: 'Back escape',                pt: 'Saída das costas'          } },
+    { id: 'ec-6', sectionId: 'sec-escapes', order: 6, name: { en: 'Knee-on-belly escape',       pt: 'Saída do joelho na barriga'} },
+
+    // Guard Passing
+    { id: 'gp-1', sectionId: 'sec-passing', order: 1, name: { en: 'Posture in closed guard',    pt: 'Postura na guarda fechada' } },
+    { id: 'gp-2', sectionId: 'sec-passing', order: 2, name: { en: 'Standing guard break',       pt: 'Quebrar a guarda em pé'    } },
+    { id: 'gp-3', sectionId: 'sec-passing', order: 3, name: { en: 'Knee cut pass',              pt: 'Passagem cortando joelho'  } },
+    { id: 'gp-4', sectionId: 'sec-passing', order: 4, name: { en: 'Toreando (bullfighter)',     pt: 'Toureando'                 } },
+    { id: 'gp-5', sectionId: 'sec-passing', order: 5, name: { en: 'Stack pass',                 pt: 'Passagem por empilhamento' } },
+    { id: 'gp-6', sectionId: 'sec-passing', order: 6, name: { en: 'Over-under pass',            pt: 'Por cima por baixo'        } },
+
+    // ---- INTERMEDIATE ----
+
+    // Advanced Guards
+    { id: 'ag-1', sectionId: 'sec-adv-guards', order: 1, name: { en: 'Spider guard sweeps',     pt: 'Raspagens de aranha'       } },
+    { id: 'ag-2', sectionId: 'sec-adv-guards', order: 2, name: { en: 'De la Riva sweeps',       pt: 'Raspagens de De la Riva'   } },
+    { id: 'ag-3', sectionId: 'sec-adv-guards', order: 3, name: { en: 'Reverse De la Riva',      pt: 'De la Riva inversa'        } },
+    { id: 'ag-4', sectionId: 'sec-adv-guards', order: 4, name: { en: 'Butterfly sweeps',        pt: 'Raspagens de borboleta'    } },
+    { id: 'ag-5', sectionId: 'sec-adv-guards', order: 5, name: { en: 'Z-guard / knee shield',   pt: 'Z-guard'                   } },
+
+    // Advanced Passing
+    { id: 'ap-1', sectionId: 'sec-adv-passing', order: 1, name: { en: 'Leg drag',               pt: 'Leg drag'                  } },
+    { id: 'ap-2', sectionId: 'sec-adv-passing', order: 2, name: { en: 'X-pass',                 pt: 'X-pass'                    } },
+    { id: 'ap-3', sectionId: 'sec-adv-passing', order: 3, name: { en: 'Long step pass',         pt: 'Passagem long step'        } },
+    { id: 'ap-4', sectionId: 'sec-adv-passing', order: 4, name: { en: 'Smash pass',             pt: 'Passagem de esmagamento'   } },
+
+    // Advanced Submissions
+    { id: 'as-1', sectionId: 'sec-adv-subs', order: 1, name: { en: 'Loop choke',                pt: 'Estrangulamento em laço'   } },
+    { id: 'as-2', sectionId: 'sec-adv-subs', order: 2, name: { en: 'Ezekiel choke',             pt: 'Estrangulamento Ezequiel'  } },
+    { id: 'as-3', sectionId: 'sec-adv-subs', order: 3, name: { en: 'D\'arce choke',             pt: 'D\'arce / brabo'           } },
+    { id: 'as-4', sectionId: 'sec-adv-subs', order: 4, name: { en: 'Guillotine variations',     pt: 'Variações de guilhotina'   } },
+    { id: 'as-5', sectionId: 'sec-adv-subs', order: 5, name: { en: 'Omoplata',                  pt: 'Omoplata'                  } },
+
+    // Back Attacks
+    { id: 'ba-1', sectionId: 'sec-back-attacks', order: 1, name: { en: 'Back take from side control', pt: 'Pegar costas do cem quilos' } },
+    { id: 'ba-2', sectionId: 'sec-back-attacks', order: 2, name: { en: 'Back take from mount',         pt: 'Pegar costas da montada'    } },
+    { id: 'ba-3', sectionId: 'sec-back-attacks', order: 3, name: { en: 'Back take from turtle',       pt: 'Pegar costas da tartaruga'  } },
+    { id: 'ba-4', sectionId: 'sec-back-attacks', order: 4, name: { en: 'Crucifix',                    pt: 'Crucifixo'                  } },
+
+    // ---- ADVANCED ----
+
+    // Leg Locks
+    { id: 'll-1', sectionId: 'sec-leglocks', order: 1, name: { en: 'Straight ankle lock',        pt: 'Chave de tornozelo'        } },
+    { id: 'll-2', sectionId: 'sec-leglocks', order: 2, name: { en: 'Knee bar',                   pt: 'Chave de joelho'           } },
+    { id: 'll-3', sectionId: 'sec-leglocks', order: 3, name: { en: 'Toe hold',                   pt: 'Chave de pé'               } },
+    { id: 'll-4', sectionId: 'sec-leglocks', order: 4, name: { en: 'Heel hook introduction',     pt: 'Introdução ao heel hook'   } },
+    { id: 'll-5', sectionId: 'sec-leglocks', order: 5, name: { en: 'Ashi garami positions',      pt: 'Posições ashi garami'      } },
+
+    // Modern Guards
+    { id: 'mg-1', sectionId: 'sec-modern', order: 1, name: { en: 'Berimbolo',                    pt: 'Berimbolo'                 } },
+    { id: 'mg-2', sectionId: 'sec-modern', order: 2, name: { en: '50/50',                        pt: 'Cinquenta e cinquenta'     } },
+    { id: 'mg-3', sectionId: 'sec-modern', order: 3, name: { en: 'Worm guard',                   pt: 'Worm guard'                } },
+    { id: 'mg-4', sectionId: 'sec-modern', order: 4, name: { en: 'Lapel guards',                 pt: 'Guardas com lapela'        } },
+
+    // ============================================================
+    // MUAY THAI ITEMS
+    // ============================================================
+
+    // Stance & Footwork
+    { id: 'mt-st-1', sectionId: 'sec-mt-stance', order: 1, name: { en: 'Orthodox stance',         pt: 'Postura ortodoxa'          } },
+    { id: 'mt-st-2', sectionId: 'sec-mt-stance', order: 2, name: { en: 'Southpaw stance',         pt: 'Postura southpaw'          } },
+    { id: 'mt-st-3', sectionId: 'sec-mt-stance', order: 3, name: { en: 'Forward & backward step', pt: 'Passo frontal e atrás'     } },
+    { id: 'mt-st-4', sectionId: 'sec-mt-stance', order: 4, name: { en: 'Pivots & angles',         pt: 'Pivot e ângulos'           } },
+    { id: 'mt-st-5', sectionId: 'sec-mt-stance', order: 5, name: { en: 'Distance management',     pt: 'Gestão de distância'       } },
+
+    // Punches
+    { id: 'mt-pn-1', sectionId: 'sec-mt-punches', order: 1, name: { en: 'Jab',            pt: 'Jab'              } },
+    { id: 'mt-pn-2', sectionId: 'sec-mt-punches', order: 2, name: { en: 'Cross',          pt: 'Cruzado'          } },
+    { id: 'mt-pn-3', sectionId: 'sec-mt-punches', order: 3, name: { en: 'Lead hook',      pt: 'Gancho frontal'   } },
+    { id: 'mt-pn-4', sectionId: 'sec-mt-punches', order: 4, name: { en: 'Rear hook',      pt: 'Gancho traseiro'  } },
+    { id: 'mt-pn-5', sectionId: 'sec-mt-punches', order: 5, name: { en: 'Lead uppercut',  pt: 'Uppercut frontal' } },
+    { id: 'mt-pn-6', sectionId: 'sec-mt-punches', order: 6, name: { en: 'Rear uppercut',  pt: 'Uppercut traseiro'} },
+
+    // Basic Kicks
+    { id: 'mt-bk-1', sectionId: 'sec-mt-basickicks', order: 1, name: { en: 'Lead teep (push kick)', pt: 'Teep frontal'           } },
+    { id: 'mt-bk-2', sectionId: 'sec-mt-basickicks', order: 2, name: { en: 'Rear teep',             pt: 'Teep traseiro'          } },
+    { id: 'mt-bk-3', sectionId: 'sec-mt-basickicks', order: 3, name: { en: 'Lead roundhouse',       pt: 'Chute circular frontal' } },
+    { id: 'mt-bk-4', sectionId: 'sec-mt-basickicks', order: 4, name: { en: 'Rear roundhouse',       pt: 'Chute circular traseiro'} },
+
+    // Basic Defense
+    { id: 'mt-bd-1', sectionId: 'sec-mt-basicdefense', order: 1, name: { en: 'Long guard',     pt: 'Guarda longa'             } },
+    { id: 'mt-bd-2', sectionId: 'sec-mt-basicdefense', order: 2, name: { en: 'Forearm block',  pt: 'Bloqueio com antebraço'   } },
+    { id: 'mt-bd-3', sectionId: 'sec-mt-basicdefense', order: 3, name: { en: 'Parry',          pt: 'Parry'                    } },
+    { id: 'mt-bd-4', sectionId: 'sec-mt-basicdefense', order: 4, name: { en: 'Slip',           pt: 'Esquiva lateral'          } },
+    { id: 'mt-bd-5', sectionId: 'sec-mt-basicdefense', order: 5, name: { en: 'Shin check',     pt: 'Defesa de canela'         } },
+
+    // Advanced Kicks
+    { id: 'mt-ak-1', sectionId: 'sec-mt-advkicks', order: 1, name: { en: 'Switch kick',         pt: 'Chute trocado'           } },
+    { id: 'mt-ak-2', sectionId: 'sec-mt-advkicks', order: 2, name: { en: 'Low kick',            pt: 'Chute baixo'             } },
+    { id: 'mt-ak-3', sectionId: 'sec-mt-advkicks', order: 3, name: { en: 'Head kick',           pt: 'Chute alto'              } },
+    { id: 'mt-ak-4', sectionId: 'sec-mt-advkicks', order: 4, name: { en: 'Cut kick (kao tat)',  pt: 'Chute de corte'          } },
+    { id: 'mt-ak-5', sectionId: 'sec-mt-advkicks', order: 5, name: { en: 'Question mark kick',  pt: 'Question mark kick'      } },
+
+    // Knees
+    { id: 'mt-kn-1', sectionId: 'sec-mt-knees', order: 1, name: { en: 'Straight knee',      pt: 'Joelhada frontal'         } },
+    { id: 'mt-kn-2', sectionId: 'sec-mt-knees', order: 2, name: { en: 'Curved knee',        pt: 'Joelhada curva'           } },
+    { id: 'mt-kn-3', sectionId: 'sec-mt-knees', order: 3, name: { en: 'Skip knee',          pt: 'Joelhada com salto'       } },
+    { id: 'mt-kn-4', sectionId: 'sec-mt-knees', order: 4, name: { en: 'Knee from clinch',   pt: 'Joelhada do clinch'       } },
+
+    // Elbows
+    { id: 'mt-eb-1', sectionId: 'sec-mt-elbows', order: 1, name: { en: 'Horizontal elbow',  pt: 'Cotovelada horizontal'    } },
+    { id: 'mt-eb-2', sectionId: 'sec-mt-elbows', order: 2, name: { en: 'Diagonal elbow',    pt: 'Cotovelada diagonal'      } },
+    { id: 'mt-eb-3', sectionId: 'sec-mt-elbows', order: 3, name: { en: 'Upward elbow',      pt: 'Cotovelada ascendente'    } },
+    { id: 'mt-eb-4', sectionId: 'sec-mt-elbows', order: 4, name: { en: 'Downward elbow',    pt: 'Cotovelada descendente'   } },
+
+    // Clinch
+    { id: 'mt-cl-1', sectionId: 'sec-mt-clinch', order: 1, name: { en: 'Plum (double collar tie)', pt: 'Plum (duplo colarinho)' } },
+    { id: 'mt-cl-2', sectionId: 'sec-mt-clinch', order: 2, name: { en: 'Inside vs outside grip',   pt: 'Grip por dentro vs fora'} },
+    { id: 'mt-cl-3', sectionId: 'sec-mt-clinch', order: 3, name: { en: 'Sweeps from clinch',       pt: 'Quedas do clinch'       } },
+    { id: 'mt-cl-4', sectionId: 'sec-mt-clinch', order: 4, name: { en: 'Clinch defense',           pt: 'Defesa no clinch'       } },
+
+    // Counters & Combinations
+    { id: 'mt-ct-1', sectionId: 'sec-mt-counters', order: 1, name: { en: 'Catch & counter teep',       pt: 'Apanhar e contra-atacar teep'   } },
+    { id: 'mt-ct-2', sectionId: 'sec-mt-counters', order: 2, name: { en: 'Catch & counter roundhouse', pt: 'Apanhar e contra-atacar chute'  } },
+    { id: 'mt-ct-3', sectionId: 'sec-mt-counters', order: 3, name: { en: 'Cross–hook combination',     pt: 'Combinação cruzado-gancho'      } },
+    { id: 'mt-ct-4', sectionId: 'sec-mt-counters', order: 4, name: { en: 'Teep–cross–low kick',        pt: 'Teep-cruzado-chute baixo'       } },
+
+    // Spinning & Jumping
+    { id: 'mt-sp-1', sectionId: 'sec-mt-spinning', order: 1, name: { en: 'Spinning elbow',     pt: 'Cotovelada giratória' } },
+    { id: 'mt-sp-2', sectionId: 'sec-mt-spinning', order: 2, name: { en: 'Spinning back kick', pt: 'Chute giratório'      } },
+    { id: 'mt-sp-3', sectionId: 'sec-mt-spinning', order: 3, name: { en: 'Jumping knee',       pt: 'Joelhada saltada'     } },
+    { id: 'mt-sp-4', sectionId: 'sec-mt-spinning', order: 4, name: { en: 'Superman punch',     pt: 'Soco superman'        } }
+  ];
+
+  // ---------- Instructors & Students -----------------------------------------
+
+  const INSTRUCTORS = [
+    { id: 'inst-1', name: 'Rui Almeida', initials: 'RA', sportIds: ['sport-bjj'] },
+    { id: 'inst-2', name: 'Marta Costa', initials: 'MC', sportIds: ['sport-bjj'] }
+  ];
+
+  // ---------- Class templates (recurring class definitions) ------------------
+  // Each template generates a Class instance for every occurrence in its
+  // recurrence. daysOfWeek uses JS getDay() convention: 0=Sun, 1=Mon, ..., 6=Sat.
+
+  const CLASS_TEMPLATES = [
+    { id: 'tmpl-1', sportId: 'sport-bjj', classTypeId: 'beginner',     audienceId: 'adults', instructorId: 'inst-1', daysOfWeek: [1, 3, 5], time: '19:00', durationMin: 60, capacity: 20, active: true },
+    { id: 'tmpl-2', sportId: 'sport-bjj', classTypeId: 'intermediate', audienceId: 'adults', instructorId: 'inst-2', daysOfWeek: [2, 4],    time: '19:00', durationMin: 60, capacity: 20, active: true },
+    { id: 'tmpl-3', sportId: 'sport-bjj', classTypeId: 'advanced',     audienceId: 'adults', instructorId: 'inst-2', daysOfWeek: [6],       time: '10:00', durationMin: 75, capacity: 16, active: true },
+    { id: 'tmpl-4', sportId: 'sport-bjj', classTypeId: 'beginner',     audienceId: 'kids',   instructorId: 'inst-1', daysOfWeek: [2, 4],    time: '17:30', durationMin: 45, capacity: 15, active: true },
+    { id: 'tmpl-5', sportId: 'sport-bjj', classTypeId: 'open-mat',     audienceId: 'adults', instructorId: 'inst-1', daysOfWeek: [0],       time: '11:00', durationMin: 90, capacity: 25, active: true },
+    { id: 'tmpl-6', sportId: 'sport-bjj', classTypeId: 'competition',  audienceId: 'adults', instructorId: 'inst-2', daysOfWeek: [3],       time: '20:00', durationMin: 90, capacity: 12, active: true }
+  ];
+
+  const STUDENTS = [
+    { id: 's-1', name: 'João Silva',     initials: 'JS', dob: '1992-04-12', weightKg: 78, joinedAt: '2025-09-15', contact: 'joao@example.com' },
+    { id: 's-2', name: 'Ana Pereira',    initials: 'AP', dob: '1988-11-03', weightKg: 62, joinedAt: '2024-02-20', contact: 'ana@example.com' },
+    { id: 's-3', name: 'Miguel Santos',  initials: 'MS', dob: '1995-07-22', weightKg: 84, joinedAt: '2023-06-10', contact: 'miguel@example.com' },
+    { id: 's-4', name: 'Sofia Martins',  initials: 'SM', dob: '1998-01-30', weightKg: 58, joinedAt: '2026-04-01', contact: 'sofia@example.com' },
+    { id: 's-5', name: 'Pedro Oliveira', initials: 'PO', dob: '1985-09-17', weightKg: 92, joinedAt: '2022-03-15', contact: 'pedro@example.com' }
+  ];
+
+  const ENROLLMENTS = [
+    { id: 'e-1', studentId: 's-1', sportId: 'sport-bjj', gradingSystemId: 'grading-bjj-adult-default', currentLevelId: 'bjj-white',  currentStripes: 2, levelSince: '2025-09-15', lastPromotionAt: '2026-02-10' },
+    { id: 'e-2', studentId: 's-2', sportId: 'sport-bjj', gradingSystemId: 'grading-bjj-adult-default', currentLevelId: 'bjj-white',  currentStripes: 4, levelSince: '2024-02-20', lastPromotionAt: '2026-03-05' },
+    { id: 'e-3', studentId: 's-3', sportId: 'sport-bjj', gradingSystemId: 'grading-bjj-adult-default', currentLevelId: 'bjj-blue',   currentStripes: 2, levelSince: '2024-06-15', lastPromotionAt: '2025-11-20' },
+    { id: 'e-4', studentId: 's-4', sportId: 'sport-bjj', gradingSystemId: 'grading-bjj-adult-default', currentLevelId: 'bjj-white',  currentStripes: 0, levelSince: '2026-04-01', lastPromotionAt: null },
+    { id: 'e-5', studentId: 's-5', sportId: 'sport-bjj', gradingSystemId: 'grading-bjj-adult-default', currentLevelId: 'bjj-purple', currentStripes: 1, levelSince: '2024-10-10', lastPromotionAt: '2025-08-15' }
+  ];
+
+  // ---------- Weekly objectives ----------------------------------------------
+  // Sets the curriculum focus for a given week. Class instances generated
+  // during that week prefer items from the focus sections (filtered by the
+  // class type's allowedLevels). Without an objective, classes rotate through
+  // all sections allowed for their type.
+
+  const WEEKLY_OBJECTIVES = [
+    { id: 'wko-prev2', weekStarting: '2026-04-27', sportId: 'sport-bjj', focusSectionIds: ['sec-mount', 'sec-back'],
+      notes: { en: 'Top control: mount and back', pt: 'Controlo por cima: montada e costas' } },
+    { id: 'wko-prev1', weekStarting: '2026-05-04', sportId: 'sport-bjj', focusSectionIds: ['sec-closedguard'],
+      notes: { en: 'Closed guard sweeps and submissions', pt: 'Raspagens e finalizações da guarda fechada' } },
+    { id: 'wko-this',  weekStarting: '2026-05-11', sportId: 'sport-bjj', focusSectionIds: ['sec-sidecontrol', 'sec-escapes'],
+      notes: { en: 'Side control attacks and escapes', pt: 'Ataques e saídas do cem quilos' } },
+    { id: 'wko-next1', weekStarting: '2026-05-18', sportId: 'sport-bjj', focusSectionIds: ['sec-passing', 'sec-adv-passing'],
+      notes: { en: 'Guard passing systems', pt: 'Sistemas de passagem de guarda' } }
+  ];
+
+  // ---------- Classes, Bookings, Attendance ----------------------------------
+
+  const CLASSES = [];
+  const BOOKINGS = [];
+  const ATTENDANCE = [];
+
+  // Returns the Monday-start ISO date string for the week containing the given date
+  function weekStartIso(date) {
+    const d = new Date(date);
+    const day = d.getDay(); // 0=Sun, 1=Mon, ...
+    const diff = day === 0 ? -6 : 1 - day;
+    d.setDate(d.getDate() + diff);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString().slice(0, 10);
+  }
+
+  function getWeeklyObjective(weekStartingIso, sportId) {
+    return WEEKLY_OBJECTIVES.find(o => o.weekStarting === weekStartingIso && o.sportId === sportId);
+  }
+
+  (function seedSchedule() {
+    const start = new Date('2025-11-10T00:00:00');
+    const end   = new Date('2026-05-25T00:00:00');
+    const itemsBySection = CURRICULUM_ITEMS.reduce((acc, it) => {
+      (acc[it.sectionId] = acc[it.sectionId] || []).push(it); return acc;
+    }, {});
+
+    // Per-section rotation cursor so items get cycled through evenly over time
+    const sectionCursor = {};
+    Object.keys(itemsBySection).forEach(sid => { sectionCursor[sid] = 0; });
+    // Per-template rotation cursor — picks which candidate section to use
+    const templateSectionCursor = {};
+
+    // Given a class type id + week's objective, return candidate section IDs
+    // ordered by priority (focus sections first, then full pool fallback)
+    function getCandidateSections(classTypeId, weekIso, sportId) {
+      const ct = CLASS_TYPES.find(t => t.id === classTypeId);
+      if (!ct) return [];
+      if (ct.id === 'open-mat') return []; // open mat has no planned items
+      const allAllowed = CURRICULUM_SECTIONS
+        .filter(s => s.sportId === sportId && ct.allowedLevels.includes(s.level))
+        .map(s => s.id);
+      const obj = getWeeklyObjective(weekIso, sportId);
+      if (!obj || !obj.focusSectionIds.length) return allAllowed;
+      const focus = obj.focusSectionIds.filter(sid => allAllowed.includes(sid));
+      return focus.length ? focus : allAllowed;
+    }
+
+    let classCounter = 0;
+    for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+      const dow = d.getDay();
+      // Find every active template that fires on this dow
+      const templatesToday = CLASS_TEMPLATES.filter(t => t.active && t.daysOfWeek.includes(dow));
+      templatesToday.forEach(tmpl => {
+        const [h, m] = tmpl.time.split(':').map(Number);
+        const startsAt = new Date(d); startsAt.setHours(h, m, 0, 0);
+        const inFuture = startsAt > CONFIG.today;
+        const wkIso = weekStartIso(startsAt);
+        const obj = getWeeklyObjective(wkIso, tmpl.sportId);
+
+        const candidates = getCandidateSections(tmpl.classTypeId, wkIso, tmpl.sportId);
+        let chosenItems = [];
+        if (candidates.length > 0) {
+          // Rotate which candidate section this template picks
+          const tCur = templateSectionCursor[tmpl.id] = (templateSectionCursor[tmpl.id] || 0);
+          const chosenSection = candidates[tCur % candidates.length];
+          templateSectionCursor[tmpl.id] = tCur + 1;
+          // Cycle through items within the chosen section
+          const items = itemsBySection[chosenSection] || [];
+          const iCur = sectionCursor[chosenSection] || 0;
+          chosenItems = [
+            items[iCur % items.length],
+            items[(iCur + 1) % items.length]
+          ].filter(Boolean).map(i => i.id);
+          sectionCursor[chosenSection] = iCur + 2;
+        }
+
+        CLASSES.push({
+          id: `cls-${classCounter}`,
+          sportId: tmpl.sportId,
+          templateId: tmpl.id,
+          instructorId: tmpl.instructorId,
+          classTypeId: tmpl.classTypeId,
+          audienceId: tmpl.audienceId,
+          startsAt: startsAt.toISOString(),
+          durationMin: tmpl.durationMin,
+          capacity: tmpl.capacity,
+          plannedItemIds: chosenItems,
+          weeklyObjectiveId: obj?.id || null,
+          status: inFuture ? 'scheduled' : 'completed'
+        });
+        classCounter++;
+      });
+    }
+
+    // Per-student attendance patterns, keyed by class type id
+    const PATTERNS = {
+      's-1': { beginner: 0.85, intermediate: 0.15, advanced: 0.0,  competition: 0.0,  'open-mat': 0.30 },
+      's-2': { beginner: 0.92, intermediate: 0.75, advanced: 0.40, competition: 0.45, 'open-mat': 0.60 },
+      's-3': { beginner: 0.30, intermediate: 0.85, advanced: 0.80, competition: 0.70, 'open-mat': 0.50 },
+      's-4': { beginner: 0.55, intermediate: 0.10, advanced: 0.0,  competition: 0.0,  'open-mat': 0.20 },
+      's-5': { beginner: 0.15, intermediate: 0.50, advanced: 0.90, competition: 0.80, 'open-mat': 0.40 }
+    };
+
+    function hash(s) { let h = 0; for (let i = 0; i < s.length; i++) h = ((h << 5) - h + s.charCodeAt(i)) | 0; return Math.abs(h); }
+
+    STUDENTS.forEach(stu => {
+      const joinedAt = new Date(stu.joinedAt);
+      const pattern = PATTERNS[stu.id];
+      CLASSES.forEach(cls => {
+        if (new Date(cls.startsAt) < joinedAt) return;
+        if (cls.status !== 'completed') return;
+        // No kids classes for adult students
+        if (cls.audienceId === 'kids') return;
+        const p = pattern[cls.classTypeId] ?? 0;
+        const rnd = (hash(stu.id + cls.id) % 1000) / 1000;
+        if (rnd < p) {
+          BOOKINGS.push({ id: `bk-${stu.id}-${cls.id}`, classId: cls.id, studentId: stu.id, bookedAt: cls.startsAt, status: 'booked' });
+          ATTENDANCE.push({ id: `at-${stu.id}-${cls.id}`, classId: cls.id, studentId: stu.id, attended: true, confirmedAt: cls.startsAt });
+        }
+      });
+      // Pre-book some upcoming adult classes
+      const upcomingAdult = CLASSES.filter(c => c.status === 'scheduled' && c.audienceId === 'adults').slice(0, 5);
+      upcomingAdult.forEach(cls => {
+        const p = pattern[cls.classTypeId] ?? 0;
+        if (p > 0.4) {
+          BOOKINGS.push({ id: `bk-${stu.id}-${cls.id}`, classId: cls.id, studentId: stu.id, bookedAt: CONFIG.today.toISOString(), status: 'booked' });
+        }
+      });
+    });
+  })();
+
+  // ---------- DB lookups -----------------------------------------------------
+
+  const DB = {
+    sport:     (id) => SPORTS.find(s => s.id === id),
+    grading:   (id) => GRADING_SYSTEMS.find(g => g.id === id),
+    section:   (id) => CURRICULUM_SECTIONS.find(s => s.id === id),
+    item:      (id) => CURRICULUM_ITEMS.find(i => i.id === id),
+    student:   (id) => STUDENTS.find(s => s.id === id),
+    instructor:(id) => INSTRUCTORS.find(i => i.id === id),
+    class:     (id) => CLASSES.find(c => c.id === id),
+    classType: (id) => CLASS_TYPES.find(c => c.id === id),
+    audience:  (id) => AUDIENCES.find(a => a.id === id),
+    template:  (id) => CLASS_TEMPLATES.find(t => t.id === id),
+    objective: (id) => WEEKLY_OBJECTIVES.find(o => o.id === id),
+    enrollment:(studentId, sportId) => ENROLLMENTS.find(e => e.studentId === studentId && e.sportId === sportId),
+    level:     (gradingId, levelId) => GRADING_SYSTEMS.find(g => g.id === gradingId)?.levels.find(l => l.id === levelId),
+    itemsBySection: (sectionId) => CURRICULUM_ITEMS.filter(i => i.sectionId === sectionId).sort((a,b) => a.order - b.order),
+    sectionsBySport: (sportId) => CURRICULUM_SECTIONS.filter(s => s.sportId === sportId).sort((a,b) => a.order - b.order)
+  };
+
+  function classTypeLabel(id) { return t(DB.classType(id)?.label || id); }
+  function audienceLabel(id)  { return t(DB.audience(id)?.label || id); }
+  function classTypeColor(id) { return DB.classType(id)?.color || '#64748b'; }
+
+  // ---------- Derived data ---------------------------------------------------
+
+  function computeExposureMap(studentId, sportId) {
+    const attendedClassIds = ATTENDANCE.filter(a => a.studentId === studentId && a.attended).map(a => a.classId);
+    const attendedClasses = attendedClassIds.map(id => DB.class(id)).filter(c => c && c.sportId === sportId);
+
+    const map = {};
+    CURRICULUM_ITEMS.filter(it => DB.section(it.sectionId)?.sportId === sportId)
+      .forEach(it => { map[it.id] = { itemId: it.id, count: 0, lastSeenAt: null }; });
+
+    attendedClasses.forEach(cls => {
+      cls.plannedItemIds.forEach(itemId => {
+        if (!map[itemId]) return;
+        map[itemId].count++;
+        if (!map[itemId].lastSeenAt || cls.startsAt > map[itemId].lastSeenAt) map[itemId].lastSeenAt = cls.startsAt;
+      });
+    });
+
+    return {
+      items: map,
+      totalAttended: attendedClasses.length,
+      bySection: DB.sectionsBySport(sportId).map(section => {
+        const items = DB.itemsBySection(section.id);
+        const covered = items.filter(i => map[i.id]?.count > 0).length;
+        return { section, total: items.length, covered, pct: items.length === 0 ? 0 : covered / items.length };
+      })
+    };
+  }
+
+  function computePromotionStatus(studentId, sportId) {
+    const enrollment = DB.enrollment(studentId, sportId);
+    if (!enrollment) return null;
+    const grading = DB.grading(enrollment.gradingSystemId);
+    const level = DB.level(enrollment.gradingSystemId, enrollment.currentLevelId);
+    if (!grading || !level) return null;
+
+    const nextLevel = grading.levels.find(l => l.order === level.order + 1);
+    if (!nextLevel) return { ready: false, reason: 'top-level', level, nextLevel: null };
+
+    const rule = grading.promotionRules?.[`${level.id}-to-${nextLevel.id}`];
+    if (!rule) return { ready: false, reason: 'no-rule', level, nextLevel };
+
+    const exposure = computeExposureMap(studentId, sportId);
+    const basicsSections = exposure.bySection.filter(s => s.section.level === 'basics');
+    const basicsTotal = basicsSections.reduce((a, s) => a + s.total, 0);
+    const basicsCovered = basicsSections.reduce((a, s) => a + s.covered, 0);
+    const basicsPct = basicsTotal === 0 ? 0 : basicsCovered / basicsTotal;
+    const monthsAtLevel = Math.floor((CONFIG.today - new Date(enrollment.levelSince)) / (1000 * 60 * 60 * 24 * 30));
+    const stripesOk = enrollment.currentStripes >= (rule.minStripes ?? 0);
+    const monthsOk  = monthsAtLevel >= (rule.minMonthsAtLevel ?? 0);
+    const coverageOk = basicsPct >= (rule.minBasicsCoveragePct ?? 0);
+    const classesOk = exposure.totalAttended >= (rule.minClassesAtLevel ?? 0);
+    return {
+      ready: stripesOk && monthsOk && coverageOk && classesOk,
+      level, nextLevel, rule,
+      checks: { stripesOk, monthsOk, coverageOk, classesOk },
+      actual: { stripes: enrollment.currentStripes, monthsAtLevel, basicsPct, classesAttended: exposure.totalAttended }
+    };
+  }
+
+  function computeNextSteps(studentId, sportId, limit = 5) {
+    const exposure = computeExposureMap(studentId, sportId);
+    const enrollment = DB.enrollment(studentId, sportId);
+    const level = DB.level(enrollment.gradingSystemId, enrollment.currentLevelId);
+    const relevantLevels = level.order === 0 ? ['basics'] : level.order === 1 ? ['basics', 'intermediate'] : ['intermediate', 'advanced'];
+
+    return CURRICULUM_ITEMS
+      .filter(it => {
+        const section = DB.section(it.sectionId);
+        return section.sportId === sportId && relevantLevels.includes(section.level);
+      })
+      .map(it => ({
+        item: it, section: DB.section(it.sectionId),
+        count: exposure.items[it.id]?.count ?? 0,
+        lastSeenAt: exposure.items[it.id]?.lastSeenAt
+      }))
+      .sort((a, b) => a.count - b.count)
+      .slice(0, limit);
+  }
+
+  function computeRecentlyCovered(studentId, sportId, limit = 5) {
+    const exposure = computeExposureMap(studentId, sportId);
+    return Object.values(exposure.items)
+      .filter(x => x.count > 0)
+      .sort((a, b) => (b.lastSeenAt || '').localeCompare(a.lastSeenAt || ''))
+      .slice(0, limit)
+      .map(x => ({ item: DB.item(x.itemId), section: DB.section(DB.item(x.itemId).sectionId), count: x.count, lastSeenAt: x.lastSeenAt }));
+  }
+
+  function computeClassRecommendations(classId, limit = 5) {
+    const cls = DB.class(classId);
+    if (!cls) return { bookedCount: 0, recommendations: [] };
+    const bookedStudentIds = BOOKINGS.filter(b => b.classId === classId && b.status === 'booked').map(b => b.studentId);
+    if (!bookedStudentIds.length) return { bookedCount: 0, recommendations: [] };
+
+    const exposureByStudent = {};
+    bookedStudentIds.forEach(sid => { exposureByStudent[sid] = computeExposureMap(sid, cls.sportId); });
+
+    const recommendations = [];
+    DB.sectionsBySport(cls.sportId).forEach(section => {
+      DB.itemsBySection(section.id).forEach(item => {
+        if (cls.plannedItemIds.includes(item.id)) return;
+        let gapStudents = 0;
+        bookedStudentIds.forEach(sid => {
+          if ((exposureByStudent[sid].items[item.id]?.count ?? 0) === 0) gapStudents++;
+        });
+        if (gapStudents === 0) return;
+        recommendations.push({ item, section, gapStudents, totalBooked: bookedStudentIds.length, pct: gapStudents / bookedStudentIds.length });
+      });
+    });
+
+    recommendations.sort((a, b) => b.gapStudents - a.gapStudents || a.section.order - b.section.order);
+    return { bookedCount: bookedStudentIds.length, recommendations: recommendations.slice(0, limit) };
+  }
+
+  // ---------- Date helpers ---------------------------------------------------
+
+  function timeAgo(iso) {
+    if (!iso) return t(UI.labels.never);
+    const ms = CONFIG.today - new Date(iso);
+    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+    if (days < 1) return '<1 ' + t(UI.labels.daysShort);
+    if (days < 60) return days + ' ' + t(UI.labels.daysAgo);
+    return Math.floor(days / 30) + ' ' + t(UI.labels.monthsAgo);
+  }
+
+  function durationAtLevel(iso) {
+    if (!iso) return '—';
+    const ms = CONFIG.today - new Date(iso);
+    return Math.floor(ms / (1000 * 60 * 60 * 24 * 30)) + ' ' + t(UI.labels.monthsShort);
+  }
+
+  function formatClassTime(iso) {
+    const d = new Date(iso);
+    const locale = CURRENT_LOCALE === 'pt' ? 'pt-PT' : 'en-US';
+    const date = d.toLocaleDateString(locale, { weekday: 'short', month: 'short', day: 'numeric' });
+    const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${date} · ${time}`;
+  }
+
+  // ---------- Router ---------------------------------------------------------
+
+  function getRoute() {
+    const hash = location.hash.replace(/^#\/?/, '') || 'dashboard';
+    const [section, ...params] = hash.split('/');
+    return { section, params };
+  }
+  function go(path) { location.hash = '#/' + path; }
+  window.addEventListener('hashchange', renderApp);
+
+  // ---------- Render ---------------------------------------------------------
+
+  function renderApp() {
+    const route = getRoute();
+    document.title = 'OSS — ' + t(UI.nav[route.section] || UI.nav.dashboard);
+    document.getElementById('app').innerHTML = `
+      ${Sidebar(route.section)}
+      <div class="main">
+        ${Topbar(route)}
+        <div class="content" id="content"></div>
+      </div>
+    `;
+    const content = document.getElementById('content');
+    switch (route.section) {
+      case 'students':
+        content.innerHTML = route.params.length ? StudentReport(route.params[0]) : StudentsList();
+        break;
+      case 'classes':
+        content.innerHTML = route.params.length ? ClassDetail(route.params[0]) : ClassesView();
+        // Render the modal overlay on top of content if open
+        if (!route.params.length && editingTemplateId !== null) {
+          content.insertAdjacentHTML('beforeend', TemplateModal());
+        }
+        break;
+      case 'schedule':   content.innerHTML = ScheduleView();                   break;
+      case 'curriculum': content.innerHTML = CurriculumView();                 break;
+      case 'dashboard':
+      default:           content.innerHTML = ComingSoon(t(UI.nav.dashboard));  break;
+    }
+  }
+
+  function Sidebar(active) {
+    const items = [
+      { id: 'dashboard',  label: t(UI.nav.dashboard),  icon: '◆' },
+      { id: 'schedule',   label: t(UI.nav.schedule),   icon: '▦' },
+      { id: 'classes',    label: t(UI.nav.classes),    icon: '◷' },
+      { id: 'curriculum', label: t(UI.nav.curriculum), icon: '☰' },
+      { id: 'students',   label: t(UI.nav.students),   icon: '◉' }
+    ];
+    return `
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">OSS</div>
+          <div class="brand-text">
+            <div class="brand-name">${t(UI.appName)}</div>
+            <div class="brand-sub" title="${ACADEMY.name}">${ACADEMY.name}</div>
+          </div>
+        </div>
+        <nav class="nav">
+          ${items.map(i => `
+            <div class="nav-item ${active === i.id ? 'active' : ''}" onclick="go('${i.id}')">
+              <span class="nav-icon">${i.icon}</span>
+              <span>${i.label}</span>
+            </div>
+          `).join('')}
+        </nav>
+      </aside>
+    `;
+  }
+
+  function Topbar(route) {
+    let crumb = t(UI.nav[route.section] || UI.nav.dashboard);
+    if (route.section === 'students' && route.params.length) {
+      crumb = `${t(UI.nav.students)} / <span class="muted">${DB.student(route.params[0])?.name || ''}</span>`;
+    } else if (route.section === 'classes' && route.params.length) {
+      const cls = DB.class(route.params[0]);
+      crumb = `${t(UI.nav.classes)} / <span class="muted">${cls ? formatClassTime(cls.startsAt) + ' · ' + classTypeLabel(cls.classTypeId) : ''}</span>`;
+    }
+
+    const langs = CONFIG.supportedLocales.map(l => `
+      <button class="${CURRENT_LOCALE === l.code ? 'active' : ''}" onclick="setLocale('${l.code}')">${l.code.toUpperCase()}</button>
+    `).join('');
+
+    return `
+      <header class="topbar">
+        <div class="crumb">${crumb}</div>
+        <div class="topbar-right">
+          <div class="lang-switch">${langs}</div>
+          <div class="academy-pill">
+            <div class="avatar" title="${ACADEMY.name}">${academyInitials(ACADEMY.name)}</div>
+            <span>${ACADEMY.name}</span>
+          </div>
+        </div>
+      </header>
+    `;
+  }
+
+  function ComingSoon(label) {
+    return `
+      <div class="empty">
+        <div class="empty-title">${label} — ${t(UI.labels.comingSoon)}</div>
+        <div>${t(UI.labels.comingSoonMsg)}</div>
+      </div>
+    `;
+  }
+
+  function BeltChip(gradingId, levelId, stripes) {
+    const level = DB.level(gradingId, levelId);
+    if (!level) return '';
+    const stripeMarks = stripes > 0 ? `<span class="stripes">${Array(stripes).fill('<span></span>').join('')}</span>` : '';
+    return `
+      <span class="belt" title="${t(level.name)}${stripes ? ' · ' + stripes + ' ' + t(stripes === 1 ? UI.labels.stripe : UI.labels.stripes) : ''}">
+        <span class="belt-color" style="background:${level.color}"></span>
+        <span>${t(level.name)}</span>
+        ${stripeMarks}
+      </span>
+    `;
+  }
+
+  function SectionTag(section) {
+    return `<span class="tag tag-${section.level}">${t(section.name)}</span>`;
+  }
+
+  // ---------- Students list -------------------------------------------------
+
+  function StudentsList() {
+    const rows = STUDENTS.map(stu => {
+      const enrollment = DB.enrollment(stu.id, 'sport-bjj');
+      const exposure = computeExposureMap(stu.id, 'sport-bjj');
+      const sport = DB.sport(enrollment.sportId);
+      return `
+        <div class="list-row" onclick="go('students/${stu.id}')">
+          <div class="avatar">${stu.initials}</div>
+          <div>
+            <div style="font-weight:600">${stu.name}</div>
+            <div class="faint" style="font-size:12px">${stu.contact}</div>
+          </div>
+          <div>${BeltChip(enrollment.gradingSystemId, enrollment.currentLevelId, enrollment.currentStripes)}</div>
+          <div class="muted list-col-hide">${t(sport.name)}</div>
+          <div class="muted list-col-hide">${exposure.totalAttended}</div>
+          <div class="muted list-col-hide">${durationAtLevel(enrollment.levelSince)}</div>
+        </div>
+      `;
+    }).join('');
+
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-5)">
+        <h1 class="h1">${t(UI.labels.students)}</h1>
+        <div class="row">
+          <input class="input" placeholder="${t(UI.labels.search)}" style="width:240px" oninput="filterStudents(this.value)" />
+          <button class="btn">${t(UI.labels.addStudent)}</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0">
+        <div class="list">
+          <div class="list-row list-header">
+            <div></div>
+            <div>${t(UI.labels.students)}</div>
+            <div>${t(UI.labels.level)}</div>
+            <div class="list-col-hide">${t(UI.labels.sport)}</div>
+            <div class="list-col-hide">${t(UI.labels.classesAttended)}</div>
+            <div class="list-col-hide">${t(UI.labels.timeAtLevel)}</div>
+          </div>
+          ${rows}
+        </div>
+      </div>
+    `;
+  }
+
+  function filterStudents(q) {
+    q = q.toLowerCase().trim();
+    document.querySelectorAll('.list-row').forEach((row, i) => {
+      if (i === 0) return;
+      const name = row.textContent.toLowerCase();
+      row.style.display = !q || name.includes(q) ? '' : 'none';
+    });
+  }
+
+  // ---------- Student report ------------------------------------------------
+
+  function StudentReport(studentId) {
+    const student = DB.student(studentId);
+    if (!student) return `<div class="empty">Student not found</div>`;
+    const enrollment = DB.enrollment(student.id, 'sport-bjj');
+    const exposure   = computeExposureMap(student.id, 'sport-bjj');
+    const promotion  = computePromotionStatus(student.id, 'sport-bjj');
+    const nextSteps  = computeNextSteps(student.id, 'sport-bjj', 5);
+    const recent     = computeRecentlyCovered(student.id, 'sport-bjj', 5);
+
+    return `
+      <div style="margin-bottom:var(--sp-4)">
+        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('students')">${t(UI.labels.backToList)}</a>
+      </div>
+
+      ${PromotionBanner(promotion)}
+
+      <div class="card" style="margin-bottom:var(--sp-4)">
+        <div class="row" style="gap:var(--sp-5)">
+          <div class="avatar lg">${student.initials}</div>
+          <div style="flex:1">
+            <h1 class="h1" style="margin-bottom:var(--sp-2)">${student.name}</h1>
+            <div class="row" style="gap:var(--sp-4); flex-wrap:wrap">
+              ${BeltChip(enrollment.gradingSystemId, enrollment.currentLevelId, enrollment.currentStripes)}
+              <span class="muted">·</span>
+              <span class="muted">${exposure.totalAttended} ${t(UI.labels.classesAttended).toLowerCase()}</span>
+              <span class="muted">·</span>
+              <span class="muted">${durationAtLevel(enrollment.levelSince)} ${t(UI.labels.timeAtLevel).toLowerCase()}</span>
+              <span class="muted">·</span>
+              <span class="muted">${t(UI.labels.joined)} ${timeAgo(student.joinedAt)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 class="card-title">${t(UI.labels.coverageOverview)}</h3>
+          <div class="stack">${exposure.bySection.map(s => CoverageRow(s)).join('')}</div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">${t(UI.labels.nextSteps)}</h3>
+          <div class="stack-tight">
+            ${nextSteps.map(ns => NextStepRow(ns)).join('') || `<div class="muted">—</div>`}
+          </div>
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:var(--sp-4)">
+        <div class="card">
+          <h3 class="card-title">${t(UI.labels.recentlyCovered)}</h3>
+          <div class="stack-tight">
+            ${recent.length ? recent.map(r => RecentRow(r)).join('') : `<div class="muted">—</div>`}
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">${t(UI.labels.gaps)}</h3>
+          <div class="stack-tight">${GapsList(exposure)}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function PromotionBanner(promo) {
+    if (!promo || !promo.ready) return '';
+    return `
+      <div class="banner" style="margin-bottom:var(--sp-4)">
+        <div>
+          <div class="banner-title">★ ${t(UI.labels.promotionReady)} → ${t(promo.nextLevel.name)}</div>
+          <div class="banner-sub">${t(UI.labels.promotionReadyMsg)}</div>
+        </div>
+        <button class="btn">${t(UI.labels.promote)} →</button>
+      </div>
+    `;
+  }
+
+  function CoverageRow(s) {
+    const pct = Math.round(s.pct * 100);
+    return `
+      <div>
+        <div class="row-between" style="margin-bottom:var(--sp-1)">
+          <div class="row" style="gap:var(--sp-2)">
+            ${SectionTag(s.section)}
+            <span style="font-weight:500">${t(s.section.name)}</span>
+          </div>
+          <span class="muted" style="font-size:12px">${s.covered}/${s.total} · ${pct}%</span>
+        </div>
+        <div class="bar ${pct >= 80 ? 'success' : ''}"><div style="width:${pct}%"></div></div>
+      </div>
+    `;
+  }
+
+  function NextStepRow(ns) {
+    return `
+      <div class="row-between" style="padding:var(--sp-2) 0; border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:500">${t(ns.item.name)}</div>
+          <div class="faint" style="font-size:12px">${t(ns.section.name)}</div>
+        </div>
+        <div class="row" style="gap:var(--sp-2)">
+          ${SectionTag(ns.section)}
+          <span class="muted" style="font-size:12px">${ns.count > 0 ? `${ns.count}×` : '—'}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  function RecentRow(r) {
+    return `
+      <div class="row-between" style="padding:var(--sp-2) 0; border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:500">${t(r.item.name)}</div>
+          <div class="faint" style="font-size:12px">${t(r.section.name)} · ${r.count} ${t(UI.labels.times)}</div>
+        </div>
+        <span class="muted" style="font-size:12px">${timeAgo(r.lastSeenAt)}</span>
+      </div>
+    `;
+  }
+
+  function GapsList(exposure) {
+    const gaps = Object.values(exposure.items)
+      .filter(i => i.count === 0)
+      .map(i => ({ item: DB.item(i.itemId), section: DB.section(DB.item(i.itemId).sectionId) }))
+      .filter(g => g.section.level === 'basics')
+      .slice(0, 6);
+    if (!gaps.length) return `<div class="muted">${t({en: 'No basics gaps — strong fundamentals.', pt: 'Sem lacunas nos básicos — fundamentos sólidos.'})}</div>`;
+    return gaps.map(g => `
+      <div class="row-between" style="padding:var(--sp-2) 0; border-bottom:1px solid var(--border)">
+        <div>
+          <div style="font-weight:500">${t(g.item.name)}</div>
+          <div class="faint" style="font-size:12px">${t(g.section.name)}</div>
+        </div>
+        ${SectionTag(g.section)}
+      </div>
+    `).join('');
+  }
+
+  // ---------- Classes view (template management) ----------------------------
+
+  // Modal state for template editing
+  let editingTemplateId = null; // null = closed, 'new' = creating, 'tmpl-X' = editing
+  let pendingTemplate = null;
+
+  function ClassesView() {
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <div>
+          <h1 class="h1">${t(UI.nav.classes)}</h1>
+          <div class="muted" style="margin-top:var(--sp-1)">${t(UI.labels.manageClasses)}</div>
+        </div>
+        <button class="btn" onclick="openTemplateModal('new')">${t(UI.labels.newRecurringClass)}</button>
+      </div>
+
+      ${CLASS_TEMPLATES.length === 0
+        ? `<div class="empty"><div class="empty-title">${t(UI.labels.noTemplates)}</div></div>`
+        : `
+          <div class="card" style="padding:0">
+            <div class="list">
+              <div class="list-row list-header" style="grid-template-columns: 1.3fr 1fr 1.2fr 80px 100px 80px">
+                <div>${t(UI.labels.classType)} / ${t(UI.labels.audience)}</div>
+                <div>${t(UI.labels.instructor)}</div>
+                <div>${t(UI.labels.days)}</div>
+                <div>${t(UI.labels.time)}</div>
+                <div>${t(UI.labels.capacity)}</div>
+                <div></div>
+              </div>
+              ${CLASS_TEMPLATES.map(tmpl => TemplateRow(tmpl)).join('')}
+            </div>
+          </div>
+        `}
+    `;
+  }
+
+  function TemplateRow(tmpl) {
+    const inst = DB.instructor(tmpl.instructorId);
+    const color = classTypeColor(tmpl.classTypeId);
+    const dayNames = tmpl.daysOfWeek.slice().sort().map(d => dayLabel(d)).join(', ');
+    return `
+      <div class="list-row" style="grid-template-columns: 1.3fr 1fr 1.2fr 80px 100px 80px; cursor:default">
+        <div>
+          <div class="row" style="gap:var(--sp-2); margin-bottom:2px">
+            <span class="class-type-pill" style="background:${color}20; color:${color}; border:1px solid ${color}40">${classTypeLabel(tmpl.classTypeId)}</span>
+            <span class="muted" style="font-size:12px">${audienceLabel(tmpl.audienceId)}</span>
+          </div>
+        </div>
+        <div class="muted">${inst?.name || '—'}</div>
+        <div class="muted">${dayNames || '—'}</div>
+        <div class="muted">${tmpl.time}</div>
+        <div class="muted">${tmpl.capacity}</div>
+        <div style="text-align:right">
+          <button class="btn btn-secondary btn-sm" onclick="openTemplateModal('${tmpl.id}')">${t(UI.labels.editTemplate)}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  // Modal: New / Edit recurring class
+  function TemplateModal() {
+    if (!pendingTemplate) return '';
+    const isNew = editingTemplateId === 'new';
+    const title = isNew ? t(UI.labels.newTemplateTitle) : t(UI.labels.editTemplateTitle);
+
+    // Day toggles ordered Mon–Sun
+    const dayOrder = [1, 2, 3, 4, 5, 6, 0];
+    const dayButtons = dayOrder.map(dow => {
+      const on = pendingTemplate.daysOfWeek.includes(dow);
+      return `<div class="day-toggle ${on ? 'on' : ''}" onclick="togglePendingDay(${dow})">${dayLabel(dow).slice(0, 3)}</div>`;
+    }).join('');
+
+    const classTypeOptions = CLASS_TYPES.map(ct => `<option value="${ct.id}" ${ct.id === pendingTemplate.classTypeId ? 'selected' : ''}>${t(ct.label)}</option>`).join('');
+    const audienceOptions  = AUDIENCES.map(a => `<option value="${a.id}" ${a.id === pendingTemplate.audienceId ? 'selected' : ''}>${t(a.label)}</option>`).join('');
+    const instructorOptions= INSTRUCTORS.map(i => `<option value="${i.id}" ${i.id === pendingTemplate.instructorId ? 'selected' : ''}>${i.name}</option>`).join('');
+
+    return `
+      <div class="modal-backdrop" onclick="if(event.target===this) closeTemplateModal()">
+        <div class="modal" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h2 class="h1" style="font-size:18px">${title}</h2>
+            <button class="btn btn-secondary btn-sm" onclick="closeTemplateModal()">✕</button>
+          </div>
+          <div class="modal-body">
+
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">${t(UI.labels.classType)}</label>
+                <select class="select" onchange="updatePendingTemplate('classTypeId', this.value)">${classTypeOptions}</select>
+              </div>
+              <div class="field">
+                <label class="field-label">${t(UI.labels.audience)}</label>
+                <select class="select" onchange="updatePendingTemplate('audienceId', this.value)">${audienceOptions}</select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label">${t(UI.labels.instructor)}</label>
+              <select class="select" onchange="updatePendingTemplate('instructorId', this.value)">${instructorOptions}</select>
+            </div>
+
+            <div class="field">
+              <label class="field-label">${t(UI.labels.days)}</label>
+              <div class="faint" style="font-size:12px">${t(UI.labels.selectDays)}</div>
+              <div class="day-toggles">${dayButtons}</div>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">${t(UI.labels.time)}</label>
+                <input class="input" type="time" value="${pendingTemplate.time}" onchange="updatePendingTemplate('time', this.value)" />
+              </div>
+              <div class="field">
+                <label class="field-label">${t(UI.labels.duration)}</label>
+                <input class="input" type="number" min="15" max="240" step="5" value="${pendingTemplate.durationMin}" oninput="updatePendingTemplate('durationMin', parseInt(this.value, 10))" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label">${t(UI.labels.capacityFull)}</label>
+              <input class="input" type="number" min="1" max="100" value="${pendingTemplate.capacity}" oninput="updatePendingTemplate('capacity', parseInt(this.value, 10))" />
+            </div>
+
+          </div>
+          <div class="modal-footer">
+            <div>
+              ${isNew ? '' : `<button class="btn btn-danger btn-sm" onclick="deleteTemplate()">${t(UI.labels.delete)}</button>`}
+            </div>
+            <div class="row">
+              <button class="btn btn-secondary" onclick="closeTemplateModal()">${t(UI.labels.cancel)}</button>
+              <button class="btn" onclick="saveTemplate()">${t(UI.labels.save)}</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function openTemplateModal(id) {
+    if (id === 'new') {
+      pendingTemplate = {
+        id: 'tmpl-' + Date.now(),
+        sportId: 'sport-bjj',
+        classTypeId: CLASS_TYPES[0].id,
+        audienceId: AUDIENCES[0].id,
+        instructorId: INSTRUCTORS[0].id,
+        daysOfWeek: [],
+        time: '19:00',
+        durationMin: 60,
+        capacity: 20,
+        active: true
+      };
+    } else {
+      const tmpl = DB.template(id);
+      if (!tmpl) return;
+      pendingTemplate = JSON.parse(JSON.stringify(tmpl));
+    }
+    editingTemplateId = id;
+    renderApp();
+  }
+
+  function closeTemplateModal() {
+    editingTemplateId = null;
+    pendingTemplate = null;
+    renderApp();
+  }
+
+  function updatePendingTemplate(field, value) {
+    // No re-render — keeps focus inside text/number inputs while typing.
+    // The select/input elements display their own value natively; we only need
+    // state in sync for when Save is clicked.
+    if (!pendingTemplate) return;
+    pendingTemplate[field] = value;
+  }
+
+  function togglePendingDay(dow) {
+    if (!pendingTemplate) return;
+    const set = new Set(pendingTemplate.daysOfWeek);
+    if (set.has(dow)) set.delete(dow); else set.add(dow);
+    pendingTemplate.daysOfWeek = Array.from(set).sort((a, b) => a - b);
+    renderApp();
+  }
+
+  function saveTemplate() {
+    if (!pendingTemplate) return;
+    if (pendingTemplate.daysOfWeek.length === 0) {
+      alert(t(UI.labels.requiredDays));
+      return;
+    }
+    if (editingTemplateId === 'new') {
+      CLASS_TEMPLATES.push(pendingTemplate);
+    } else {
+      const idx = CLASS_TEMPLATES.findIndex(tmpl => tmpl.id === editingTemplateId);
+      if (idx >= 0) CLASS_TEMPLATES[idx] = pendingTemplate;
+    }
+    syncFutureClassesForTemplate(pendingTemplate);
+    editingTemplateId = null;
+    pendingTemplate = null;
+    renderApp();
+  }
+
+  function deleteTemplate() {
+    if (!pendingTemplate || editingTemplateId === 'new') return;
+    if (!confirm(t(UI.labels.confirmDelete))) return;
+    const id = editingTemplateId;
+    const idx = CLASS_TEMPLATES.findIndex(t => t.id === id);
+    if (idx >= 0) CLASS_TEMPLATES.splice(idx, 1);
+    // Remove any future scheduled classes for this template
+    for (let i = CLASSES.length - 1; i >= 0; i--) {
+      if (CLASSES[i].templateId === id && CLASSES[i].status === 'scheduled') CLASSES.splice(i, 1);
+    }
+    editingTemplateId = null;
+    pendingTemplate = null;
+    renderApp();
+  }
+
+  // After a template edit/create, replace its future scheduled classes so the
+  // calendar reflects the new days/time/instructor. Completed history is preserved.
+  function syncFutureClassesForTemplate(tmpl) {
+    // Drop future scheduled classes for this template
+    for (let i = CLASSES.length - 1; i >= 0; i--) {
+      if (CLASSES[i].templateId === tmpl.id && CLASSES[i].status === 'scheduled') CLASSES.splice(i, 1);
+    }
+    if (!tmpl.active) return;
+    // Generate the next 4 weeks
+    const start = new Date(CONFIG.today); start.setHours(0, 0, 0, 0);
+    const end = new Date(start); end.setDate(end.getDate() + 28);
+    for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+      if (!tmpl.daysOfWeek.includes(d.getDay())) continue;
+      const [h, m] = tmpl.time.split(':').map(Number);
+      const startsAt = new Date(d); startsAt.setHours(h, m, 0, 0);
+      if (startsAt <= CONFIG.today) continue;
+      const stamp = startsAt.toISOString().slice(0, 16).replace(/[-:T]/g, '');
+      CLASSES.push({
+        id: `cls-${tmpl.id}-${stamp}`,
+        sportId: tmpl.sportId,
+        templateId: tmpl.id,
+        instructorId: tmpl.instructorId,
+        classTypeId: tmpl.classTypeId,
+        audienceId: tmpl.audienceId,
+        startsAt: startsAt.toISOString(),
+        durationMin: tmpl.durationMin,
+        capacity: tmpl.capacity,
+        plannedItemIds: [],
+        weeklyObjectiveId: null,
+        status: 'scheduled'
+      });
+    }
+    // Recompute planned items per affected week so the calendar reflects the objective
+    const affectedWeeks = new Set(
+      CLASSES.filter(c => c.templateId === tmpl.id && c.status === 'scheduled').map(c => weekStartIso(c.startsAt))
+    );
+    affectedWeeks.forEach(wk => rebuildClassesForWeek(wk));
+  }
+
+  // ---------- Class detail --------------------------------------------------
+
+  function ClassDetail(classId) {
+    const cls = DB.class(classId);
+    if (!cls) return `<div class="empty">Class not found</div>`;
+    const inst = DB.instructor(cls.instructorId);
+    const isCompleted = cls.status === 'completed';
+    const bookings = BOOKINGS.filter(b => b.classId === cls.id && b.status === 'booked');
+    const attendanceMap = ATTENDANCE.reduce((acc, a) => {
+      if (a.classId === cls.id) acc[a.studentId] = a;
+      return acc;
+    }, {});
+    const recs = computeClassRecommendations(cls.id, 6);
+
+    return `
+      <div style="margin-bottom:var(--sp-4)">
+        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('classes')">${t(UI.labels.backToClasses)}</a>
+      </div>
+
+      <div class="card" style="margin-bottom:var(--sp-4)">
+        <div class="row-between">
+          <div>
+            <h1 class="h1" style="margin-bottom:var(--sp-2)">${classTypeLabel(cls.classTypeId)}</h1>
+            <div class="row" style="gap:var(--sp-3); flex-wrap:wrap">
+              <span class="class-type-pill" style="background:${classTypeColor(cls.classTypeId)}20; color:${classTypeColor(cls.classTypeId)}; border:1px solid ${classTypeColor(cls.classTypeId)}40">${audienceLabel(cls.audienceId)}</span>
+              <span class="muted">${formatClassTime(cls.startsAt)}</span>
+              <span class="muted">·</span>
+              <span class="muted">${t(UI.labels.instructor)}: ${inst.name}</span>
+              <span class="muted">·</span>
+              <span class="muted">${bookings.length}/${cls.capacity} ${t(UI.labels.bookedStudents).toLowerCase()}</span>
+              <span class="muted">·</span>
+              <span class="tag tag-${isCompleted ? 'basics' : 'intermediate'}">${isCompleted ? t(UI.labels.completed) : t(UI.labels.scheduled)}</span>
+            </div>
+          </div>
+          ${isCompleted ? `<button class="btn">${t(UI.labels.saveAttendance)}</button>` : ''}
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="stack">
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.plannedPlan)}</h3>
+            <div class="stack-tight">
+              ${cls.plannedItemIds.length
+                ? cls.plannedItemIds.map(id => {
+                    const item = DB.item(id); const section = DB.section(item.sectionId);
+                    return `
+                      <div class="row-between" style="padding:var(--sp-2) 0; border-bottom:1px solid var(--border)">
+                        <div style="font-weight:500">${t(item.name)}</div>
+                        ${SectionTag(section)}
+                      </div>`;
+                  }).join('')
+                : `<div class="muted">${t(UI.labels.noPlannedItems)}</div>`}
+            </div>
+          </div>
+
+          <div class="card" style="background:#fff7ed; border-color:#fed7aa">
+            <h3 class="card-title" style="color:#9a3412">★ ${t(UI.labels.recommendedAdditions)}</h3>
+            <div class="faint" style="font-size:12px; margin-bottom:var(--sp-3)">${t(UI.labels.recommendBasedOn)}</div>
+            <div class="stack-tight">
+              ${recs.recommendations.length === 0
+                ? `<div class="muted">${recs.bookedCount === 0 ? t(UI.labels.noBookings) : '—'}</div>`
+                : recs.recommendations.map(r => RecommendationRow(r)).join('')}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3 class="card-title">${t(UI.labels.roster)}</h3>
+          ${bookings.length === 0
+            ? `<div class="muted">${t(UI.labels.noBookings)}</div>`
+            : `<div class="stack-tight">
+                ${bookings.map(b => RosterRow(b.studentId, cls, attendanceMap[b.studentId])).join('')}
+              </div>`}
+        </div>
+      </div>
+    `;
+  }
+
+  function RecommendationRow(r) {
+    const benefitPct = Math.round(r.pct * 100);
+    return `
+      <div style="padding:var(--sp-2) 0; border-bottom:1px solid #fed7aa">
+        <div class="row-between" style="margin-bottom:var(--sp-1)">
+          <div>
+            <div style="font-weight:500">${t(r.item.name)}</div>
+            <div class="faint" style="font-size:12px">${t(r.section.name)}</div>
+          </div>
+          <div class="row" style="gap:var(--sp-2)">
+            ${SectionTag(r.section)}
+            <button class="btn btn-secondary btn-sm">${t(UI.labels.addToPlan)}</button>
+          </div>
+        </div>
+        <div class="faint" style="font-size:12px">
+          <strong style="color:#9a3412">${r.gapStudents} ${t(UI.labels.of)} ${r.totalBooked}</strong>
+          ${t(UI.labels.students).toLowerCase()} ${t(UI.labels.wouldBenefit)} (${benefitPct}%)
+        </div>
+      </div>
+    `;
+  }
+
+  function RosterRow(studentId, cls, attendance) {
+    const stu = DB.student(studentId);
+    const enr = DB.enrollment(stu.id, cls.sportId);
+    const isCompleted = cls.status === 'completed';
+    const attended = attendance?.attended;
+    return `
+      <div class="row-between" style="padding:var(--sp-3) 0; border-bottom:1px solid var(--border); cursor:pointer" onclick="go('students/${stu.id}')">
+        <div class="row" style="gap:var(--sp-3)">
+          <div class="avatar">${stu.initials}</div>
+          <div>
+            <div style="font-weight:500">${stu.name}</div>
+            <div style="margin-top:2px">${BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes)}</div>
+          </div>
+        </div>
+        ${isCompleted
+          ? `<div onclick="event.stopPropagation()">
+              <label style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:13px">
+                <input type="checkbox" ${attended ? 'checked' : ''} />
+                <span class="muted">${t(UI.labels.attended)}</span>
+              </label>
+            </div>`
+          : ''}
+      </div>
+    `;
+  }
+
+  // ---------- Curriculum view -----------------------------------------------
+
+  // Which sport the curriculum view is currently displaying. Defaults to the
+  // first sport on the academy. Switched via the tab strip at the top.
+  let currentCurriculumSportId = ACADEMY.sportIds[0];
+
+  function setCurriculumSport(sportId) {
+    currentCurriculumSportId = sportId;
+    renderApp();
+  }
+
+  function SportTabs() {
+    const sports = ACADEMY.sportIds.map(id => DB.sport(id)).filter(Boolean);
+    if (sports.length <= 1) return '';
+    return `
+      <div class="sport-tabs">
+        ${sports.map(s => `
+          <div class="sport-tab ${s.id === currentCurriculumSportId ? 'active' : ''}" onclick="setCurriculumSport('${s.id}')">
+            ${t(s.name)}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function CurriculumView() {
+    const sportId = currentCurriculumSportId;
+    const sport = DB.sport(sportId);
+    const sections = DB.sectionsBySport(sportId);
+    const totalItems = CURRICULUM_ITEMS.filter(it => DB.section(it.sectionId)?.sportId === sportId).length;
+
+    const counts = {
+      basics:       CURRICULUM_ITEMS.filter(it => DB.section(it.sectionId)?.level === 'basics').length,
+      intermediate: CURRICULUM_ITEMS.filter(it => DB.section(it.sectionId)?.level === 'intermediate').length,
+      advanced:     CURRICULUM_ITEMS.filter(it => DB.section(it.sectionId)?.level === 'advanced').length
+    };
+
+    function renderLevelGroup(level, label) {
+      const levelSections = sections.filter(s => s.level === level);
+      if (!levelSections.length) return '';
+      return `
+        <div class="curriculum-level" data-level="${level}">
+          <div class="row" style="gap:var(--sp-3); margin: var(--sp-6) 0 var(--sp-3); align-items:baseline">
+            <h2 class="h2" style="text-transform:uppercase; letter-spacing:0.06em; font-size:13px; color:var(--text-faint)">${label}</h2>
+            <span class="muted" style="font-size:12px">${levelSections.length} ${t(UI.labels.sections)} · ${counts[level]} ${t(UI.labels.items)}</span>
+          </div>
+          <div class="grid-2">
+            ${levelSections.map(s => SectionCard(s)).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      ${SportTabs()}
+
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <div>
+          <h1 class="h1">${t(UI.nav.curriculum)} — ${t(sport.name)}</h1>
+          <div class="muted" style="margin-top:var(--sp-1)">${sections.length} ${t(UI.labels.sections)} · ${totalItems} ${t(UI.labels.items)}</div>
+        </div>
+        <div class="row">
+          <input class="input" placeholder="${t(UI.labels.searchCurriculum)}" style="width:280px" oninput="filterCurriculum(this.value)" />
+          <button class="btn">${t(UI.labels.addSection)}</button>
+        </div>
+      </div>
+
+      <div id="curriculum-empty" class="empty" style="display:none">
+        <div class="empty-title">${t(UI.labels.noResults)}</div>
+      </div>
+
+      <div id="curriculum-body">
+        ${renderLevelGroup('basics',       t(UI.labels.basicsLevel))}
+        ${renderLevelGroup('intermediate', t(UI.labels.intermediateLevel))}
+        ${renderLevelGroup('advanced',     t(UI.labels.advancedLevel))}
+      </div>
+    `;
+  }
+
+  function SectionCard(section) {
+    const items = DB.itemsBySection(section.id);
+    return `
+      <div class="card curriculum-section" data-section-id="${section.id}" data-section-name="${t(section.name).toLowerCase()}">
+        <div class="row-between" style="margin-bottom:var(--sp-3)">
+          <div class="row" style="gap:var(--sp-2)">
+            ${SectionTag(section)}
+            <h3 class="h2">${t(section.name)}</h3>
+          </div>
+          <span class="muted" style="font-size:12px">${items.length} ${t(UI.labels.itemsCount)}</span>
+        </div>
+        <div class="stack-tight">
+          ${items.map(it => CurriculumItemRow(it)).join('')}
+        </div>
+        <div style="margin-top:var(--sp-3)">
+          <button class="btn btn-secondary btn-sm">${t(UI.labels.addItem)}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function CurriculumItemRow(item) {
+    return `
+      <div class="curriculum-item row-between" data-item-name="${t(item.name).toLowerCase()}"
+           style="padding:var(--sp-2) 0; border-bottom:1px solid var(--border); gap:var(--sp-2)">
+        <div class="row" style="gap:var(--sp-3); flex:1; min-width:0">
+          <span class="muted" style="font-size:11px; font-family:var(--font-mono); width:24px">${String(item.order).padStart(2, '0')}</span>
+          <span style="font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${t(item.name)}</span>
+        </div>
+        <span class="muted video-placeholder" title="Video placeholder" style="font-size:12px">▶</span>
+      </div>
+    `;
+  }
+
+  // Live-filter the curriculum view by item or section name
+  function filterCurriculum(q) {
+    q = q.toLowerCase().trim();
+    let anyVisible = false;
+    document.querySelectorAll('.curriculum-section').forEach(card => {
+      const sectionName = card.dataset.sectionName || '';
+      let visibleItems = 0;
+      card.querySelectorAll('.curriculum-item').forEach(item => {
+        const itemName = item.dataset.itemName || '';
+        const match = !q || itemName.includes(q) || sectionName.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) visibleItems++;
+      });
+      const sectionMatch = !q || sectionName.includes(q) || visibleItems > 0;
+      card.style.display = sectionMatch ? '' : 'none';
+      if (sectionMatch) anyVisible = true;
+    });
+    // Hide level headers whose sections are all hidden
+    document.querySelectorAll('.curriculum-level').forEach(group => {
+      const anyVisibleHere = Array.from(group.querySelectorAll('.curriculum-section')).some(s => s.style.display !== 'none');
+      group.style.display = anyVisibleHere ? '' : 'none';
+    });
+    const emptyEl = document.getElementById('curriculum-empty');
+    if (emptyEl) emptyEl.style.display = anyVisible ? 'none' : '';
+  }
+
+  // ---------- Schedule view -------------------------------------------------
+
+  // Module-level state: currently-viewed week + edit mode for objective
+  let scheduleWeekOffset = 0; // 0 = current week, -1 = last, +1 = next
+  let editingObjective = false;
+  let pendingFocusIds = null;
+  let pendingNote = null;
+
+  function getViewedWeekStart() {
+    const today = new Date(CONFIG.today);
+    const day = today.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + diff + scheduleWeekOffset * 7);
+    monday.setHours(0, 0, 0, 0);
+    return monday;
+  }
+
+  function changeWeek(delta) {
+    scheduleWeekOffset += delta;
+    editingObjective = false;
+    pendingFocusIds = null;
+    pendingNote = null;
+    renderApp();
+  }
+  function goToThisWeek() { scheduleWeekOffset = 0; editingObjective = false; pendingFocusIds = null; pendingNote = null; renderApp(); }
+
+  function startEditObjective() {
+    const weekIso = getViewedWeekStart().toISOString().slice(0, 10);
+    const obj = getWeeklyObjective(weekIso, 'sport-bjj');
+    pendingFocusIds = new Set(obj ? obj.focusSectionIds : []);
+    pendingNote = obj ? JSON.parse(JSON.stringify(obj.notes)) : { en: '', pt: '' };
+    editingObjective = true;
+    renderApp();
+  }
+  function cancelEditObjective() { editingObjective = false; pendingFocusIds = null; pendingNote = null; renderApp(); }
+  function toggleFocusSection(sectionId) {
+    if (pendingFocusIds.has(sectionId)) pendingFocusIds.delete(sectionId);
+    else pendingFocusIds.add(sectionId);
+    renderApp();
+  }
+  function updatePendingNote(text) { if (pendingNote) pendingNote[CURRENT_LOCALE] = text; }
+
+  function saveObjective() {
+    const weekIso = getViewedWeekStart().toISOString().slice(0, 10);
+    let obj = getWeeklyObjective(weekIso, 'sport-bjj');
+    const focusArr = Array.from(pendingFocusIds);
+    if (obj) {
+      obj.focusSectionIds = focusArr;
+      obj.notes = pendingNote;
+    } else {
+      WEEKLY_OBJECTIVES.push({
+        id: 'wko-' + Date.now(),
+        weekStarting: weekIso,
+        sportId: 'sport-bjj',
+        focusSectionIds: focusArr,
+        notes: pendingNote
+      });
+    }
+    // Rebuild any future classes in this week so plannedItemIds reflect the new focus
+    rebuildClassesForWeek(weekIso);
+    editingObjective = false;
+    pendingFocusIds = null;
+    pendingNote = null;
+    renderApp();
+  }
+
+  // Re-derive plannedItemIds for any non-completed class in the given week
+  function rebuildClassesForWeek(weekIso) {
+    const itemsBySection = CURRICULUM_ITEMS.reduce((acc, it) => {
+      (acc[it.sectionId] = acc[it.sectionId] || []).push(it); return acc;
+    }, {});
+    const obj = getWeeklyObjective(weekIso, 'sport-bjj');
+    const classesInWeek = CLASSES.filter(c => weekStartIso(c.startsAt) === weekIso && c.status === 'scheduled');
+    classesInWeek.forEach((cls, idx) => {
+      const ct = DB.classType(cls.classTypeId);
+      if (!ct || ct.id === 'open-mat') { cls.plannedItemIds = []; cls.weeklyObjectiveId = obj?.id || null; return; }
+      const allAllowed = CURRICULUM_SECTIONS
+        .filter(s => s.sportId === cls.sportId && ct.allowedLevels.includes(s.level))
+        .map(s => s.id);
+      const focus = (obj?.focusSectionIds || []).filter(sid => allAllowed.includes(sid));
+      const candidates = focus.length ? focus : allAllowed;
+      const chosenSection = candidates[idx % candidates.length];
+      const items = itemsBySection[chosenSection] || [];
+      cls.plannedItemIds = [items[0]?.id, items[1]?.id].filter(Boolean);
+      cls.weeklyObjectiveId = obj?.id || null;
+    });
+  }
+
+  function formatWeekRange(weekStart) {
+    const end = new Date(weekStart); end.setDate(end.getDate() + 6);
+    const locale = CURRENT_LOCALE === 'pt' ? 'pt-PT' : 'en-US';
+    const s = weekStart.toLocaleDateString(locale, { month: 'short', day: 'numeric' });
+    const e = end.toLocaleDateString(locale, { month: 'short', day: 'numeric', year: 'numeric' });
+    return `${s} – ${e}`;
+  }
+
+  function dayLabel(dow) {
+    const ref = new Date('2026-01-04T12:00:00'); // a Sunday (dow=0)
+    ref.setDate(ref.getDate() + dow);
+    const locale = CURRENT_LOCALE === 'pt' ? 'pt-PT' : 'en-US';
+    return ref.toLocaleDateString(locale, { weekday: 'short' });
+  }
+
+  function ScheduleView() {
+    const weekStart = getViewedWeekStart();
+    const weekIso = weekStart.toISOString().slice(0, 10);
+    const isCurrentWeek = scheduleWeekOffset === 0;
+
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <div>
+          <h1 class="h1">${t(UI.nav.schedule)}</h1>
+          <div class="muted" style="margin-top:var(--sp-1)">${t(UI.labels.weekOf)} ${formatWeekRange(weekStart)}</div>
+        </div>
+        <div class="row">
+          <button class="btn btn-secondary btn-sm" onclick="changeWeek(-1)">${t(UI.labels.prevWeek)}</button>
+          <button class="btn btn-secondary btn-sm" onclick="goToThisWeek()" ${isCurrentWeek ? 'disabled style="opacity:0.5"' : ''}>${t(UI.labels.thisWeek)}</button>
+          <button class="btn btn-secondary btn-sm" onclick="changeWeek(1)">${t(UI.labels.nextWeek)}</button>
+        </div>
+      </div>
+
+      ${WeeklyObjectivePanel(weekIso)}
+
+      ${WeeklyCalendarGrid(weekStart)}
+    `;
+  }
+
+  function WeeklyObjectivePanel(weekIso) {
+    const obj = getWeeklyObjective(weekIso, 'sport-bjj');
+    const focusIds = editingObjective ? pendingFocusIds : new Set(obj?.focusSectionIds || []);
+    const noteObj  = editingObjective ? pendingNote     : (obj?.notes || { en: '', pt: '' });
+
+    if (editingObjective) {
+      const sections = DB.sectionsBySport('sport-bjj');
+      return `
+        <div class="card" style="background:#fffbeb; border-color:#fde68a; margin-bottom:var(--sp-4)">
+          <div class="row-between" style="margin-bottom:var(--sp-3)">
+            <h3 class="card-title" style="color:#92400e; margin:0">★ ${t(UI.labels.weeklyFocus)} — ${formatWeekRange(getViewedWeekStart())}</h3>
+            <div class="row">
+              <button class="btn btn-secondary btn-sm" onclick="cancelEditObjective()">${t(UI.labels.cancel)}</button>
+              <button class="btn btn-sm" onclick="saveObjective()">${t(UI.labels.save)}</button>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:var(--sp-2); margin-bottom:var(--sp-3)">
+            ${sections.map(s => {
+              const checked = focusIds.has(s.id);
+              return `
+                <label class="focus-section ${checked ? 'on' : ''}" style="display:flex; align-items:center; gap:var(--sp-2); padding:var(--sp-2) var(--sp-3); border-radius:var(--r-md); border:1px solid ${checked ? '#f59e0b' : 'var(--border)'}; background:${checked ? '#fef3c7' : 'var(--surface)'}; cursor:pointer">
+                  <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleFocusSection('${s.id}')" />
+                  <div style="flex:1; min-width:0">
+                    <div style="font-weight:500; font-size:13px">${t(s.name)}</div>
+                    <div class="faint" style="font-size:11px">${t(UI.labels[s.level + 'Level'] || { en: s.level, pt: s.level })}</div>
+                  </div>
+                </label>
+              `;
+            }).join('')}
+          </div>
+          <input class="input" placeholder="${t(UI.labels.focusNotePlaceholder)}" value="${(noteObj?.[CURRENT_LOCALE] || '').replace(/"/g, '&quot;')}" oninput="updatePendingNote(this.value)" />
+        </div>
+      `;
+    }
+
+    if (!obj || obj.focusSectionIds.length === 0) {
+      return `
+        <div class="card" style="margin-bottom:var(--sp-4)">
+          <div class="row-between">
+            <div>
+              <h3 class="card-title" style="margin:0">★ ${t(UI.labels.weeklyFocus)}</h3>
+              <div class="muted" style="margin-top:var(--sp-2)">${t(UI.labels.noFocusSet)}</div>
+            </div>
+            <button class="btn" onclick="startEditObjective()">${t(UI.labels.setFocus)}</button>
+          </div>
+        </div>
+      `;
+    }
+
+    const focusSections = obj.focusSectionIds.map(id => DB.section(id)).filter(Boolean);
+    return `
+      <div class="card" style="background:#fffbeb; border-color:#fde68a; margin-bottom:var(--sp-4)">
+        <div class="row-between" style="margin-bottom:var(--sp-3)">
+          <h3 class="card-title" style="color:#92400e; margin:0">★ ${t(UI.labels.weeklyFocus)} — ${formatWeekRange(getViewedWeekStart())}</h3>
+          <button class="btn btn-secondary btn-sm" onclick="startEditObjective()">${t(UI.labels.editFocus)}</button>
+        </div>
+        <div class="row" style="gap:var(--sp-2); flex-wrap:wrap; margin-bottom:var(--sp-2)">
+          ${focusSections.map(s => SectionTag(s) + `<span style="font-weight:500; margin-right:var(--sp-3)">${t(s.name)}</span>`).join('')}
+        </div>
+        ${obj.notes && t(obj.notes) ? `<div class="muted" style="font-size:13px">${t(obj.notes)}</div>` : ''}
+      </div>
+    `;
+  }
+
+  function WeeklyCalendarGrid(weekStart) {
+    // Build a 7-day grid Mon-Sun. weekStart is Monday.
+    const days = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart); d.setDate(d.getDate() + i); d.setHours(0,0,0,0);
+      const next = new Date(d); next.setDate(next.getDate() + 1);
+      const classesToday = CLASSES.filter(c => {
+        const t = new Date(c.startsAt);
+        return t >= d && t < next;
+      }).sort((a,b) => new Date(a.startsAt) - new Date(b.startsAt));
+      days.push({ date: d, classes: classesToday });
+    }
+    const todayMs = new Date(CONFIG.today).setHours(0,0,0,0);
+
+    return `
+      <h3 class="h3" style="margin: var(--sp-5) 0 var(--sp-3)">${t(UI.labels.weeklyCalendar)}</h3>
+      <div class="card" style="padding:var(--sp-3)">
+        <div class="week-grid">
+          ${days.map(d => {
+            const isToday = d.date.getTime() === todayMs;
+            const dow = d.date.getDay();
+            const locale = CURRENT_LOCALE === 'pt' ? 'pt-PT' : 'en-US';
+            return `
+              <div class="week-col ${isToday ? 'is-today' : ''}">
+                <div class="week-col-header">
+                  <div style="font-weight:600">${d.date.toLocaleDateString(locale, { weekday: 'short' })}</div>
+                  <div class="faint" style="font-size:11px">${d.date.toLocaleDateString(locale, { day: 'numeric', month: 'short' })}</div>
+                </div>
+                <div class="week-col-body">
+                  ${d.classes.length === 0
+                    ? `<div class="faint" style="font-size:11px; padding:var(--sp-2)">—</div>`
+                    : d.classes.map(c => CalendarClassBlock(c)).join('')}
+                </div>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function CalendarClassBlock(cls) {
+    const color = classTypeColor(cls.classTypeId);
+    const items = cls.plannedItemIds.map(id => t(DB.item(id).name)).join(', ');
+    return `
+      <div class="week-class" onclick="go('classes/${cls.id}')" style="border-left-color:${color}">
+        <div style="font-weight:600; font-size:12px">${cls.startsAt.slice(11, 16)}</div>
+        <div style="font-size:11px; font-weight:600; color:${color}">${classTypeLabel(cls.classTypeId)}</div>
+        <div class="faint" style="font-size:10px">${audienceLabel(cls.audienceId)}</div>
+        ${items ? `<div class="faint" style="font-size:10px; margin-top:2px; overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical">${items}</div>` : ''}
+      </div>
+    `;
+  }
+
+  // ---------- Boot ----------------------------------------------------------
+
+  renderApp();
+  </script>
+</body>
+</html>
