@@ -477,6 +477,7 @@
         else content.innerHTML = route.params.length ? ClassDetail(route.params[0]) : ClassesList();
         break;
       case 'curriculum':        content.innerHTML = CurriculumBuilder();     break;
+      case 'curriculum-wizard': content.innerHTML = CurriculumWizard();      break;
       case 'promotion-rules':   content.innerHTML = PromotionRulesScreen(); break;
       case 'packages':          content.innerHTML = PackagesScreen();       break;
       case 'grading':           content.innerHTML = GradingScreen();        break;
@@ -3425,6 +3426,7 @@
               <button data-mode="view" class="${CV2.mode==='view'?'on':''}">View</button>
               <button data-mode="admin" class="${CV2.mode==='admin'?'on':''}">Admin</button>
             </div>
+            <button class="btn btn-primary" onclick="go('curriculum-wizard')">✦ Build / Reconfigure</button>
             <button class="btn btn-secondary" onclick="go('settings')">⚙ Settings</button>
           </div>
         </div>
@@ -3479,17 +3481,18 @@
               ? { en: 'Brazilian Jiu-Jitsu', pt: 'Jiu-Jitsu Brasileiro' } : { en: id }
           }));
         }
-        CV2.sportId = CV2.sports[0]?.id || null;
+        CV2.sportId = CV2.sportId || CV2.sports[0]?.id || null;
         CV2.loaded = true;
       } catch (e) {
         content.innerHTML = `<div class="cv2-empty">Couldn't load curriculum.<br>
           <span class="muted">Run migrations 003–005 in Supabase, then reload.</span></div>`;
         return;
       }
-      buildCV2Filters();
-      populateCV2Scope();
-      bindCV2();
     }
+    // Shell is recreated on every navigation, so always (re)populate + bind.
+    buildCV2Filters();
+    populateCV2Scope();
+    bindCV2();
     renderCV2();
   }
 
@@ -3694,6 +3697,384 @@
     const rows = Object.values(CV2.membership).filter(m => (m.module_id||'') === moduleId && m.is_hidden);
     rows.forEach(m => m.is_hidden = false); renderCV2();
     await sb.from('curriculum_techniques').update({ is_hidden: false }).in('id', rows.map(m => m.id));
+  }
+
+  // ---------- Curriculum Wizard (5 screens) --------------------------------
+  // 1 Academy profile · 2 Philosophy · 3 Student profile · 4 Preview · 5 Sequence
+  // Output: curriculum_configs + curriculum_techniques rows in Supabase.
+
+  const WIZ = {
+    step: 1,
+    loaded: false,
+    modules: [],
+    techniques: [],
+    answers: {
+      name: '', location: '', language: 'en',
+      focus: 'Mixed', legLock: 'Moderate', takedowns: 'Moderate', ruleset: 'Both',
+      students: ['Adult recreational']
+    },
+    userInclude: new Set(),  // re-added techniques (override filter exclusion)
+    userExclude: new Set(),  // removed techniques
+    userHide: new Set(),     // explicitly hidden
+    userShow: new Set(),     // explicitly shown (override auto-hide)
+    moduleOrder: [],         // ordered module ids
+    showExcluded: false,
+    saving: false
+  };
+
+  function CurriculumWizard() {
+    setTimeout(initWizard, 0);
+    return `<div id="wizRoot"><div class="cv2-empty" style="padding:var(--sp-7)">Loading…</div></div>`;
+  }
+
+  async function initWizard() {
+    if (!WIZ.loaded) {
+      // Reuse curriculum data if already loaded, else fetch.
+      if (CV2.loaded && CV2.techniques.length) {
+        WIZ.modules = CV2.modules; WIZ.techniques = CV2.techniques;
+      } else {
+        const [mods, techs] = await Promise.all([
+          sb.from('modules').select('*').order('default_order'),
+          sb.from('techniques').select('*').order('number')
+        ]);
+        if (mods.error || techs.error) {
+          const r = document.getElementById('wizRoot');
+          if (r) r.innerHTML = `<div class="cv2-empty">Couldn't load technique data. Run migrations 003–005 first.</div>`;
+          return;
+        }
+        WIZ.modules = mods.data || []; WIZ.techniques = techs.data || [];
+      }
+      WIZ.moduleOrder = WIZ.modules.map(m => m.id);
+      WIZ.answers.name = (ACADEMY && ACADEMY.name) || '';
+      WIZ.loaded = true;
+    }
+    renderWizard();
+  }
+
+  // --- Filtering logic -------------------------------------------------------
+  function wizBaseExcluded(t) {
+    const a = WIZ.answers;
+    if (a.focus === 'Self-Defense' && t.context === 'Sport') return true;
+    if (a.ruleset === 'Gi only'    && t.ruleset === 'No-Gi') return true;
+    if (a.ruleset === 'No-Gi only' && t.ruleset === 'Gi')    return true;
+    if (a.legLock !== 'Full'       && t.leg_lock_tier === 'Advanced') return true;
+    return false;
+  }
+  function wizExcluded(t) {
+    if (WIZ.userInclude.has(t.id)) return false;
+    if (WIZ.userExclude.has(t.id)) return true;
+    return wizBaseExcluded(t);
+  }
+  function wizAutoHidden(t) {
+    return WIZ.answers.takedowns === 'Minimal' && t.wrestling_dependency === true;
+  }
+  function wizHidden(t) {
+    if (WIZ.userShow.has(t.id)) return false;
+    if (WIZ.userHide.has(t.id)) return true;
+    return wizAutoHidden(t);
+  }
+  function wizIncludedTechs() { return WIZ.techniques.filter(t => !wizExcluded(t)); }
+
+  function wizTypeSummary() {
+    const a = WIZ.answers;
+    const focusMap = { 'Self-Defense':'Self-Defense', 'Sport Gi':'Sport Gi', 'Sport No-Gi':'Sport No-Gi', 'MMA Base':'MMA Base', 'Mixed':'Mixed' };
+    return `${focusMap[a.focus] || a.focus} — ${a.legLock} Leg Locks`;
+  }
+
+  // --- Render ----------------------------------------------------------------
+  function renderWizard() {
+    const root = document.getElementById('wizRoot');
+    if (!root) return;
+    const steps = ['Academy', 'Philosophy', 'Students', 'Preview', 'Sequence'];
+    const stepper = steps.map((s, i) => {
+      const n = i + 1, on = n === WIZ.step, done = n < WIZ.step;
+      return `<div style="display:flex;align-items:center;gap:var(--sp-2)">
+        <span style="width:24px;height:24px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+          font-size:12px;font-weight:700;border:1px solid ${on||done?'var(--primary)':'var(--border-strong)'};
+          background:${on?'var(--primary)':done?'var(--surface-alt)':'var(--surface)'};
+          color:${on?'#fff':'var(--text-muted)'}">${done?'✓':n}</span>
+        <span style="font-size:12px;font-weight:${on?'700':'500'};color:${on?'var(--text)':'var(--text-muted)'}">${s}</span>
+        ${n<steps.length?'<span style="width:24px;height:1px;background:var(--border);margin:0 4px"></span>':''}
+      </div>`;
+    }).join('');
+
+    root.innerHTML = `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <h1 class="h1">Curriculum Wizard</h1>
+        <button class="btn btn-secondary" onclick="go('curriculum')">Cancel</button>
+      </div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-5)">${stepper}</div>
+      <div id="wizBody"></div>`;
+
+    const body = document.getElementById('wizBody');
+    if (WIZ.step === 1) body.innerHTML = wizScreen1();
+    else if (WIZ.step === 2) body.innerHTML = wizScreen2();
+    else if (WIZ.step === 3) body.innerHTML = wizScreen3();
+    else if (WIZ.step === 4) body.innerHTML = wizScreen4();
+    else body.innerHTML = wizScreen5();
+    wizBindCommon();
+  }
+
+  function wizNav(backLabel, nextLabel, nextFn, nextDisabled) {
+    return `<div class="row-between" style="margin-top:var(--sp-5)">
+      <button class="btn btn-secondary" onclick="wizBack()" ${WIZ.step===1?'style="visibility:hidden"':''}>← ${backLabel||'Back'}</button>
+      <button class="btn btn-primary" id="wizNext" ${nextDisabled?'disabled style="opacity:.4;cursor:not-allowed"':''}>${nextLabel||'Next →'}</button>
+    </div>`;
+  }
+  function wizBindCommon() {
+    const n = document.getElementById('wizNext');
+    if (n && !n.disabled) n.onclick = () => wizNext();
+  }
+  window.wizBack = () => { if (WIZ.step > 1) { WIZ.step--; renderWizard(); } };
+  window.wizNext = () => {
+    if (WIZ.step === 3) { // validate before preview
+      if (!wizIncludedTechs().length) { showToast('These settings exclude every technique. Loosen a filter.'); return; }
+    }
+    if (WIZ.step < 5) { WIZ.step++; renderWizard(); }
+    else wizSave();
+  };
+
+  // Screen 1 — Academy profile
+  function wizScreen1() {
+    const a = WIZ.answers;
+    return `
+      <div class="card" style="max-width:560px">
+        <h3 class="card-title" style="margin-bottom:var(--sp-4)">Academy profile</h3>
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px">Academy name</label>
+        <input class="input" id="wizName" value="${a.name.replace(/"/g,'&quot;')}" placeholder="Iron Roots Academy"
+          style="width:100%;margin-bottom:var(--sp-4)" oninput="WIZ.answers.name=this.value;wizUpdateNext()" />
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px">Location</label>
+        <input class="input" id="wizLoc" value="${a.location.replace(/"/g,'&quot;')}" placeholder="Lisbon, Portugal"
+          style="width:100%;margin-bottom:var(--sp-4)" oninput="WIZ.answers.location=this.value" />
+        <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px">Primary language</label>
+        <select class="input" id="wizLang" style="width:100%" onchange="WIZ.answers.language=this.value">
+          <option value="en" ${a.language==='en'?'selected':''}>English</option>
+          <option value="pt" ${a.language==='pt'?'selected':''}>Português</option>
+        </select>
+      </div>
+      ${wizNav('Back', 'Next →', null, !a.name.trim())}`;
+  }
+  window.wizUpdateNext = () => {
+    const n = document.getElementById('wizNext');
+    if (!n) return;
+    const ok = WIZ.answers.name.trim().length > 0;
+    n.disabled = !ok; n.style.cssText = ok ? '' : 'opacity:.4;cursor:not-allowed';
+    if (ok) n.onclick = () => wizNext();
+  };
+
+  // Card selector helper
+  function wizCards(field, options) {
+    return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:var(--sp-3)">
+      ${options.map(o => {
+        const sel = WIZ.answers[field] === o.value;
+        return `<div onclick="WIZ.answers['${field}']='${o.value}';renderWizard()"
+          style="cursor:pointer;border:1.5px solid ${sel?'var(--primary)':'var(--border)'};border-radius:var(--r-md);
+          padding:var(--sp-4);background:${sel?'var(--surface-alt)':'var(--surface)'}">
+          <div style="font-size:20px;margin-bottom:var(--sp-2)">${o.icon||'•'}</div>
+          <div style="font-weight:600;font-size:13px;margin-bottom:2px">${o.label}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${o.desc||''}</div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  }
+
+  // Screen 2 — Philosophy
+  function wizScreen2() {
+    return `
+      <div class="stack" style="gap:var(--sp-5)">
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Primary focus</h3>
+          ${wizCards('focus', [
+            { value:'Self-Defense', label:'Self-Defense', icon:'🛡', desc:'Practical, situational' },
+            { value:'Sport Gi', label:'Sport Gi', icon:'🥋', desc:'Competition with the gi' },
+            { value:'Sport No-Gi', label:'Sport No-Gi', icon:'🤼', desc:'Grappling without the gi' },
+            { value:'MMA Base', label:'MMA Base', icon:'🥊', desc:'Striking-aware grappling' },
+            { value:'Mixed', label:'Mixed', icon:'⚖️', desc:'A balance of everything' }
+          ])}</div>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Leg lock stance</h3>
+          ${wizCards('legLock', [
+            { value:'Conservative', label:'Conservative', icon:'🦶', desc:'Ankle locks only' },
+            { value:'Moderate', label:'Moderate', icon:'🦵', desc:'+ toe holds' },
+            { value:'Full', label:'Full', icon:'🔥', desc:'Including heel hooks' }
+          ])}</div>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Takedowns</h3>
+          ${wizCards('takedowns', [
+            { value:'Minimal', label:'Minimal', icon:'🤏', desc:'Pull guard, hide wrestling' },
+            { value:'Moderate', label:'Moderate', icon:'👍', desc:'Core takedowns' },
+            { value:'Wrestling-integrated', label:'Wrestling-integrated', icon:'🤼', desc:'Heavy stand-up' }
+          ])}</div>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Ruleset</h3>
+          ${wizCards('ruleset', [
+            { value:'Gi only', label:'Gi only', icon:'🥋', desc:'Exclude No-Gi techniques' },
+            { value:'No-Gi only', label:'No-Gi only', icon:'🩳', desc:'Exclude Gi techniques' },
+            { value:'Both', label:'Both', icon:'🔁', desc:'Keep everything' }
+          ])}</div>
+      </div>
+      ${wizNav()}`;
+  }
+
+  // Screen 3 — Student profile (multi-select)
+  function wizScreen3() {
+    const opts = [
+      { value:'Adult recreational', icon:'🧑', desc:'Hobbyists, fitness' },
+      { value:'Competitors', icon:'🏆', desc:'Tournament-focused' },
+      { value:'Kids', icon:'🧒', desc:'Youth classes' },
+      { value:"Women's self-defense", icon:'🛡', desc:'Self-defense emphasis' }
+    ];
+    return `
+      <h3 class="card-title" style="margin-bottom:var(--sp-2)">Who trains here?</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:var(--sp-4)">Select all that apply. This shapes module ordering and emphasis, not which techniques are included.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--sp-3)">
+        ${opts.map(o => {
+          const sel = WIZ.answers.students.includes(o.value);
+          return `<div onclick="wizToggleStudent('${o.value.replace(/'/g,"\\'")}')"
+            style="cursor:pointer;border:1.5px solid ${sel?'var(--primary)':'var(--border)'};border-radius:var(--r-md);
+            padding:var(--sp-4);background:${sel?'var(--surface-alt)':'var(--surface)'}">
+            <div style="font-size:20px;margin-bottom:var(--sp-2)">${o.icon}</div>
+            <div style="font-weight:600;font-size:13px;margin-bottom:2px">${o.value} ${sel?'✓':''}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${o.desc}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${wizNav('Back','Next →', null, false)}`;
+  }
+  window.wizToggleStudent = (v) => {
+    const arr = WIZ.answers.students;
+    const i = arr.indexOf(v);
+    if (i >= 0) arr.splice(i, 1); else arr.push(v);
+    renderWizard();
+  };
+
+  // Screen 4 — Preview
+  function wizScreen4() {
+    const byModule = {};
+    WIZ.techniques.forEach(t => {
+      const mid = t.default_module_id || 'mod-concepts';
+      (byModule[mid] = byModule[mid] || []).push(t);
+    });
+    const totalIncluded = wizIncludedTechs().length;
+    const totalExcluded = WIZ.techniques.length - totalIncluded;
+
+    const cards = WIZ.moduleOrder.map(mid => {
+      const m = WIZ.modules.find(x => x.id === mid); if (!m) return '';
+      const all = byModule[mid] || [];
+      const inc = all.filter(t => !wizExcluded(t));
+      const exc = all.filter(t => wizExcluded(t));
+      if (!all.length) return '';
+      const counts = { Beginner:0, Intermediate:0, Advanced:0, Expert:0 };
+      inc.forEach(t => counts[t.complexity] = (counts[t.complexity]||0)+1);
+      const tot = inc.length || 1;
+      const bar = ['Beginner','Intermediate','Advanced','Expert']
+        .map(k => counts[k] ? `<span class="cb-${k}" style="width:${counts[k]/tot*100}%"></span>` : '').join('');
+      const rows = (WIZ.showExcluded ? all : inc).map(t => {
+        const ex = wizExcluded(t), hid = !ex && wizHidden(t);
+        return `<div style="display:flex;align-items:center;gap:var(--sp-3);padding:6px var(--sp-3);
+          border-top:1px solid var(--border);${ex?'opacity:.5':''}">
+          <span style="flex:1;font-size:13px;${hid?'text-decoration:line-through;color:var(--text-faint)':''}">${t.name}</span>
+          <span class="cv2-pill" style="font-size:10px">${t.type||t.category}</span>
+          <span class="cv2-pill c-${t.complexity}" style="font-size:10px">${t.complexity}</span>
+          ${ex
+            ? `<button class="btn btn-secondary" style="font-size:11px;padding:2px 8px" onclick="wizAdd('${t.id}')">+ Add</button>`
+            : `<button class="btn btn-secondary" style="font-size:11px;padding:2px 8px" onclick="wizHide('${t.id}')">${hid?'Show':'Hide'}</button>`}
+        </div>`;
+      }).join('');
+      return `<div class="cv2-mod" style="margin-bottom:var(--sp-3)">
+        <div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4)">
+          <span class="mname" style="font-weight:600">${m.name}</span>
+          <span class="cv2-badge">${inc.length}${exc.length?` · ${exc.length} excluded`:''}</span>
+          <span style="flex:1"></span>
+          <span class="cv2-cbar">${bar}</span>
+        </div>
+        <div>${rows}</div>
+      </div>`;
+    }).join('');
+
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <div>
+          <h3 class="card-title">Curriculum preview</h3>
+          <div class="muted" style="font-size:13px">${wizTypeSummary()} · <strong>${totalIncluded}</strong> techniques${totalExcluded?` · ${totalExcluded} excluded`:''}</div>
+        </div>
+        <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer">
+          <input type="checkbox" ${WIZ.showExcluded?'checked':''} onchange="WIZ.showExcluded=this.checked;renderWizard()"> Show excluded
+        </label>
+      </div>
+      ${cards || '<div class="cv2-empty">No techniques.</div>'}
+      ${wizNav('Back','Next →', null, totalIncluded===0)}`;
+  }
+  window.wizAdd  = (id) => { WIZ.userExclude.delete(id); WIZ.userInclude.add(id); renderWizard(); };
+  window.wizHide = (id) => {
+    if (wizHidden(WIZ.techniques.find(t=>t.id===id))) { WIZ.userHide.delete(id); WIZ.userShow.add(id); }
+    else { WIZ.userShow.delete(id); WIZ.userHide.add(id); }
+    renderWizard();
+  };
+
+  // Screen 5 — Module sequencing
+  function wizScreen5() {
+    const rows = WIZ.moduleOrder.map((mid, i) => {
+      const m = WIZ.modules.find(x => x.id === mid); if (!m) return '';
+      const inc = WIZ.techniques.filter(t => (t.default_module_id||'mod-concepts') === mid && !wizExcluded(t)).length;
+      return `<div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);
+        border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);margin-bottom:var(--sp-2)">
+        <span style="font-size:12px;color:var(--text-faint);width:20px">${i+1}</span>
+        <span style="flex:1;font-weight:600;font-size:14px">${m.name}</span>
+        <span class="cv2-badge">${inc}</span>
+        <button class="btn btn-secondary" style="padding:2px 8px" onclick="wizMove(${i},-1)" ${i===0?'disabled style="opacity:.3"':''}>↑</button>
+        <button class="btn btn-secondary" style="padding:2px 8px" onclick="wizMove(${i},1)" ${i===WIZ.moduleOrder.length-1?'disabled style="opacity:.3"':''}>↓</button>
+      </div>`;
+    }).join('');
+    return `
+      <h3 class="card-title" style="margin-bottom:var(--sp-2)">Module sequence</h3>
+      <p class="muted" style="font-size:13px;margin-bottom:var(--sp-4)">Order the modules as you'd teach them. Empty modules are skipped on save.</p>
+      ${rows}
+      ${wizNav('Back', WIZ.saving ? 'Saving…' : 'Finish & save ✓', null, WIZ.saving)}`;
+  }
+  window.wizMove = (i, dir) => {
+    const j = i + dir;
+    if (j < 0 || j >= WIZ.moduleOrder.length) return;
+    const o = WIZ.moduleOrder;
+    [o[i], o[j]] = [o[j], o[i]];
+    renderWizard();
+  };
+
+  // --- Save ------------------------------------------------------------------
+  async function wizSave() {
+    if (WIZ.saving) return;
+    WIZ.saving = true; renderWizard();
+    const sportId = (CV2.sportId) || 'sport-bjj';
+    const cfgRow = {
+      academy_id: (ACADEMY && ACADEMY.id) || null,
+      sport_id: sportId,
+      name: WIZ.answers.name.trim() || 'New Curriculum',
+      type_summary: wizTypeSummary(),
+      wizard_answers: WIZ.answers
+    };
+    const { data: cfg, error: cErr } = await sb.from('curriculum_configs').insert(cfgRow).select().single();
+    if (cErr || !cfg) { WIZ.saving = false; renderWizard(); showToast('Save failed: ' + (cErr?.message||'unknown')); return; }
+
+    const included = wizIncludedTechs();
+    let seq = 0;
+    const orderIndex = {}; WIZ.moduleOrder.forEach((id, i) => orderIndex[id] = i);
+    included.sort((a, b) =>
+      (orderIndex[a.default_module_id] ?? 99) - (orderIndex[b.default_module_id] ?? 99) ||
+      (a.number||0) - (b.number||0));
+    const ctRows = included.map(t => ({
+      curriculum_id: cfg.id,
+      technique_id: t.id,
+      module_id: t.default_module_id,
+      sequence_order: seq++,
+      is_hidden: wizHidden(t)
+    }));
+    const { error: ctErr } = await sb.from('curriculum_techniques').insert(ctRows);
+    if (ctErr) { WIZ.saving = false; renderWizard(); showToast('Saved config but techniques failed: ' + ctErr.message); return; }
+
+    // Refresh curriculum page state and navigate there with the new curriculum active.
+    CV2.configs.push(cfg);
+    CV2.curriculumId = cfg.id;
+    CV2.sportId = sportId;
+    await loadCV2Membership().catch(() => {});
+    WIZ.saving = false;
+    showToast('Curriculum created ✓');
+    go('curriculum');
   }
 
   // ---------- Student onboarding wizard ------------------------------------
