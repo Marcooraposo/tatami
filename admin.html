@@ -3341,162 +3341,289 @@
     `;
   }
 
-  // ---------- Screen: Curriculum Builder ------------------------------------
+  // ---------- Screen: Curriculum (v2 — Supabase-backed) ---------------------
+  // Modules inline (no sidebar). Filters: category, complexity, type, ruleset,
+  // context, status, search. View/Admin mode. Reads live from Supabase.
+
+  const CV2 = {
+    loaded: false,
+    modules: [],
+    techniques: [],
+    membership: {},          // techniqueId -> curriculum_techniques row (when a curriculum is active)
+    curriculumId: null,
+    mode: 'view',
+    collapsed: {},
+    filters: { category: '', complexity: '', type: '', ruleset: '', context: '', status: 'active', search: '' }
+  };
 
   function CurriculumBuilder() {
-    const setup = getOrgSetup();
-    const sportIds = setup?.sports || ACADEMY.sportIds;
-
-    const tabs = sportIds.map(sid => {
-      const sp = PRESET_SPORTS.find(s => s.id === sid) || DB.sport(sid);
-      const label = sp ? (sp.name || t(sp.name)) : sid;
-      return `<button class="btn btn-secondary" onclick="go('curriculum')" style="font-size:13px">${label}</button>`;
-    });
-
-    // For now always show the default BJJ curriculum
-    const sections = CURRICULUM_SECTIONS.filter(s => s.sportId === 'sport-bjj');
-    const grading  = DB.grading(ACADEMY.sportConfigs[0]?.gradingSystemId);
-
-    // Build a map: itemId → most recent class startsAt (ms) where that item was planned
-    const nowMs = new Date(CONFIG.today).getTime();
-    const itemLastTaught = {};
-    const itemTaughtCount = {};
-    CLASSES.forEach(cls => {
-      if (!cls.plannedItemIds || !cls.plannedItemIds.length) return;
-      const t_ms = new Date(cls.startsAt).getTime();
-      if (t_ms > nowMs) return; // ignore future classes
-      cls.plannedItemIds.forEach(iid => {
-        if (!itemLastTaught[iid] || t_ms > itemLastTaught[iid]) itemLastTaught[iid] = t_ms;
-        itemTaughtCount[iid] = (itemTaughtCount[iid] || 0) + 1;
-      });
-    });
-
-    function lastTaughtBadge(itemId) {
-      const lastMs = itemLastTaught[itemId];
-      const count  = itemTaughtCount[itemId] || 0;
-      if (!lastMs) {
-        return `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
-          background:#fee2e2;color:#b91c1c;white-space:nowrap">Never taught</span>`;
-      }
-      const days = Math.floor((nowMs - lastMs) / 86400000);
-      const label = days === 0 ? 'Today' : days === 1 ? 'Yesterday' : `${days}d ago`;
-      const countLabel = count === 1 ? '1×' : `${count}×`;
-      let bg, color;
-      if (days <= 14)      { bg = '#dcfce7'; color = '#15803d'; }
-      else if (days <= 30) { bg = '#fef9c3'; color = '#a16207'; }
-      else                 { bg = '#fff7ed'; color = '#c2410c'; }
-      return `<span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;
-        background:${bg};color:${color};white-space:nowrap" title="${countLabel} total">${label}</span>`;
-    }
-
-    // Summary stats for the sidebar card
-    const allItems = CURRICULUM_SECTIONS.filter(s => s.sportId === 'sport-bjj')
-      .flatMap(s => DB.itemsBySection(s.id));
-    const neverTaught    = allItems.filter(i => !itemLastTaught[i.id]).length;
-    const stale30        = allItems.filter(i => itemLastTaught[i.id] && Math.floor((nowMs - itemLastTaught[i.id]) / 86400000) > 30).length;
-    const fresh14        = allItems.filter(i => itemLastTaught[i.id] && Math.floor((nowMs - itemLastTaught[i.id]) / 86400000) <= 14).length;
-
-    const sectionCards = sections.map(sec => {
-      const items = DB.itemsBySection(sec.id);
-      return `
-        <div class="card" style="margin-bottom:var(--sp-4)">
-          <div class="row-between" style="margin-bottom:var(--sp-3)">
-            <div class="row" style="gap:var(--sp-2)">
-              ${SectionTag(sec)}
-              <h3 style="margin:0;font-size:15px;font-weight:600">${t(sec.name)}</h3>
-            </div>
-            <span class="muted" style="font-size:12px">${items.length} technique${items.length !== 1 ? 's' : ''}</span>
-          </div>
-          <div style="display:flex;flex-direction:column;gap:var(--sp-2)">
-            ${items.map((item, i) => `
-              <div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);
-                   background:var(--surface-alt);border-radius:var(--r-sm)">
-                <span style="font-size:11px;color:var(--text-faint);min-width:18px;text-align:right">${i + 1}</span>
-                <span style="flex:1;font-size:13px;font-weight:500">${t(item.name)}</span>
-                ${lastTaughtBadge(item.id)}
-              </div>
-            `).join('')}
-            <div style="padding:var(--sp-2) 0">
-              <button class="btn btn-secondary" style="font-size:12px;padding:6px 12px">+ Add technique</button>
-            </div>
-          </div>
-        </div>
-      `;
-    }).join('');
-
-    const beltLevels = grading ? grading.levels.map(l => `
-      <div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3);
-           border-radius:var(--r-md);background:var(--surface-alt);margin-bottom:var(--sp-2)">
-        <div style="width:32px;height:12px;border-radius:2px;background:${l.color};
-             border:1px solid var(--border);flex-shrink:0"></div>
-        <span style="flex:1;font-weight:600;font-size:13px">${t(l.name)}</span>
-        <span class="muted" style="font-size:12px">${l.maxStripes} stripes max</span>
-      </div>
-    `).join('') : '';
-
+    // Return a shell synchronously; fill it asynchronously from Supabase.
+    setTimeout(loadCurriculumV2, 0);
     return `
-      <div class="row-between" style="margin-bottom:var(--sp-5)">
-        <h1 class="h1">Curriculum</h1>
-        <button class="btn btn-secondary" onclick="go('settings')">⚙ Settings</button>
-      </div>
-
-      <div style="display:grid;grid-template-columns:1fr 300px;gap:var(--sp-5);align-items:start">
-        <div>
-          <h3 class="h3" style="margin-bottom:var(--sp-4)">Techniques by section</h3>
-          ${sectionCards}
+      <style>
+        .cv2-bar { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;
+          margin-bottom:var(--sp-5); padding:var(--sp-3); background:var(--surface);
+          border:1px solid var(--border); border-radius:var(--r-md); }
+        .cv2-bar select, .cv2-bar input { font:inherit; font-size:13px; padding:6px 8px;
+          border:1px solid var(--border-strong); border-radius:var(--r-sm);
+          background:var(--surface); color:var(--text); }
+        .cv2-bar .spacer { flex:1; }
+        .cv2-mod { border:1px solid var(--border); border-radius:var(--r-md);
+          background:var(--surface); margin-bottom:var(--sp-4); overflow:hidden;
+          scroll-margin-top:var(--sp-4); }
+        .cv2-head { display:flex; align-items:center; gap:var(--sp-3);
+          padding:var(--sp-3) var(--sp-4); cursor:pointer; user-select:none; }
+        .cv2-head:hover { background:var(--surface-alt); }
+        .cv2-head .chev { color:var(--text-faint); transition:transform .15s; }
+        .cv2-mod.collapsed .chev { transform:rotate(-90deg); }
+        .cv2-mod.collapsed .cv2-body { display:none; }
+        .cv2-head .mname { font-weight:600; font-size:15px; }
+        .cv2-head .mspacer { flex:1; }
+        .cv2-badge { background:var(--surface-alt); color:var(--text-muted);
+          border:1px solid var(--border); border-radius:999px; padding:1px 8px;
+          font-size:11px; font-variant-numeric:tabular-nums; }
+        .cv2-cbar { display:inline-flex; height:6px; width:120px; border-radius:999px;
+          overflow:hidden; background:var(--surface-alt); }
+        .cv2-cbar span { display:block; height:100%; }
+        .cb-Beginner{background:var(--success)} .cb-Intermediate{background:var(--accent)}
+        .cb-Advanced{background:var(--warn)} .cb-Expert{background:var(--danger)}
+        .cv2-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+        .cv2-tbl th { text-align:left; font-size:11px; text-transform:uppercase;
+          letter-spacing:.04em; color:var(--text-faint); padding:var(--sp-2) var(--sp-4);
+          border-top:1px solid var(--border); }
+        .cv2-tbl td { padding:var(--sp-3) var(--sp-4); border-top:1px solid var(--border); }
+        .cv2-tbl tr:hover td { background:var(--surface-alt); }
+        .cv2-name { font-weight:500; color:var(--text); text-decoration:none; cursor:pointer; }
+        .cv2-name:hover { color:var(--accent); text-decoration:underline; }
+        .cv2-pill { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px;
+          border:1px solid var(--border); background:var(--surface-alt); color:var(--text-muted); }
+        .cv2-pill.c-Beginner{color:var(--success);border-color:var(--success)}
+        .cv2-pill.c-Intermediate{color:var(--accent);border-color:var(--accent)}
+        .cv2-pill.c-Advanced{color:var(--warn);border-color:var(--warn)}
+        .cv2-pill.c-Expert{color:var(--danger);border-color:var(--danger)}
+        .cv2-row-hidden td { opacity:.45; }
+        .cv2-seg { display:inline-flex; border:1px solid var(--border-strong);
+          border-radius:var(--r-sm); overflow:hidden; }
+        .cv2-seg button { font:inherit; font-size:12px; padding:6px 12px; border:none;
+          background:var(--surface); color:var(--text-muted); cursor:pointer; }
+        .cv2-seg button.on { background:var(--primary); color:#fff; }
+        .cv2-admin { display:none; }
+        .cv2[data-mode="admin"] .cv2-admin { display:inline-flex; }
+        .cv2-empty { padding:var(--sp-5); text-align:center; color:var(--text-muted); }
+      </style>
+      <div class="cv2" data-mode="${CV2.mode}">
+        <div class="row-between" style="margin-bottom:var(--sp-4)">
+          <div>
+            <h1 class="h1" id="cv2Title">Curriculum</h1>
+            <div class="muted" id="cv2Summary" style="font-size:13px">Loading…</div>
+          </div>
+          <div class="row" style="gap:var(--sp-2)">
+            <div class="cv2-seg" id="cv2Mode">
+              <button data-mode="view" class="${CV2.mode==='view'?'on':''}">View</button>
+              <button data-mode="admin" class="${CV2.mode==='admin'?'on':''}">Admin</button>
+            </div>
+            <button class="btn btn-secondary" onclick="go('settings')">⚙ Settings</button>
+          </div>
         </div>
-
-        <div class="stack" style="gap:var(--sp-4)">
-          <div class="card">
-            <h3 class="card-title" style="margin-bottom:var(--sp-3)">📋 Coverage summary</h3>
-            <div style="display:flex;flex-direction:column;gap:var(--sp-2);margin-bottom:var(--sp-3)">
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:12px;color:var(--text-muted)">Total techniques</span>
-                <span style="font-size:13px;font-weight:700">${allItems.length}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:12px;color:#15803d">✓ Taught recently (≤14d)</span>
-                <span style="font-size:13px;font-weight:700;color:#15803d">${fresh14}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:12px;color:#c2410c">⚠ Stale (30d+)</span>
-                <span style="font-size:13px;font-weight:700;color:#c2410c">${stale30}</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;align-items:center">
-                <span style="font-size:12px;color:#b91c1c">✗ Never taught</span>
-                <span style="font-size:13px;font-weight:700;color:#b91c1c">${neverTaught}</span>
-              </div>
-            </div>
-            <div style="height:6px;border-radius:3px;background:var(--surface-alt);overflow:hidden">
-              <div style="height:100%;width:${allItems.length ? Math.round(fresh14/allItems.length*100) : 0}%;background:#16a34a;border-radius:3px"></div>
-            </div>
-            <div style="font-size:10px;color:var(--text-faint);margin-top:var(--sp-1)">
-              ${allItems.length ? Math.round(fresh14/allItems.length*100) : 0}% fresh coverage
-            </div>
-          </div>
-
-          <div class="card">
-            <h3 class="card-title" style="margin-bottom:var(--sp-3)">Belt progression</h3>
-            ${grading ? beltLevels : '<div class="muted">No grading system found.</div>'}
-            <button class="btn btn-secondary" style="width:100%;margin-top:var(--sp-3);font-size:12px">
-              + Add belt level
-            </button>
-          </div>
-
-          <div class="card" style="background:#eff6ff;border-color:#bfdbfe">
-            <h3 class="card-title" style="color:var(--accent);margin-bottom:var(--sp-2)">ℹ Promotion rules</h3>
-            ${grading ? Object.entries(grading.promotionRules || {}).map(([key, rule]) => `
-              <div style="font-size:12px;margin-bottom:var(--sp-3)">
-                <div style="font-weight:600;margin-bottom:var(--sp-1)">${key.replace(/-to-/, ' → ').replace(/bjj-/g, '')}</div>
-                <div class="muted">Min ${rule.minMonthsAtLevel} months · ${rule.minClassesAtLevel} classes</div>
-                <div class="muted">${Math.round(rule.minBasicsCoveragePct * 100)}% basics coverage</div>
-              </div>
-            `).join('') : ''}
-            <button class="btn btn-secondary" style="width:100%;font-size:12px" onclick="go('promotion-rules')">Edit rules</button>
-          </div>
+        <div class="cv2-bar">
+          <select id="cv2Category"><option value="">All categories</option></select>
+          <select id="cv2Complexity"><option value="">All complexity</option></select>
+          <select id="cv2Type"><option value="">All types</option></select>
+          <select id="cv2Ruleset"><option value="">All rulesets</option></select>
+          <select id="cv2Context"><option value="">All contexts</option></select>
+          <select id="cv2Status">
+            <option value="active">Active</option>
+            <option value="">Active + hidden</option>
+            <option value="hidden">Hidden only</option>
+          </select>
+          <input id="cv2Search" type="search" placeholder="Search techniques…" />
+          <span class="spacer"></span>
+          <button class="btn btn-secondary" id="cv2Clear" style="font-size:12px">Clear</button>
         </div>
+        <div id="cv2Content"><div class="cv2-empty">Loading curriculum…</div></div>
       </div>
     `;
+  }
+
+  async function loadCurriculumV2() {
+    const content = document.getElementById('cv2Content');
+    if (!content) return; // navigated away
+    if (!CV2.loaded) {
+      try {
+        const [{ data: modules, error: mErr }, { data: techs, error: tErr }] = await Promise.all([
+          sb.from('modules').select('*').order('default_order'),
+          sb.from('techniques').select('*').order('number')
+        ]);
+        if (mErr || tErr) throw (mErr || tErr);
+        CV2.modules = modules || [];
+        CV2.techniques = techs || [];
+        CV2.loaded = true;
+      } catch (e) {
+        content.innerHTML = `<div class="cv2-empty">Couldn't load curriculum.<br>
+          <span class="muted">Run migrations 003 + 004 in Supabase, then reload.</span></div>`;
+        return;
+      }
+      buildCV2Filters();
+      bindCV2();
+    }
+    renderCV2();
+  }
+
+  function cv2Rows() {
+    return CV2.techniques
+      .filter(t => !CV2.curriculumId || CV2.membership[t.id])
+      .map(t => {
+        const m = CV2.membership[t.id];
+        return {
+          tech: t,
+          moduleId: m ? (m.module_id || t.default_module_id) : t.default_module_id,
+          hidden: m ? m.is_hidden : false,
+          order: m ? m.sequence_order : t.number
+        };
+      });
+  }
+
+  function cv2Passes(row) {
+    const f = CV2.filters, t = row.tech;
+    if (f.category && t.category !== f.category) return false;
+    if (f.complexity && t.complexity !== f.complexity) return false;
+    if (f.type && t.type !== f.type) return false;
+    if (f.ruleset && t.ruleset !== f.ruleset) return false;
+    if (f.context && t.context !== f.context) return false;
+    if (f.status === 'active' && row.hidden) return false;
+    if (f.status === 'hidden' && !row.hidden) return false;
+    if (f.search) {
+      const q = f.search.toLowerCase();
+      if (!(t.name.toLowerCase().includes(q) || (t.type||'').toLowerCase().includes(q))) return false;
+    }
+    return true;
+  }
+
+  function buildCV2Filters() {
+    const uniq = (k) => [...new Set(CV2.techniques.map(t => t[k]).filter(Boolean))].sort();
+    const fill = (id, vals) => { const s = document.getElementById(id); if (!s) return;
+      vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; s.appendChild(o); }); };
+    fill('cv2Category', uniq('category'));
+    fill('cv2Complexity', ['Beginner','Intermediate','Advanced','Expert']);
+    fill('cv2Type', uniq('type'));
+    fill('cv2Ruleset', uniq('ruleset'));
+    fill('cv2Context', uniq('context'));
+  }
+
+  function bindCV2() {
+    const map = { cv2Category:'category', cv2Complexity:'complexity', cv2Type:'type',
+      cv2Ruleset:'ruleset', cv2Context:'context', cv2Status:'status' };
+    Object.entries(map).forEach(([id, key]) => {
+      const el = document.getElementById(id); if (el) el.onchange = e => { CV2.filters[key] = e.target.value; renderCV2(); };
+    });
+    const search = document.getElementById('cv2Search');
+    if (search) search.oninput = e => { CV2.filters.search = e.target.value; renderCV2(); };
+    const clear = document.getElementById('cv2Clear');
+    if (clear) clear.onclick = () => {
+      CV2.filters = { category:'', complexity:'', type:'', ruleset:'', context:'', status:'active', search:'' };
+      ['cv2Category','cv2Complexity','cv2Type','cv2Ruleset','cv2Context'].forEach(id => { const e = document.getElementById(id); if (e) e.value=''; });
+      const st = document.getElementById('cv2Status'); if (st) st.value='active';
+      if (search) search.value=''; renderCV2();
+    };
+    const mode = document.getElementById('cv2Mode');
+    if (mode) mode.querySelectorAll('button').forEach(b => b.onclick = () => {
+      CV2.mode = b.dataset.mode;
+      document.querySelector('.cv2').dataset.mode = CV2.mode;
+      mode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+    });
+  }
+
+  function renderCV2() {
+    const content = document.getElementById('cv2Content');
+    if (!content) return;
+    const rows = cv2Rows();
+    document.getElementById('cv2Title').textContent = 'Master Curriculum';
+    document.getElementById('cv2Summary').textContent = `${rows.length} techniques`;
+
+    const byModule = {};
+    rows.forEach(r => { (byModule[r.moduleId] = byModule[r.moduleId] || []).push(r); });
+
+    const filtersActive = !!(CV2.filters.category || CV2.filters.complexity || CV2.filters.type ||
+      CV2.filters.ruleset || CV2.filters.context || CV2.filters.search || CV2.filters.status !== 'active');
+
+    content.innerHTML = '';
+    let any = false;
+    CV2.modules.forEach(m => {
+      const list = (byModule[m.id] || []);
+      if (!list.length) return;
+      const visible = list.filter(cv2Passes);
+      if (!visible.length && filtersActive) return;
+      any = true;
+
+      const counts = { Beginner:0, Intermediate:0, Advanced:0, Expert:0 };
+      visible.forEach(r => counts[r.tech.complexity] = (counts[r.tech.complexity]||0)+1);
+      const tot = visible.length || 1;
+      const bar = ['Beginner','Intermediate','Advanced','Expert']
+        .map(k => counts[k] ? `<span class="cb-${k}" style="width:${counts[k]/tot*100}%" title="${k}: ${counts[k]}"></span>` : '').join('');
+
+      const sec = document.createElement('section');
+      sec.className = 'cv2-mod' + (CV2.collapsed[m.id] ? ' collapsed' : '');
+      sec.innerHTML = `
+        <div class="cv2-head">
+          <span class="chev">▾</span>
+          <span class="mname">${m.name}</span>
+          <span class="cv2-badge">${visible.length}</span>
+          <span class="mspacer"></span>
+          <span class="cv2-cbar">${bar}</span>
+        </div>
+        <div class="cv2-body"></div>`;
+      sec.querySelector('.cv2-head').onclick = () => {
+        CV2.collapsed[m.id] = !CV2.collapsed[m.id]; renderCV2();
+      };
+      const body = sec.querySelector('.cv2-body');
+      if (!visible.length) {
+        body.innerHTML = `<div style="padding:var(--sp-4);color:var(--text-faint);display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3)">
+          <span>All techniques in this module are hidden.</span>
+          <button class="btn btn-secondary cv2-admin" data-restore="${m.id}" style="font-size:12px">Restore all</button></div>`;
+      } else {
+        visible.sort((a,b) => a.order - b.order);
+        body.innerHTML = `<table class="cv2-tbl">
+          <thead><tr><th>Name</th><th>Category</th><th>Type</th><th>Complexity</th><th>Ruleset</th><th>Context</th><th>Status</th><th></th></tr></thead>
+          <tbody>${visible.map(cv2RowHtml).join('')}</tbody></table>`;
+      }
+      content.appendChild(sec);
+    });
+
+    if (!any) {
+      content.innerHTML = `<div class="cv2-empty">No techniques match the current filters.</div>`;
+    }
+    content.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => cv2ToggleHidden(b.dataset.toggle));
+    content.querySelectorAll('[data-restore]').forEach(b => b.onclick = () => cv2RestoreModule(b.dataset.restore));
+  }
+
+  function cv2RowHtml(r) {
+    const t = r.tech;
+    return `<tr class="${r.hidden ? 'cv2-row-hidden' : ''}">
+      <td><a class="cv2-name" href="/curriculum/techniques/${t.slug}">${t.name}</a></td>
+      <td>${t.category}</td>
+      <td>${t.type || '—'}</td>
+      <td><span class="cv2-pill c-${t.complexity}">${t.complexity}</span></td>
+      <td><span class="cv2-pill">${t.ruleset}</span></td>
+      <td><span class="cv2-pill">${t.context}</span></td>
+      <td>${r.hidden ? '<span class="cv2-pill">Hidden</span>' : '<span class="cv2-pill c-Beginner">Active</span>'}</td>
+      <td><button class="btn btn-secondary cv2-admin" data-toggle="${t.id}" style="font-size:12px">${r.hidden ? 'Restore' : 'Hide'}</button></td>
+    </tr>`;
+  }
+
+  async function cv2ToggleHidden(techId) {
+    const m = CV2.membership[techId];
+    if (!CV2.curriculumId || !m) { showToast('Hiding needs an active curriculum (run the wizard).'); return; }
+    const next = !m.is_hidden;
+    m.is_hidden = next; renderCV2();
+    const { error } = await sb.from('curriculum_techniques').update({ is_hidden: next }).eq('id', m.id);
+    if (error) { m.is_hidden = !next; renderCV2(); showToast('Failed to save.'); }
+  }
+
+  async function cv2RestoreModule(moduleId) {
+    if (!CV2.curriculumId) return;
+    const rows = Object.values(CV2.membership).filter(m => (m.module_id||'') === moduleId && m.is_hidden);
+    rows.forEach(m => m.is_hidden = false); renderCV2();
+    await sb.from('curriculum_techniques').update({ is_hidden: false }).in('id', rows.map(m => m.id));
   }
 
   // ---------- Student onboarding wizard ------------------------------------
