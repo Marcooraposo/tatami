@@ -277,6 +277,27 @@ body {
 }
 .list-header:hover { background: transparent; }
 
+/* ---------- Stat cards ---------- */
+
+.stat-row, .stats-row {
+  display: flex; flex-wrap: wrap; gap: var(--sp-4);
+  margin-bottom: var(--sp-5);
+}
+.stat-card {
+  flex: 1; min-width: 140px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-sm);
+}
+.stat-value {
+  font-size: 28px; font-weight: 700; line-height: 1; color: var(--text);
+}
+.stat-label {
+  font-size: 12px; color: var(--text-muted); margin-top: var(--sp-2); font-weight: 600;
+}
+
 /* ---------- Progress bar ---------- */
 
 .bar {
