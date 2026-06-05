@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tatami — Curriculum</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .layout { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
+
+    /* Sidebar */
+    .side { border-right: 1px solid var(--border); background: var(--surface); position: sticky; top: 0; height: 100vh; overflow-y: auto; padding: var(--sp-4); }
+    .side h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-faint); margin: 0 0 var(--sp-3); }
+    .nav-item { display: flex; justify-content: space-between; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); cursor: pointer; color: var(--text-muted); text-decoration: none; font-size: 13px; }
+    .nav-item:hover { background: var(--surface-alt); color: var(--text); }
+    .nav-item.active { background: var(--surface-alt); color: var(--text); font-weight: 600; }
+    .badge { background: var(--surface-alt); color: var(--text-muted); border: 1px solid var(--border); border-radius: 999px; padding: 1px 8px; font-size: 11px; font-variant-numeric: tabular-nums; }
+    .nav-item.active .badge { background: var(--surface); }
+
+    /* Main */
+    .main { padding: var(--sp-5) var(--sp-6); max-width: 1100px; }
+    .topbar { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--sp-4); margin-bottom: var(--sp-5); }
+    .topbar h1 { margin: 0 0 var(--sp-1); font-size: 22px; }
+    .subtitle { color: var(--text-muted); font-size: 13px; }
+    .cta-row { display: flex; gap: var(--sp-2); flex-shrink: 0; }
+    .btn { font: inherit; font-size: 13px; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); cursor: pointer; }
+    .btn:hover { background: var(--surface-alt); }
+    .btn.primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .btn.primary:hover { background: var(--primary-hover); }
+    .btn.sm { padding: 2px 8px; font-size: 12px; }
+
+    /* Mode toggle */
+    .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: var(--r-sm); overflow: hidden; }
+    .seg button { font: inherit; font-size: 12px; padding: var(--sp-2) var(--sp-3); border: none; background: var(--surface); color: var(--text-muted); cursor: pointer; }
+    .seg button.on { background: var(--primary); color: #fff; }
+
+    /* Filters */
+    .filters { display: flex; flex-wrap: wrap; gap: var(--sp-2); align-items: center; margin-bottom: var(--sp-5); padding: var(--sp-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-md); }
+    .filters select, .filters input { font: inherit; font-size: 13px; padding: 6px 8px; border: 1px solid var(--border-strong); border-radius: var(--r-sm); background: var(--surface); color: var(--text); }
+    .filters .spacer { flex: 1; }
+
+    /* Module section */
+    .module { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface); margin-bottom: var(--sp-4); overflow: hidden; scroll-margin-top: var(--sp-4); }
+    .module-head { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); cursor: pointer; user-select: none; }
+    .module-head:hover { background: var(--surface-alt); }
+    .module-head .chev { transition: transform .15s; color: var(--text-faint); }
+    .module.collapsed .chev { transform: rotate(-90deg); }
+    .module-head .mname { font-weight: 600; font-size: 15px; }
+    .module-head .mspacer { flex: 1; }
+    .cbar { display: inline-flex; height: 6px; width: 120px; border-radius: 999px; overflow: hidden; background: var(--surface-alt); }
+    .cbar span { display: block; height: 100%; }
+    .cb-Beginner { background: var(--success); }
+    .cb-Intermediate { background: var(--accent); }
+    .cb-Advanced { background: var(--warn); }
+    .cb-Expert { background: var(--danger); }
+    .module.collapsed .module-body { display: none; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-faint); padding: var(--sp-2) var(--sp-4); border-top: 1px solid var(--border); }
+    tbody td { padding: var(--sp-3) var(--sp-4); border-top: 1px solid var(--border); vertical-align: middle; }
+    tbody tr:hover { background: var(--surface-alt); }
+    .tname { font-weight: 500; color: var(--text); text-decoration: none; }
+    .tname:hover { color: var(--accent); text-decoration: underline; }
+    .pill { display: inline-block; font-size: 11px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface-alt); color: var(--text-muted); }
+    .pill.c-Beginner { color: var(--success); border-color: var(--success); }
+    .pill.c-Intermediate { color: var(--accent); border-color: var(--accent); }
+    .pill.c-Advanced { color: var(--warn); border-color: var(--warn); }
+    .pill.c-Expert { color: var(--danger); border-color: var(--danger); }
+    .row-hidden { opacity: .45; }
+    .actions { display: flex; gap: var(--sp-2); justify-content: flex-end; }
+    .admin-only { display: none; }
+    body[data-mode="admin"] .admin-only { display: flex; }
+
+    .empty { padding: var(--sp-5); text-align: center; color: var(--text-muted); font-size: 13px; }
+    .empty .btn { margin-top: var(--sp-3); }
+    .module-empty { padding: var(--sp-4); color: var(--text-faint); font-size: 13px; display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+    .loading { padding: var(--sp-7); text-align: center; color: var(--text-muted); }
+    .hide-when-filtered.gone { display: none; }
+  </style>
+</head>
+<body data-mode="view">
+  <div class="layout">
+    <aside class="side">
+      <h2>Modules</h2>
+      <nav id="moduleNav"></nav>
+    </aside>
+    <main class="main">
+      <div class="topbar">
+        <div>
+          <h1 id="curTitle">Curriculum</h1>
+          <div class="subtitle" id="curSummary">Loading…</div>
+        </div>
+        <div class="cta-row">
+          <div class="seg" id="modeToggle">
+            <button data-mode="view" class="on">View</button>
+            <button data-mode="admin">Admin</button>
+          </div>
+          <a class="btn" href="/onboarding">Edit Curriculum</a>
+          <button class="btn primary admin-only" id="addTechBtn">+ Add Technique</button>
+        </div>
+      </div>
+
+      <div class="filters" id="filters">
+        <select id="fComplexity"><option value="">All complexity</option></select>
+        <select id="fType"><option value="">All types</option></select>
+        <select id="fRuleset"><option value="">All rulesets</option></select>
+        <select id="fContext"><option value="">All contexts</option></select>
+        <select id="fStatus">
+          <option value="active">Active</option>
+          <option value="">Active + hidden</option>
+          <option value="hidden">Hidden only</option>
+        </select>
+        <input id="fSearch" type="search" placeholder="Search techniques…" />
+        <span class="spacer"></span>
+        <button class="btn sm" id="clearFilters">Clear</button>
+      </div>
+
+      <div id="content"><div class="loading">Loading curriculum…</div></div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script>
+  // =============================================================================
+  // curriculum.html — Revised Curriculum Page (read-only + admin affordances)
+  // Reads live from Supabase.
+  //   ?curriculum=<id>  → load a specific academy curriculum
+  //   (none)            → master technique list grouped by default module
+  // =============================================================================
+
+  const $ = (s, r = document) => r.querySelector(s);
+  const params = new URLSearchParams(location.search);
+  const CURRICULUM_ID = params.get('curriculum');
+
+  const STATE = {
+    modules: [],          // [{id,name,...}]
+    techniques: [],       // master techniques
+    membership: {},       // techniqueId -> { module_id, is_hidden, sequence_order }
+    curriculum: null,     // curriculum_configs row (or null)
+    filters: { complexity: '', type: '', ruleset: '', context: '', status: 'active', search: '' },
+    collapsed: new Set()
+  };
+
+  async function load() {
+    const [{ data: modules }, { data: techniques }] = await Promise.all([
+      supabase.from('modules').select('*').order('default_order'),
+      supabase.from('techniques').select('*').order('number')
+    ]);
+    STATE.modules = modules || [];
+    STATE.techniques = techniques || [];
+
+    if (CURRICULUM_ID) {
+      const [{ data: cfg }, { data: ct }] = await Promise.all([
+        supabase.from('curriculum_configs').select('*').eq('id', CURRICULUM_ID).single(),
+        supabase.from('curriculum_techniques').select('*').eq('curriculum_id', CURRICULUM_ID)
+      ]);
+      STATE.curriculum = cfg || null;
+      (ct || []).forEach(r => { STATE.membership[r.technique_id] = r; });
+    }
+    buildFilterOptions();
+    render();
+  }
+
+  // A technique is "in" the curriculum if there's no curriculum (master view)
+  // or it has a membership row. Module + hidden come from membership when present.
+  function effectiveRows() {
+    return STATE.techniques
+      .filter(t => !CURRICULUM_ID || STATE.membership[t.id])
+      .map(t => {
+        const m = STATE.membership[t.id];
+        return {
+          tech: t,
+          moduleId: m ? (m.module_id || t.default_module_id) : t.default_module_id,
+          hidden: m ? m.is_hidden : false,
+          order: m ? m.sequence_order : t.number
+        };
+      });
+  }
+
+  function passesFilters(row) {
+    const f = STATE.filters, t = row.tech;
+    if (f.complexity && t.complexity !== f.complexity) return false;
+    if (f.type && t.type !== f.type) return false;
+    if (f.ruleset && t.ruleset !== f.ruleset) return false;
+    if (f.context && t.context !== f.context) return false;
+    if (f.status === 'active' && row.hidden) return false;
+    if (f.status === 'hidden' && !row.hidden) return false;
+    if (f.search) {
+      const q = f.search.toLowerCase();
+      if (!(t.name.toLowerCase().includes(q) || (t.type || '').toLowerCase().includes(q))) return false;
+    }
+    return true;
+  }
+
+  function buildFilterOptions() {
+    const uniq = (k) => [...new Set(STATE.techniques.map(t => t[k]).filter(Boolean))].sort();
+    const fill = (sel, vals) => vals.forEach(v => {
+      const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o);
+    });
+    fill($('#fComplexity'), ['Beginner', 'Intermediate', 'Advanced', 'Expert']);
+    fill($('#fType'), uniq('type'));
+    fill($('#fRuleset'), uniq('ruleset'));
+    fill($('#fContext'), uniq('context'));
+  }
+
+  function render() {
+    // Title + summary
+    $('#curTitle').textContent = STATE.curriculum ? STATE.curriculum.name : 'Master Curriculum';
+    const total = effectiveRows().length;
+    const summaryBits = [STATE.curriculum?.type_summary, `${total} techniques`].filter(Boolean);
+    $('#curSummary').textContent = summaryBits.join(' · ');
+
+    const rows = effectiveRows();
+    const byModule = {};
+    rows.forEach(r => { (byModule[r.moduleId] = byModule[r.moduleId] || []).push(r); });
+
+    // Sidebar nav
+    const nav = $('#moduleNav'); nav.innerHTML = '';
+    STATE.modules.forEach(m => {
+      const list = (byModule[m.id] || []);
+      if (!list.length) return;
+      const a = document.createElement('a');
+      a.className = 'nav-item'; a.href = `#mod-${m.id}`;
+      a.innerHTML = `<span>${m.name}</span><span class="badge">${list.filter(passesFilters).length}</span>`;
+      a.onclick = (e) => { e.preventDefault(); STATE.collapsed.delete(m.id); render();
+        document.getElementById(`sec-${m.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
+      nav.appendChild(a);
+    });
+
+    // Main content
+    const c = $('#content'); c.innerHTML = '';
+    if (!rows.length) {
+      c.innerHTML = `<div class="empty">This curriculum has no techniques yet.
+        <br><a class="btn primary" href="/onboarding">Run the curriculum wizard</a></div>`;
+      return;
+    }
+
+    let anyVisible = false;
+    STATE.modules.forEach(m => {
+      const list = (byModule[m.id] || []);
+      if (!list.length) return;
+      const visible = list.filter(passesFilters);
+      // If filters active and nothing matches, collapse module out
+      const filtersActive = Object.entries(STATE.filters).some(([k, v]) => v && k !== 'status' || (k === 'status' && v !== 'active'));
+      if (!visible.length && filtersActive) return;
+      anyVisible = true;
+
+      const sec = document.createElement('section');
+      sec.className = 'module' + (STATE.collapsed.has(m.id) ? ' collapsed' : '');
+      sec.id = `sec-${m.id}`;
+
+      // complexity breakdown bar
+      const counts = { Beginner: 0, Intermediate: 0, Advanced: 0, Expert: 0 };
+      visible.forEach(r => { counts[r.tech.complexity] = (counts[r.tech.complexity] || 0) + 1; });
+      const tot = visible.length || 1;
+      const bar = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
+        .map(k => counts[k] ? `<span class="cb-${k}" style="width:${counts[k] / tot * 100}%" title="${k}: ${counts[k]}"></span>` : '')
+        .join('');
+
+      sec.innerHTML = `
+        <div class="module-head">
+          <span class="chev">▾</span>
+          <span class="mname">${m.name}</span>
+          <span class="badge">${visible.length}</span>
+          <span class="mspacer"></span>
+          <span class="cbar">${bar}</span>
+        </div>
+        <div class="module-body"></div>`;
+      sec.querySelector('.module-head').onclick = () => {
+        STATE.collapsed.has(m.id) ? STATE.collapsed.delete(m.id) : STATE.collapsed.add(m.id);
+        render();
+      };
+
+      const body = sec.querySelector('.module-body');
+      if (!visible.length) {
+        body.innerHTML = `<div class="module-empty"><span>All techniques in this module are hidden.</span>
+          <button class="btn sm admin-only" data-restore="${m.id}">Restore all</button></div>`;
+      } else {
+        visible.sort((a, b) => a.order - b.order);
+        body.innerHTML = `<table>
+          <thead><tr><th>Name</th><th>Type</th><th>Complexity</th><th>Ruleset</th><th>Context</th><th>Status</th><th></th></tr></thead>
+          <tbody>${visible.map(rowHtml).join('')}</tbody></table>`;
+      }
+      c.appendChild(sec);
+    });
+
+    if (!anyVisible) {
+      c.innerHTML = `<div class="empty">No techniques match the current filters.
+        <br><button class="btn" onclick="clearFilters()">Clear filters</button></div>`;
+    }
+    wireRowActions();
+  }
+
+  function rowHtml(r) {
+    const t = r.tech;
+    return `<tr class="${r.hidden ? 'row-hidden' : ''}">
+      <td><a class="tname" href="/curriculum/techniques/${t.slug}">${t.name}</a></td>
+      <td>${t.type || '—'}</td>
+      <td><span class="pill c-${t.complexity}">${t.complexity}</span></td>
+      <td><span class="pill">${t.ruleset}</span></td>
+      <td><span class="pill">${t.context}</span></td>
+      <td>${r.hidden ? '<span class="pill">Hidden</span>' : '<span class="pill c-Beginner">Active</span>'}</td>
+      <td><div class="actions admin-only">
+        <button class="btn sm" data-toggle="${t.id}">${r.hidden ? 'Restore' : 'Hide'}</button>
+      </div></td>
+    </tr>`;
+  }
+
+  function wireRowActions() {
+    document.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => toggleHidden(b.dataset.toggle));
+    document.querySelectorAll('[data-restore]').forEach(b => b.onclick = () => restoreModule(b.dataset.restore));
+  }
+
+  // Admin actions (only persist when viewing a real curriculum)
+  async function toggleHidden(techId) {
+    const m = STATE.membership[techId];
+    if (!CURRICULUM_ID || !m) { alert('Hiding requires an active curriculum. Run the wizard first.'); return; }
+    const next = !m.is_hidden;
+    m.is_hidden = next; render();
+    const { error } = await supabase.from('curriculum_techniques')
+      .update({ is_hidden: next }).eq('id', m.id);
+    if (error) { m.is_hidden = !next; render(); alert('Failed to save.'); }
+  }
+
+  async function restoreModule(moduleId) {
+    if (!CURRICULUM_ID) return;
+    const ids = Object.values(STATE.membership)
+      .filter(m => (m.module_id || '') === moduleId && m.is_hidden).map(m => m.id);
+    ids.forEach(id => { const row = Object.values(STATE.membership).find(x => x.id === id); if (row) row.is_hidden = false; });
+    render();
+    await supabase.from('curriculum_techniques').update({ is_hidden: false }).in('id', ids);
+  }
+
+  window.clearFilters = function () {
+    STATE.filters = { complexity: '', type: '', ruleset: '', context: '', status: 'active', search: '' };
+    ['fComplexity', 'fType', 'fRuleset', 'fContext'].forEach(id => $('#' + id).value = '');
+    $('#fStatus').value = 'active'; $('#fSearch').value = ''; render();
+  };
+
+  // Wire filter inputs
+  function bind() {
+    const map = { fComplexity: 'complexity', fType: 'type', fRuleset: 'ruleset', fContext: 'context', fStatus: 'status' };
+    Object.entries(map).forEach(([id, key]) =>
+      $('#' + id).addEventListener('change', e => { STATE.filters[key] = e.target.value; render(); }));
+    $('#fSearch').addEventListener('input', e => { STATE.filters.search = e.target.value; render(); });
+    $('#clearFilters').onclick = window.clearFilters;
+    $('#modeToggle').querySelectorAll('button').forEach(b => b.onclick = () => {
+      document.body.dataset.mode = b.dataset.mode;
+      $('#modeToggle').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+      render();
+    });
+    $('#addTechBtn').onclick = () => alert('Manual add from master DB — coming with the wizard step.');
+  }
+
+  bind();
+  load();
+  </script>
+</body>
+</html>
