@@ -9,6 +9,8 @@
 <body>
   <div id="app" class="app"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
   <script src="data.js"></script>
   <script>
   // =============================================================================
@@ -565,7 +567,10 @@
         id: 'finance-group', label: 'Finance', icon: '💳',
         items: [
           { id: 'memberships', label: 'Memberships', icon: '◈' },
+          { id: 'packages',    label: 'Packages',    icon: '🎟' },
+          { id: 'discounts',   label: 'Discounts',   icon: '%' },
           { id: 'billing',     label: 'Billing',     icon: '💳' },
+          { id: 'renewals',    label: 'Renewals',    icon: '🔄' },
         ]
       },
       {
@@ -1530,6 +1535,12 @@
                 onclick="printMembershipCard('${student.id}')">
                 🪪 Member Card
               </button>
+              <button class="btn btn-secondary" style="font-size:12px;padding:4px 12px"
+                id="app-link-btn-${student.id}"
+                onclick="copyStudentAppLink('${student.id}', this)"
+                title="Copy a direct link the student can open to log into the student app as themselves">
+                📱 App link
+              </button>
             </div>
             ${(() => {
               const fg = FAMILY_GROUPS.find(g => g.memberIds.includes(student.id));
@@ -1942,6 +1953,22 @@
 </html>`;
     const w = window.open('', '_blank', 'width=860,height=1000');
     if (w) { w.document.write(html); w.document.close(); }
+  }
+
+  function copyStudentAppLink(studentId, btn) {
+    // Build a deep-link URL the student can open to be auto-logged into the student app
+    const base = location.href.replace(/admin\.html.*$/, 'student.html');
+    const link = base + '#login/' + studentId;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(link).then(() => {
+        showToast('App link copied to clipboard');
+        if (btn) { const orig = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = orig; }, 1800); }
+      }).catch(() => {
+        prompt('Copy this link:', link);
+      });
+    } else {
+      prompt('Copy this link:', link);
+    }
   }
 
   function printCertificate(studentId, sportId, levelId, dateStr) {
@@ -4397,6 +4424,34 @@
       dashActionItems.push({ icon: '💳', label: dashOverdue.length + ' overdue invoice' + (dashOverdue.length !== 1 ? 's' : '') + ' from previous months', sub: null, onclick: "go('billing')" });
     }
 
+    // Missed check-ins — students booked for a completed class in the last 2 days but no attendance record
+    (function() {
+      const twoDaysAgoMs = todayMs - 2 * 86400000;
+      const recentCompleted = CLASSES.filter(function(c) {
+        const t = new Date(c.startsAt).getTime();
+        return c.status === 'completed' && t >= twoDaysAgoMs && t < todayMs;
+      });
+      const missedByStudent = {};
+      recentCompleted.forEach(function(cls) {
+        BOOKINGS.filter(function(b) { return b.classId === cls.id && b.status === 'booked'; }).forEach(function(b) {
+          const attended = ATTENDANCE.find(function(a) { return a.classId === cls.id && a.studentId === b.studentId && a.attended; });
+          if (!attended) {
+            if (!missedByStudent[b.studentId]) missedByStudent[b.studentId] = 0;
+            missedByStudent[b.studentId]++;
+          }
+        });
+      });
+      const missedEntries = Object.entries(missedByStudent);
+      if (missedEntries.length > 0) {
+        if (missedEntries.length === 1) {
+          const stu = STUDENTS.find(function(s) { return s.id === missedEntries[0][0]; });
+          if (stu) dashActionItems.push({ icon: '👻', label: stu.name + ' missed a booked class — consider reaching out', sub: null, onclick: "go('students/" + stu.id + "')" });
+        } else {
+          dashActionItems.push({ icon: '👻', label: missedEntries.length + ' students missed booked classes in the last 2 days', sub: null, onclick: "go('retention')" });
+        }
+      }
+    })();
+
     let actionItemsCard = '';
     if (dashActionItems.length > 0) {
       const rowsHtml = dashActionItems.map(function(item) {
@@ -5039,6 +5094,25 @@
           <button class="btn btn-secondary" onclick="go('dashboard')">Cancel</button>
           <button class="btn" onclick="saveSettings()">Save changes</button>
         </div>
+
+        <div class="card" style="margin-top:var(--sp-6)">
+          <h3 class="card-title" style="margin-bottom:var(--sp-1)">🗄 Data & Backup</h3>
+          <p class="muted" style="font-size:13px;margin-bottom:var(--sp-4)">Download a full backup of all your Tatami data, or restore from a previous backup.</p>
+          <div style="display:flex;gap:var(--sp-3);flex-wrap:wrap;align-items:center">
+            <button class="btn btn-secondary" onclick="backupData()">⬇ Download backup</button>
+            <label class="btn btn-secondary" style="cursor:pointer;margin:0">
+              ⬆ Restore from backup
+              <input type="file" accept=".json" style="display:none" onchange="restoreFromBackup(this)" />
+            </label>
+          </div>
+          <p class="faint" style="font-size:12px;margin-top:var(--sp-3)">Backup includes all students, attendance, classes, billing, and settings. Restoring will overwrite all current data.</p>
+        </div>
+
+        <div class="card" style="margin-top:var(--sp-4);border-color:#fca5a5;background:#fff1f2">
+          <h3 class="card-title" style="margin-bottom:var(--sp-1);color:var(--danger)">⚠ Danger zone</h3>
+          <p class="muted" style="font-size:13px;margin-bottom:var(--sp-4)">Permanently wipe all data and start fresh. This cannot be undone.</p>
+          <button class="btn" style="background:var(--danger);color:#fff;border-color:var(--danger)" onclick="factoryReset()">🗑 Reset all data</button>
+        </div>
       </div>
     `;
   }
@@ -5118,6 +5192,66 @@
     saveOrgSetup(updated);
     applyOrgSetup();
     renderApp(); // re-render so topbar name updates immediately
+  }
+
+  // ---------- Backup / Restore / Factory Reset --------------------------------
+
+  function backupData() {
+    // Collect all tatami_* localStorage keys plus the main data key
+    const backup = { _version: 1, _exportedAt: new Date().toISOString(), keys: {} };
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('tatami') || k === DATA_KEY)) {
+        try { backup.keys[k] = JSON.parse(localStorage.getItem(k)); }
+        catch { backup.keys[k] = localStorage.getItem(k); }
+      }
+    }
+    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tatami-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+    showToast('Backup downloaded ✓');
+  }
+
+  function restoreFromBackup(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const backup = JSON.parse(e.target.result);
+        if (!backup || !backup.keys) { showToast('Invalid backup file'); return; }
+        if (!confirm('This will overwrite all current data. Are you sure?')) { input.value = ''; return; }
+        Object.entries(backup.keys).forEach(([k, v]) => {
+          localStorage.setItem(k, typeof v === 'string' ? v : JSON.stringify(v));
+        });
+        loadPersistedData();
+        loadPersistedData(); // run twice to ensure all secondary keys (notes, billing, etc.) are loaded
+        renderApp();
+        showToast('Backup restored ✓');
+      } catch(err) {
+        showToast('Failed to restore: ' + err.message);
+      }
+      input.value = '';
+    };
+    reader.readAsText(file);
+  }
+
+  function factoryReset() {
+    if (!confirm('This will permanently delete ALL your data — students, classes, attendance, billing, and settings. There is no undo. Continue?')) return;
+    if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+    // Remove all tatami_* keys
+    const toRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && (k.startsWith('tatami') || k === DATA_KEY)) toRemove.push(k);
+    }
+    toRemove.forEach(k => localStorage.removeItem(k));
+    // Reload page to reinitialise from seed data
+    window.location.reload();
   }
 
   // ---------- Screen: Membership Plans ---------------------------------------
@@ -10846,12 +10980,63 @@ ${CONFIG.academyName || 'The Team'}`;
 
   // ---------- Waivers -------------------------------------------------------
 
-  const WAIVERS_KEY = 'tatami_waivers_v1';
-  const WAIVER_DOCS = [
+  const WAIVERS_KEY      = 'tatami_waivers_v1';
+  const WAIVER_DOCS_KEY  = 'tatami_waiver_docs_v1';
+
+  const WAIVER_DOCS_DEFAULT = [
     { id: 'liability', label: 'Liability Waiver',   icon: '🛡' },
     { id: 'photo',     label: 'Photo Release',      icon: '📷' },
     { id: 'medical',   label: 'Medical Info Form',  icon: '🏥' },
   ];
+
+  // Mutable — admins can add/remove document types
+  let WAIVER_DOCS = WAIVER_DOCS_DEFAULT.slice();
+
+  function loadWaiverDocs() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(WAIVER_DOCS_KEY));
+      if (Array.isArray(saved) && saved.length) {
+        WAIVER_DOCS = saved;
+      }
+    } catch {}
+  }
+
+  function saveWaiverDocs() {
+    try { localStorage.setItem(WAIVER_DOCS_KEY, JSON.stringify(WAIVER_DOCS)); } catch {}
+  }
+
+  function addWaiverDoc() {
+    const iconEl  = document.getElementById('wdoc-icon');
+    const labelEl = document.getElementById('wdoc-label');
+    const icon    = (iconEl?.value.trim()  || '📄');
+    const label   = (labelEl?.value.trim() || '');
+    if (!label) { showToast('Document name is required'); return; }
+    if (WAIVER_DOCS.some(d => d.label.toLowerCase() === label.toLowerCase())) {
+      showToast('A document with that name already exists'); return;
+    }
+    const id = 'doc-' + Date.now();
+    WAIVER_DOCS.push({ id, label, icon });
+    saveWaiverDocs();
+    document.getElementById('content').innerHTML = WaiversScreen();
+  }
+
+  function deleteWaiverDoc(docId) {
+    const doc = WAIVER_DOCS.find(d => d.id === docId);
+    if (!doc) return;
+    // Count how many students have signed this doc
+    const signedCount = Object.values(WAIVER_RECORDS).filter(r => r[docId]?.signedAt).length;
+    const msg = signedCount > 0
+      ? `Delete "${doc.label}"? This will remove ${signedCount} existing signature record${signedCount !== 1 ? 's' : ''}. This cannot be undone.`
+      : `Delete "${doc.label}"?`;
+    if (!confirm(msg)) return;
+    // Remove from doc list
+    WAIVER_DOCS = WAIVER_DOCS.filter(d => d.id !== docId);
+    saveWaiverDocs();
+    // Clean up any signatures for this doc
+    Object.values(WAIVER_RECORDS).forEach(r => { delete r[docId]; });
+    saveWaivers();
+    document.getElementById('content').innerHTML = WaiversScreen();
+  }
 
   // WAIVER_RECORDS: { [studentId]: { [docId]: { signedAt: ISO } | null } }
   let WAIVER_RECORDS = {};
@@ -11006,6 +11191,40 @@ ${CONFIG.academyName || 'The Team'}`;
                 </tbody>
               </table>
             </div>`}
+        </div>
+
+        <!-- Manage document types -->
+        <div style="margin-top:var(--sp-5)">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-3)">
+            <h2 style="font-size:15px;font-weight:700;margin:0">📋 Document types</h2>
+          </div>
+          <div class="card" style="padding:0">
+            ${WAIVER_DOCS.map(d => {
+              const signedCount = Object.values(WAIVER_RECORDS).filter(r => r[d.id]?.signedAt).length;
+              const isDefault = WAIVER_DOCS_DEFAULT.some(def => def.id === d.id);
+              return `
+                <div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);border-bottom:1px solid var(--border)">
+                  <span style="font-size:18px;width:24px;text-align:center">${d.icon}</span>
+                  <div style="flex:1">
+                    <div style="font-weight:600;font-size:13px">${d.label}</div>
+                    <div style="font-size:11px;color:var(--text-muted)">${signedCount} student${signedCount !== 1 ? 's' : ''} signed</div>
+                  </div>
+                  ${isDefault
+                    ? `<span style="font-size:11px;color:var(--text-faint);font-style:italic">built-in</span>`
+                    : `<button class="btn btn-secondary" style="font-size:11px;padding:3px 10px;color:var(--danger,#dc2626);border-color:var(--danger,#dc2626)"
+                         onclick="deleteWaiverDoc('${d.id}')">✕ Delete</button>`}
+                </div>`;
+            }).join('')}
+            <!-- Add new doc type form -->
+            <div style="padding:var(--sp-4);background:var(--surface-alt);display:flex;gap:var(--sp-3);align-items:center;flex-wrap:wrap">
+              <input id="wdoc-icon" class="input" style="width:64px;text-align:center;font-size:18px"
+                placeholder="📄" maxlength="2" />
+              <input id="wdoc-label" class="input" style="flex:1;min-width:160px"
+                placeholder="Document name (e.g. Sparring Agreement)"
+                onkeydown="if(event.key==='Enter') addWaiverDoc()" />
+              <button class="btn btn-secondary" style="white-space:nowrap" onclick="addWaiverDoc()">+ Add document type</button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -13426,6 +13645,7 @@ ${CONFIG.academyName || 'The Team'}`;
   loadStudentMastery();
   loadHomework();
   loadGoals();
+  loadWaiverDocs();
   loadWaivers();
   loadPrivateLessons();
   loadFamilyGroups();
