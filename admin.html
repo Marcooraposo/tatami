@@ -3347,9 +3347,12 @@
 
   const CV2 = {
     loaded: false,
+    sports: [],
+    configs: [],             // curriculum_configs rows
     modules: [],
-    techniques: [],
+    techniques: [],          // all techniques (all sports)
     membership: {},          // techniqueId -> curriculum_techniques row (when a curriculum is active)
+    sportId: null,
     curriculumId: null,
     mode: 'view',
     collapsed: {},
@@ -3425,6 +3428,12 @@
             <button class="btn btn-secondary" onclick="go('settings')">⚙ Settings</button>
           </div>
         </div>
+        <div class="cv2-bar" style="margin-bottom:var(--sp-3)">
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600">Sport</label>
+          <select id="cv2Sport"></select>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600;margin-left:var(--sp-3)">Curriculum</label>
+          <select id="cv2Curriculum"></select>
+        </div>
         <div class="cv2-bar">
           <select id="cv2Category"><option value="">All categories</option></select>
           <select id="cv2Complexity"><option value="">All complexity</option></select>
@@ -3450,27 +3459,62 @@
     if (!content) return; // navigated away
     if (!CV2.loaded) {
       try {
-        const [{ data: modules, error: mErr }, { data: techs, error: tErr }] = await Promise.all([
+        const [mods, techs, sports, configs] = await Promise.all([
           sb.from('modules').select('*').order('default_order'),
-          sb.from('techniques').select('*').order('number')
+          sb.from('techniques').select('*').order('number'),
+          sb.from('sports').select('*'),
+          sb.from('curriculum_configs').select('*').order('created_at')
         ]);
-        if (mErr || tErr) throw (mErr || tErr);
-        CV2.modules = modules || [];
-        CV2.techniques = techs || [];
+        if (mods.error || techs.error || sports.error) throw (mods.error || techs.error || sports.error);
+        CV2.modules = mods.data || [];
+        CV2.techniques = techs.data || [];
+        CV2.sports = sports.data || [];
+        CV2.configs = configs.data || [];
+        CV2.sportId = CV2.sports[0]?.id || null;
         CV2.loaded = true;
       } catch (e) {
         content.innerHTML = `<div class="cv2-empty">Couldn't load curriculum.<br>
-          <span class="muted">Run migrations 003 + 004 in Supabase, then reload.</span></div>`;
+          <span class="muted">Run migrations 003–005 in Supabase, then reload.</span></div>`;
         return;
       }
       buildCV2Filters();
+      populateCV2Scope();
       bindCV2();
     }
     renderCV2();
   }
 
+  // Populate the Sport + Curriculum selectors
+  function populateCV2Scope() {
+    const sportSel = document.getElementById('cv2Sport');
+    if (sportSel) {
+      sportSel.innerHTML = CV2.sports
+        .map(s => `<option value="${s.id}">${t(s.name)}</option>`).join('');
+      sportSel.value = CV2.sportId || '';
+    }
+    populateCV2Curriculum();
+  }
+
+  function populateCV2Curriculum() {
+    const sel = document.getElementById('cv2Curriculum');
+    if (!sel) return;
+    const forSport = CV2.configs.filter(c => (c.sport_id || 'sport-bjj') === CV2.sportId);
+    sel.innerHTML = `<option value="">Master Curriculum</option>` +
+      forSport.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    sel.value = CV2.curriculumId || '';
+  }
+
+  async function loadCV2Membership() {
+    CV2.membership = {};
+    if (!CV2.curriculumId) return;
+    const { data } = await sb.from('curriculum_techniques')
+      .select('*').eq('curriculum_id', CV2.curriculumId);
+    (data || []).forEach(r => { CV2.membership[r.technique_id] = r; });
+  }
+
   function cv2Rows() {
     return CV2.techniques
+      .filter(t => (t.sport_id || 'sport-bjj') === CV2.sportId)
       .filter(t => !CV2.curriculumId || CV2.membership[t.id])
       .map(t => {
         const m = CV2.membership[t.id];
@@ -3525,6 +3569,20 @@
       const st = document.getElementById('cv2Status'); if (st) st.value='active';
       if (search) search.value=''; renderCV2();
     };
+    const sportSel = document.getElementById('cv2Sport');
+    if (sportSel) sportSel.onchange = e => {
+      CV2.sportId = e.target.value;
+      CV2.curriculumId = null;
+      CV2.membership = {};
+      populateCV2Curriculum();
+      renderCV2();
+    };
+    const curSel = document.getElementById('cv2Curriculum');
+    if (curSel) curSel.onchange = async e => {
+      CV2.curriculumId = e.target.value || null;
+      await loadCV2Membership();
+      renderCV2();
+    };
     const mode = document.getElementById('cv2Mode');
     if (mode) mode.querySelectorAll('button').forEach(b => b.onclick = () => {
       CV2.mode = b.dataset.mode;
@@ -3537,8 +3595,11 @@
     const content = document.getElementById('cv2Content');
     if (!content) return;
     const rows = cv2Rows();
-    document.getElementById('cv2Title').textContent = 'Master Curriculum';
-    document.getElementById('cv2Summary').textContent = `${rows.length} techniques`;
+    const cfg = CV2.configs.find(c => c.id === CV2.curriculumId);
+    document.getElementById('cv2Title').textContent = cfg ? cfg.name : 'Master Curriculum';
+    const sportName = CV2.sports.find(s => s.id === CV2.sportId);
+    const bits = [sportName ? t(sportName.name) : null, cfg?.type_summary, `${rows.length} techniques`].filter(Boolean);
+    document.getElementById('cv2Summary').textContent = bits.join(' · ');
 
     const byModule = {};
     rows.forEach(r => { (byModule[r.moduleId] = byModule[r.moduleId] || []).push(r); });
