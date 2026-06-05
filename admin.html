@@ -6228,7 +6228,7 @@
             const monthLabel = monthReq > 0 ? `${monthsAtLevel}/${monthReq} mo` : null;
             const subLabel = [classLabel, monthLabel].filter(Boolean).join(' · ');
             return `
-              <div class="list-row" style="cursor:pointer;flex-direction:column;align-items:stretch;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4)"
+              <div class="list-row" style="cursor:pointer;display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4)"
                    onclick="go('students/${stu.id}')">
                 <div style="display:flex;align-items:center;gap:var(--sp-3)">
                   <div class="avatar">${stu.initials}</div>
@@ -6245,7 +6245,7 @@
                   </div>
                 </div>
                 <div style="height:5px;background:var(--surface-alt);border-radius:3px;overflow:hidden;margin:0 0 var(--sp-1)">
-                  <div style="height:100%;width:${overallPct}%;background:${barColor};border-radius:3px;transition:width .4s"></div>
+                  <div style="height:100%;width:${Math.min(overallPct, 100)}%;background:${barColor};border-radius:3px;transition:width .4s"></div>
                 </div>
               </div>`;
           }).join('')}
