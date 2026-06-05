@@ -3470,6 +3470,15 @@
         CV2.techniques = techs.data || [];
         CV2.sports = sports.data || [];
         CV2.configs = configs.data || [];
+        // Fallback: if the sports table is empty, derive sports from the
+        // techniques' sport_id (or default to BJJ) so the page still works.
+        if (!CV2.sports.length) {
+          const ids = [...new Set(CV2.techniques.map(t => t.sport_id).filter(Boolean))];
+          CV2.sports = (ids.length ? ids : ['sport-bjj']).map(id => ({
+            id, name: id === 'sport-bjj'
+              ? { en: 'Brazilian Jiu-Jitsu', pt: 'Jiu-Jitsu Brasileiro' } : { en: id }
+          }));
+        }
         CV2.sportId = CV2.sports[0]?.id || null;
         CV2.loaded = true;
       } catch (e) {
