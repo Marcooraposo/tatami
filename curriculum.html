@@ -144,16 +144,16 @@
 
   async function load() {
     const [{ data: modules }, { data: techniques }] = await Promise.all([
-      supabase.from('modules').select('*').order('default_order'),
-      supabase.from('techniques').select('*').order('number')
+      sb.from('modules').select('*').order('default_order'),
+      sb.from('techniques').select('*').order('number')
     ]);
     STATE.modules = modules || [];
     STATE.techniques = techniques || [];
 
     if (CURRICULUM_ID) {
       const [{ data: cfg }, { data: ct }] = await Promise.all([
-        supabase.from('curriculum_configs').select('*').eq('id', CURRICULUM_ID).single(),
-        supabase.from('curriculum_techniques').select('*').eq('curriculum_id', CURRICULUM_ID)
+        sb.from('curriculum_configs').select('*').eq('id', CURRICULUM_ID).single(),
+        sb.from('curriculum_techniques').select('*').eq('curriculum_id', CURRICULUM_ID)
       ]);
       STATE.curriculum = cfg || null;
       (ct || []).forEach(r => { STATE.membership[r.technique_id] = r; });
@@ -318,7 +318,7 @@
     if (!CURRICULUM_ID || !m) { alert('Hiding requires an active curriculum. Run the wizard first.'); return; }
     const next = !m.is_hidden;
     m.is_hidden = next; render();
-    const { error } = await supabase.from('curriculum_techniques')
+    const { error } = await sb.from('curriculum_techniques')
       .update({ is_hidden: next }).eq('id', m.id);
     if (error) { m.is_hidden = !next; render(); alert('Failed to save.'); }
   }
@@ -329,7 +329,7 @@
       .filter(m => (m.module_id || '') === moduleId && m.is_hidden).map(m => m.id);
     ids.forEach(id => { const row = Object.values(STATE.membership).find(x => x.id === id); if (row) row.is_hidden = false; });
     render();
-    await supabase.from('curriculum_techniques').update({ is_hidden: false }).in('id', ids);
+    await sb.from('curriculum_techniques').update({ is_hidden: false }).in('id', ids);
   }
 
   window.clearFilters = function () {
