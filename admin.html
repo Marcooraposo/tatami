@@ -4048,7 +4048,12 @@
       type_summary: wizTypeSummary(),
       wizard_answers: WIZ.answers
     };
-    const { data: cfg, error: cErr } = await sb.from('curriculum_configs').insert(cfgRow).select().single();
+    let { data: cfg, error: cErr } = await sb.from('curriculum_configs').insert(cfgRow).select().single();
+    // Fallback if migration 005 (sport_id column) hasn't been run yet.
+    if (cErr && /sport_id/.test(cErr.message || '')) {
+      const { sport_id, ...noSport } = cfgRow;
+      ({ data: cfg, error: cErr } = await sb.from('curriculum_configs').insert(noSport).select().single());
+    }
     if (cErr || !cfg) { WIZ.saving = false; renderWizard(); showToast('Save failed: ' + (cErr?.message||'unknown')); return; }
 
     const included = wizIncludedTechs();
