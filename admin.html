@@ -478,6 +478,7 @@
         break;
       case 'curriculum':        content.innerHTML = CurriculumBuilder();     break;
       case 'curriculum-wizard': content.innerHTML = CurriculumWizard();      break;
+      case 'curriculum-tech':   content.innerHTML = TechniquePage(route.params[0]); break;
       case 'promotion-rules':   content.innerHTML = PromotionRulesScreen(); break;
       case 'packages':          content.innerHTML = PackagesScreen();       break;
       case 'grading':           content.innerHTML = GradingScreen();        break;
@@ -3672,7 +3673,7 @@
   function cv2RowHtml(r) {
     const t = r.tech;
     return `<tr class="${r.hidden ? 'cv2-row-hidden' : ''}">
-      <td><a class="cv2-name" href="/curriculum/techniques/${t.slug}">${t.name}</a></td>
+      <td><span class="cv2-name" onclick="go('curriculum-tech/${t.slug}')">${t.name}</span></td>
       <td>${t.category}</td>
       <td>${t.type || '—'}</td>
       <td><span class="cv2-pill c-${t.complexity}">${t.complexity}</span></td>
@@ -4080,6 +4081,182 @@
     WIZ.saving = false;
     showToast('Curriculum created ✓');
     go('curriculum');
+  }
+
+  // ---------- Technique Item Page ------------------------------------------
+  // Route: #/curriculum-tech/:slug — full detail for a single technique.
+
+  const TP = { slug: null, tech: null, module: null, siblings: [], prereqs: [], chains: [], editing: null };
+
+  function TechniquePage(slug) {
+    TP.slug = slug;
+    setTimeout(loadTechniquePage, 0);
+    return `<div id="tpRoot"><div class="cv2-empty" style="padding:var(--sp-7)">Loading…</div></div>`;
+  }
+
+  async function loadTechniquePage() {
+    const root = document.getElementById('tpRoot');
+    if (!root) return;
+    const { data: tech, error } = await sb.from('techniques').select('*').eq('slug', TP.slug).single();
+    if (error || !tech) { root.innerHTML = `<div class="cv2-empty">Technique not found. <a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent)">Back to curriculum</a></div>`; return; }
+    TP.tech = tech;
+
+    const [modRes, sibRes, relRes] = await Promise.all([
+      tech.default_module_id ? sb.from('modules').select('*').eq('id', tech.default_module_id).single() : Promise.resolve({ data: null }),
+      sb.from('techniques').select('id,name,slug,number').eq('default_module_id', tech.default_module_id || '').order('number'),
+      sb.from('technique_relationships').select('*').eq('technique_id', tech.id)
+    ]);
+    TP.module = modRes.data || null;
+    TP.siblings = sibRes.data || [];
+    const rels = relRes.data || [];
+    const relIds = rels.map(r => r.related_technique_id);
+    let relTechs = [];
+    if (relIds.length) {
+      const { data } = await sb.from('techniques').select('id,name,slug').in('id', relIds);
+      relTechs = data || [];
+    }
+    const nameOf = (id) => relTechs.find(x => x.id === id);
+    TP.prereqs = rels.filter(r => r.relationship_type === 'prerequisite').map(r => nameOf(r.related_technique_id)).filter(Boolean);
+    TP.chains  = rels.filter(r => r.relationship_type === 'chains_to').map(r => nameOf(r.related_technique_id)).filter(Boolean);
+    renderTechniquePage();
+  }
+
+  function tpBadge(label, val, cls) {
+    if (!val) return '';
+    return `<span class="cv2-pill ${cls||''}" style="font-size:11px"><span style="color:var(--text-faint)">${label}:</span> ${val}</span>`;
+  }
+
+  function renderTechniquePage() {
+    const root = document.getElementById('tpRoot');
+    if (!root) return;
+    const t = TP.tech;
+    const admin = CV2.mode === 'admin';
+    const idx = TP.siblings.findIndex(s => s.id === t.id);
+    const prev = idx > 0 ? TP.siblings[idx - 1] : null;
+    const next = idx >= 0 && idx < TP.siblings.length - 1 ? TP.siblings[idx + 1] : null;
+
+    const linkList = (arr) => arr.length
+      ? arr.map(x => `<a onclick="go('curriculum-tech/${x.slug}')" style="cursor:pointer;color:var(--accent);display:block;padding:2px 0">${x.name}</a>`).join('')
+      : `<span class="muted" style="font-size:13px">None.</span>`;
+
+    const descBlock = TP.editing === 'description'
+      ? `<textarea id="tpEdit" class="input" style="width:100%;min-height:90px">${(t.description||'').replace(/</g,'&lt;')}</textarea>
+         <div style="margin-top:var(--sp-2);display:flex;gap:var(--sp-2)">
+           <button class="btn btn-primary" onclick="tpSaveField('description')">Save</button>
+           <button class="btn btn-secondary" onclick="TP.editing=null;renderTechniquePage()">Cancel</button></div>`
+      : `<p style="font-size:14px;line-height:1.6">${t.description || '<span class="muted">No description yet.</span>'}</p>
+         ${admin ? `<button class="btn btn-secondary" style="font-size:12px" onclick="TP.editing='description';renderTechniquePage()">Edit</button>` : ''}`;
+
+    const keyBlock = TP.editing === 'key_details'
+      ? `<textarea id="tpEdit" class="input" style="width:100%;min-height:90px">${(t.key_details||'').replace(/</g,'&lt;')}</textarea>
+         <div style="margin-top:var(--sp-2);display:flex;gap:var(--sp-2)">
+           <button class="btn btn-primary" onclick="tpSaveField('key_details')">Save</button>
+           <button class="btn btn-secondary" onclick="TP.editing=null;renderTechniquePage()">Cancel</button></div>`
+      : `<p style="font-size:14px;line-height:1.6">${t.key_details || '<span class="muted">No key details yet.</span>'}</p>
+         ${admin ? `<button class="btn btn-secondary" style="font-size:12px" onclick="TP.editing='key_details';renderTechniquePage()">Edit</button>` : ''}`;
+
+    root.innerHTML = `
+      <div class="row-between" style="margin-bottom:var(--sp-3)">
+        <div class="muted" style="font-size:13px">
+          <a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent)">Curriculum</a>
+          ${TP.module ? ` › ${TP.module.name}` : ''} › ${t.name}
+        </div>
+        <div class="cv2-seg">
+          <button class="${!admin?'on':''}" onclick="CV2.mode='view';renderTechniquePage()" style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${!admin?'var(--primary)':'var(--surface)'};color:${!admin?'#fff':'var(--text-muted)'}">View</button>
+          <button class="${admin?'on':''}" onclick="CV2.mode='admin';renderTechniquePage()" style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${admin?'var(--primary)':'var(--surface)'};color:${admin?'#fff':'var(--text-muted)'}">Admin</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.9fr 1fr;gap:var(--sp-5);align-items:start">
+        <div>
+          <h1 class="h1" style="margin-bottom:var(--sp-3)">${t.name}</h1>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--sp-5)">
+            ${tpBadge('Category', t.category)}
+            ${tpBadge('Type', t.type)}
+            ${tpBadge('Complexity', t.complexity, 'c-'+t.complexity)}
+            ${tpBadge('Ruleset', t.ruleset)}
+            ${tpBadge('Context', t.context)}
+            ${t.leg_lock_tier && t.leg_lock_tier !== 'None' ? tpBadge('Leg lock', t.leg_lock_tier) : ''}
+          </div>
+
+          <div class="card" style="margin-bottom:var(--sp-4)">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Description</h3>
+            ${descBlock}
+          </div>
+          <div class="card" style="margin-bottom:var(--sp-4);border-color:var(--accent)">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Key Details &amp; Common Errors</h3>
+            ${keyBlock}
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Video</h3>
+            <div style="border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:var(--sp-6);text-align:center;color:var(--text-muted)">
+              No video added yet.
+              ${admin ? `<div style="margin-top:var(--sp-3)"><button class="btn btn-secondary" onclick="showToast('Video upload coming soon')">Upload video</button></div>` : ''}
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;margin-top:var(--sp-5)">
+            ${prev ? `<button class="btn btn-secondary" onclick="go('curriculum-tech/${prev.slug}')">← ${prev.name}</button>` : '<span></span>'}
+            ${next ? `<button class="btn btn-secondary" onclick="go('curriculum-tech/${next.slug}')">${next.name} →</button>` : '<span></span>'}
+          </div>
+        </div>
+
+        <div class="stack" style="gap:var(--sp-4)">
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Module</h3>
+            ${TP.module
+              ? `<a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent);font-weight:600">${TP.module.name}</a>`
+              : '<span class="muted">—</span>'}
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Prerequisites</h3>
+            ${linkList(TP.prereqs)}
+            ${admin ? `<button class="btn btn-secondary" style="font-size:12px;margin-top:var(--sp-2)" onclick="tpAddRel('prerequisite')">+ Add prerequisite</button>` : ''}
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Chains to</h3>
+            ${linkList(TP.chains)}
+            ${admin ? `<button class="btn btn-secondary" style="font-size:12px;margin-top:var(--sp-2)" onclick="tpAddRel('chains_to')">+ Add chain</button>` : ''}
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Academy context</h3>
+            <span class="muted" style="font-size:13px">Belt/stripe association — editable per academy. Coming soon.</span>
+          </div>
+          <div class="card" style="background:var(--surface-alt)">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Student progress</h3>
+            <span class="muted" style="font-size:13px">Coming soon.</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function tpSaveField(field) {
+    const el = document.getElementById('tpEdit');
+    if (!el) return;
+    const val = el.value;
+    const { error } = await sb.from('techniques').update({ [field]: val }).eq('id', TP.tech.id);
+    if (error) { showToast('Save failed: ' + error.message); return; }
+    TP.tech[field] = val; TP.editing = null;
+    // keep curriculum cache fresh
+    const cached = CV2.techniques.find(x => x.id === TP.tech.id); if (cached) cached[field] = val;
+    showToast('Saved ✓'); renderTechniquePage();
+  }
+
+  async function tpAddRel(type) {
+    // Build a quick picker from the technique list (reuse CV2 cache or fetch).
+    let list = CV2.techniques;
+    if (!list || !list.length) { const { data } = await sb.from('techniques').select('id,name,slug').order('number'); list = data || []; }
+    const options = list.filter(x => x.id !== TP.tech.id);
+    const name = prompt(`Add ${type === 'prerequisite' ? 'prerequisite' : 'chain'} — type part of a technique name:`);
+    if (!name) return;
+    const match = options.find(x => x.name.toLowerCase().includes(name.toLowerCase()));
+    if (!match) { showToast('No matching technique found.'); return; }
+    const { error } = await sb.from('technique_relationships').insert({
+      technique_id: TP.tech.id, related_technique_id: match.id, relationship_type: type
+    });
+    if (error) { showToast('Failed: ' + error.message); return; }
+    showToast(`Linked ${match.name} ✓`);
+    loadTechniquePage();
   }
 
   // ---------- Student onboarding wizard ------------------------------------
