@@ -3347,6 +3347,75 @@
   // Modules inline (no sidebar). Filters: category, complexity, type, ruleset,
   // context, status, search. View/Admin mode. Reads live from Supabase.
 
+  // Curriculum i18n — translates the controlled vocabulary (module names,
+  // categories, complexity, ruleset, context) and UI chrome. Technique names,
+  // descriptions and key-details are free-text content and shown as stored.
+  const CURRIC_I18N = {
+    module: {
+      'mod-standing': { en:'Standing & Takedowns', pt:'Em Pé & Quedas' },
+      'mod-passing':  { en:'Guard Passing',        pt:'Passagem de Guarda' },
+      'mod-side':     { en:'Side Control Battle',  pt:'Cem Quilos' },
+      'mod-mount':    { en:'Mount Battle',         pt:'Montada' },
+      'mod-back':     { en:'Back Battle',          pt:'Costas' },
+      'mod-guard':    { en:'Guard Battle',         pt:'Guarda' },
+      'mod-legs':     { en:'Leg Locks',            pt:'Chaves de Perna' },
+      'mod-subs':     { en:'Submissions',          pt:'Finalizações' },
+      'mod-concepts': { en:'Concepts',             pt:'Conceitos' },
+      'mod-drills':   { en:'Drills',               pt:'Exercícios' }
+    },
+    category: {
+      'Escape':{en:'Escape',pt:'Saída'}, 'Sweep':{en:'Sweep',pt:'Raspagem'},
+      'Submission':{en:'Submission',pt:'Finalização'}, 'Guard Pass':{en:'Guard Pass',pt:'Passagem'},
+      'Takedown':{en:'Takedown',pt:'Queda'}, 'Control':{en:'Control',pt:'Controlo'},
+      'Transition':{en:'Transition',pt:'Transição'}, 'Guard Retention':{en:'Guard Retention',pt:'Retenção de Guarda'},
+      'Concept':{en:'Concept',pt:'Conceito'}, 'Drill':{en:'Drill',pt:'Exercício'}
+    },
+    complexity: {
+      'Beginner':{en:'Beginner',pt:'Iniciante'}, 'Intermediate':{en:'Intermediate',pt:'Intermédio'},
+      'Advanced':{en:'Advanced',pt:'Avançado'}, 'Expert':{en:'Expert',pt:'Especialista'}
+    },
+    ruleset: { 'Both':{en:'Both',pt:'Ambos'}, 'Gi':{en:'Gi',pt:'Gi'}, 'No-Gi':{en:'No-Gi',pt:'No-Gi'} },
+    context: { 'Self-Defense':{en:'Self-Defense',pt:'Defesa Pessoal'}, 'Sport':{en:'Sport',pt:'Desporto'}, 'Both':{en:'Both',pt:'Ambos'} },
+    legtier: { 'None':{en:'None',pt:'Nenhuma'}, 'Basic':{en:'Basic',pt:'Básica'}, 'Advanced':{en:'Advanced',pt:'Avançada'} },
+    ui: {
+      master:        {en:'Master Curriculum', pt:'Currículo Base'},
+      techniques:    {en:'techniques',        pt:'técnicas'},
+      sport:         {en:'Sport',             pt:'Modalidade'},
+      curriculum:    {en:'Curriculum',        pt:'Currículo'},
+      allCategories: {en:'All categories',    pt:'Todas as categorias'},
+      allComplexity: {en:'All complexity',    pt:'Toda a complexidade'},
+      allTypes:      {en:'All types',         pt:'Todos os tipos'},
+      allRulesets:   {en:'All rulesets',      pt:'Todas as regras'},
+      allContexts:   {en:'All contexts',      pt:'Todos os contextos'},
+      active:        {en:'Active',            pt:'Ativas'},
+      activeHidden:  {en:'Active + hidden',   pt:'Ativas + ocultas'},
+      hiddenOnly:    {en:'Hidden only',       pt:'Apenas ocultas'},
+      hidden:        {en:'Hidden',            pt:'Oculta'},
+      search:        {en:'Search techniques…',pt:'Procurar técnicas…'},
+      clear:         {en:'Clear',             pt:'Limpar'},
+      reconfigure:   {en:'✦ Build / Reconfigure', pt:'✦ Construir / Reconfigurar'},
+      settings:      {en:'⚙ Settings',        pt:'⚙ Definições'},
+      view:          {en:'View',              pt:'Ver'},
+      admin:         {en:'Admin',             pt:'Admin'},
+      hide:          {en:'Hide',              pt:'Ocultar'},
+      restore:       {en:'Restore',           pt:'Restaurar'},
+      restoreAll:    {en:'Restore all',       pt:'Restaurar todas'},
+      allHidden:     {en:'All techniques in this module are hidden.', pt:'Todas as técnicas deste módulo estão ocultas.'},
+      noMatch:       {en:'No techniques match the current filters.',  pt:'Nenhuma técnica corresponde aos filtros.'},
+      colName:       {en:'Name',pt:'Nome'}, colCategory:{en:'Category',pt:'Categoria'},
+      colType:       {en:'Type',pt:'Tipo'}, colComplexity:{en:'Complexity',pt:'Complexidade'},
+      colRuleset:    {en:'Ruleset',pt:'Regras'}, colContext:{en:'Context',pt:'Contexto'},
+      colStatus:     {en:'Status',pt:'Estado'}
+    }
+  };
+  // ct: translate a controlled value; falls back to the raw value if no entry.
+  function ct(group, value) {
+    const entry = CURRIC_I18N[group] && CURRIC_I18N[group][value];
+    return entry ? t(entry) : (value || '');
+  }
+  // moduleName: localized module name from a module row (DB name is English).
+  function moduleName(m) { if (!m) return ''; const tr = ct('module', m.id); return tr === m.id ? m.name : tr; }
+
   const CV2 = {
     loaded: false,
     sports: [],
@@ -3365,57 +3434,6 @@
     // Return a shell synchronously; fill it asynchronously from Supabase.
     setTimeout(loadCurriculumV2, 0);
     return `
-      <style>
-        .cv2-bar { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;
-          margin-bottom:var(--sp-5); padding:var(--sp-3); background:var(--surface);
-          border:1px solid var(--border); border-radius:var(--r-md); }
-        .cv2-bar select, .cv2-bar input { font:inherit; font-size:13px; padding:6px 8px;
-          border:1px solid var(--border-strong); border-radius:var(--r-sm);
-          background:var(--surface); color:var(--text); }
-        .cv2-bar .spacer { flex:1; }
-        .cv2-mod { border:1px solid var(--border); border-radius:var(--r-md);
-          background:var(--surface); margin-bottom:var(--sp-4); overflow:hidden;
-          scroll-margin-top:var(--sp-4); }
-        .cv2-head { display:flex; align-items:center; gap:var(--sp-3);
-          padding:var(--sp-3) var(--sp-4); cursor:pointer; user-select:none; }
-        .cv2-head:hover { background:var(--surface-alt); }
-        .cv2-head .chev { color:var(--text-faint); transition:transform .15s; }
-        .cv2-mod.collapsed .chev { transform:rotate(-90deg); }
-        .cv2-mod.collapsed .cv2-body { display:none; }
-        .cv2-head .mname { font-weight:600; font-size:15px; }
-        .cv2-head .mspacer { flex:1; }
-        .cv2-badge { background:var(--surface-alt); color:var(--text-muted);
-          border:1px solid var(--border); border-radius:999px; padding:1px 8px;
-          font-size:11px; font-variant-numeric:tabular-nums; }
-        .cv2-cbar { display:inline-flex; height:6px; width:120px; border-radius:999px;
-          overflow:hidden; background:var(--surface-alt); }
-        .cv2-cbar span { display:block; height:100%; }
-        .cb-Beginner{background:var(--success)} .cb-Intermediate{background:var(--accent)}
-        .cb-Advanced{background:var(--warn)} .cb-Expert{background:var(--danger)}
-        .cv2-tbl { width:100%; border-collapse:collapse; font-size:13px; }
-        .cv2-tbl th { text-align:left; font-size:11px; text-transform:uppercase;
-          letter-spacing:.04em; color:var(--text-faint); padding:var(--sp-2) var(--sp-4);
-          border-top:1px solid var(--border); }
-        .cv2-tbl td { padding:var(--sp-3) var(--sp-4); border-top:1px solid var(--border); }
-        .cv2-tbl tr:hover td { background:var(--surface-alt); }
-        .cv2-name { font-weight:500; color:var(--text); text-decoration:none; cursor:pointer; }
-        .cv2-name:hover { color:var(--accent); text-decoration:underline; }
-        .cv2-pill { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px;
-          border:1px solid var(--border); background:var(--surface-alt); color:var(--text-muted); }
-        .cv2-pill.c-Beginner{color:var(--success);border-color:var(--success)}
-        .cv2-pill.c-Intermediate{color:var(--accent);border-color:var(--accent)}
-        .cv2-pill.c-Advanced{color:var(--warn);border-color:var(--warn)}
-        .cv2-pill.c-Expert{color:var(--danger);border-color:var(--danger)}
-        .cv2-row-hidden td { opacity:.45; }
-        .cv2-seg { display:inline-flex; border:1px solid var(--border-strong);
-          border-radius:var(--r-sm); overflow:hidden; }
-        .cv2-seg button { font:inherit; font-size:12px; padding:6px 12px; border:none;
-          background:var(--surface); color:var(--text-muted); cursor:pointer; }
-        .cv2-seg button.on { background:var(--primary); color:#fff; }
-        .cv2-admin { display:none; }
-        .cv2[data-mode="admin"] .cv2-admin { display:inline-flex; }
-        .cv2-empty { padding:var(--sp-5); text-align:center; color:var(--text-muted); }
-      </style>
       <div class="cv2" data-mode="${CV2.mode}">
         <div class="row-between" style="margin-bottom:var(--sp-4)">
           <div>
@@ -3424,33 +3442,33 @@
           </div>
           <div class="row" style="gap:var(--sp-2)">
             <div class="cv2-seg" id="cv2Mode">
-              <button data-mode="view" class="${CV2.mode==='view'?'on':''}">View</button>
-              <button data-mode="admin" class="${CV2.mode==='admin'?'on':''}">Admin</button>
+              <button data-mode="view" class="${CV2.mode==='view'?'on':''}">${ct('ui','view')}</button>
+              <button data-mode="admin" class="${CV2.mode==='admin'?'on':''}">${ct('ui','admin')}</button>
             </div>
-            <button class="btn btn-primary" onclick="go('curriculum-wizard')">✦ Build / Reconfigure</button>
-            <button class="btn btn-secondary" onclick="go('settings')">⚙ Settings</button>
+            <button class="btn btn-primary" onclick="go('curriculum-wizard')">${ct('ui','reconfigure')}</button>
+            <button class="btn btn-secondary" onclick="go('settings')">${ct('ui','settings')}</button>
           </div>
         </div>
         <div class="cv2-bar" style="margin-bottom:var(--sp-3)">
-          <label style="font-size:12px;color:var(--text-muted);font-weight:600">Sport</label>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600">${ct('ui','sport')}</label>
           <select id="cv2Sport"></select>
-          <label style="font-size:12px;color:var(--text-muted);font-weight:600;margin-left:var(--sp-3)">Curriculum</label>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600;margin-left:var(--sp-3)">${ct('ui','curriculum')}</label>
           <select id="cv2Curriculum"></select>
         </div>
         <div class="cv2-bar">
-          <select id="cv2Category"><option value="">All categories</option></select>
-          <select id="cv2Complexity"><option value="">All complexity</option></select>
-          <select id="cv2Type"><option value="">All types</option></select>
-          <select id="cv2Ruleset"><option value="">All rulesets</option></select>
-          <select id="cv2Context"><option value="">All contexts</option></select>
+          <select id="cv2Category"><option value="">${ct('ui','allCategories')}</option></select>
+          <select id="cv2Complexity"><option value="">${ct('ui','allComplexity')}</option></select>
+          <select id="cv2Type"><option value="">${ct('ui','allTypes')}</option></select>
+          <select id="cv2Ruleset"><option value="">${ct('ui','allRulesets')}</option></select>
+          <select id="cv2Context"><option value="">${ct('ui','allContexts')}</option></select>
           <select id="cv2Status">
-            <option value="active">Active</option>
-            <option value="">Active + hidden</option>
-            <option value="hidden">Hidden only</option>
+            <option value="active">${ct('ui','active')}</option>
+            <option value="">${ct('ui','activeHidden')}</option>
+            <option value="hidden">${ct('ui','hiddenOnly')}</option>
           </select>
-          <input id="cv2Search" type="search" placeholder="Search techniques…" />
+          <input id="cv2Search" type="search" placeholder="${ct('ui','search')}" />
           <span class="spacer"></span>
-          <button class="btn btn-secondary" id="cv2Clear" style="font-size:12px">Clear</button>
+          <button class="btn btn-secondary" id="cv2Clear" style="font-size:12px">${ct('ui','clear')}</button>
         </div>
         <div id="cv2Content"><div class="cv2-empty">Loading curriculum…</div></div>
       </div>
@@ -3512,7 +3530,7 @@
     const sel = document.getElementById('cv2Curriculum');
     if (!sel) return;
     const forSport = CV2.configs.filter(c => (c.sport_id || 'sport-bjj') === CV2.sportId);
-    sel.innerHTML = `<option value="">Master Curriculum</option>` +
+    sel.innerHTML = `<option value="">${ct('ui','master')}</option>` +
       forSport.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     sel.value = CV2.curriculumId || '';
   }
@@ -3558,13 +3576,13 @@
 
   function buildCV2Filters() {
     const uniq = (k) => [...new Set(CV2.techniques.map(t => t[k]).filter(Boolean))].sort();
-    const fill = (id, vals) => { const s = document.getElementById(id); if (!s) return;
-      vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; s.appendChild(o); }); };
-    fill('cv2Category', uniq('category'));
-    fill('cv2Complexity', ['Beginner','Intermediate','Advanced','Expert']);
+    const fill = (id, vals, group) => { const s = document.getElementById(id); if (!s) return;
+      vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = group ? ct(group, v) : v; s.appendChild(o); }); };
+    fill('cv2Category', uniq('category'), 'category');
+    fill('cv2Complexity', ['Beginner','Intermediate','Advanced','Expert'], 'complexity');
     fill('cv2Type', uniq('type'));
-    fill('cv2Ruleset', uniq('ruleset'));
-    fill('cv2Context', uniq('context'));
+    fill('cv2Ruleset', uniq('ruleset'), 'ruleset');
+    fill('cv2Context', uniq('context'), 'context');
   }
 
   function bindCV2() {
@@ -3609,9 +3627,9 @@
     if (!content) return;
     const rows = cv2Rows();
     const cfg = CV2.configs.find(c => c.id === CV2.curriculumId);
-    document.getElementById('cv2Title').textContent = cfg ? cfg.name : 'Master Curriculum';
+    document.getElementById('cv2Title').textContent = cfg ? cfg.name : ct('ui','master');
     const sportName = CV2.sports.find(s => s.id === CV2.sportId);
-    const bits = [sportName ? t(sportName.name) : null, cfg?.type_summary, `${rows.length} techniques`].filter(Boolean);
+    const bits = [sportName ? t(sportName.name) : null, cfg?.type_summary, `${rows.length} ${ct('ui','techniques')}`].filter(Boolean);
     document.getElementById('cv2Summary').textContent = bits.join(' · ');
 
     const byModule = {};
@@ -3640,7 +3658,7 @@
       sec.innerHTML = `
         <div class="cv2-head">
           <span class="chev">▾</span>
-          <span class="mname">${m.name}</span>
+          <span class="mname">${moduleName(m)}</span>
           <span class="cv2-badge">${visible.length}</span>
           <span class="mspacer"></span>
           <span class="cv2-cbar">${bar}</span>
@@ -3652,19 +3670,19 @@
       const body = sec.querySelector('.cv2-body');
       if (!visible.length) {
         body.innerHTML = `<div style="padding:var(--sp-4);color:var(--text-faint);display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3)">
-          <span>All techniques in this module are hidden.</span>
-          <button class="btn btn-secondary cv2-admin" data-restore="${m.id}" style="font-size:12px">Restore all</button></div>`;
+          <span>${ct('ui','allHidden')}</span>
+          <button class="btn btn-secondary cv2-admin" data-restore="${m.id}" style="font-size:12px">${ct('ui','restoreAll')}</button></div>`;
       } else {
         visible.sort((a,b) => a.order - b.order);
         body.innerHTML = `<table class="cv2-tbl">
-          <thead><tr><th>Name</th><th>Category</th><th>Type</th><th>Complexity</th><th>Ruleset</th><th>Context</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>${ct('ui','colName')}</th><th>${ct('ui','colCategory')}</th><th>${ct('ui','colType')}</th><th>${ct('ui','colComplexity')}</th><th>${ct('ui','colRuleset')}</th><th>${ct('ui','colContext')}</th><th>${ct('ui','colStatus')}</th><th></th></tr></thead>
           <tbody>${visible.map(cv2RowHtml).join('')}</tbody></table>`;
       }
       content.appendChild(sec);
     });
 
     if (!any) {
-      content.innerHTML = `<div class="cv2-empty">No techniques match the current filters.</div>`;
+      content.innerHTML = `<div class="cv2-empty">${ct('ui','noMatch')}</div>`;
     }
     content.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => cv2ToggleHidden(b.dataset.toggle));
     content.querySelectorAll('[data-restore]').forEach(b => b.onclick = () => cv2RestoreModule(b.dataset.restore));
@@ -3674,13 +3692,13 @@
     const t = r.tech;
     return `<tr class="${r.hidden ? 'cv2-row-hidden' : ''}">
       <td><span class="cv2-name" onclick="go('curriculum-tech/${t.slug}')">${t.name}</span></td>
-      <td>${t.category}</td>
+      <td>${ct('category', t.category)}</td>
       <td>${t.type || '—'}</td>
-      <td><span class="cv2-pill c-${t.complexity}">${t.complexity}</span></td>
-      <td><span class="cv2-pill">${t.ruleset}</span></td>
-      <td><span class="cv2-pill">${t.context}</span></td>
-      <td>${r.hidden ? '<span class="cv2-pill">Hidden</span>' : '<span class="cv2-pill c-Beginner">Active</span>'}</td>
-      <td><button class="btn btn-secondary cv2-admin" data-toggle="${t.id}" style="font-size:12px">${r.hidden ? 'Restore' : 'Hide'}</button></td>
+      <td><span class="cv2-pill c-${t.complexity}">${ct('complexity', t.complexity)}</span></td>
+      <td><span class="cv2-pill">${ct('ruleset', t.ruleset)}</span></td>
+      <td><span class="cv2-pill">${ct('context', t.context)}</span></td>
+      <td>${r.hidden ? `<span class="cv2-pill">${ct('ui','hidden')}</span>` : `<span class="cv2-pill c-Beginner">${ct('ui','active')}</span>`}</td>
+      <td><button class="btn btn-secondary cv2-admin" data-toggle="${t.id}" style="font-size:12px">${r.hidden ? ct('ui','restore') : ct('ui','hide')}</button></td>
     </tr>`;
   }
 
@@ -3971,8 +3989,8 @@
         return `<div style="display:flex;align-items:center;gap:var(--sp-3);padding:6px var(--sp-3);
           border-top:1px solid var(--border);${ex?'opacity:.5':''}">
           <span style="flex:1;font-size:13px;${hid?'text-decoration:line-through;color:var(--text-faint)':''}">${t.name}</span>
-          <span class="cv2-pill" style="font-size:10px">${t.type||t.category}</span>
-          <span class="cv2-pill c-${t.complexity}" style="font-size:10px">${t.complexity}</span>
+          <span class="cv2-pill" style="font-size:10px">${t.type || ct('category', t.category)}</span>
+          <span class="cv2-pill c-${t.complexity}" style="font-size:10px">${ct('complexity', t.complexity)}</span>
           ${ex
             ? `<button class="btn btn-secondary" style="font-size:11px;padding:2px 8px" onclick="wizAdd('${t.id}')">+ Add</button>`
             : `<button class="btn btn-secondary" style="font-size:11px;padding:2px 8px" onclick="wizHide('${t.id}')">${hid?'Show':'Hide'}</button>`}
@@ -3980,7 +3998,7 @@
       }).join('');
       return `<div class="cv2-mod" style="margin-bottom:var(--sp-3)">
         <div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4)">
-          <span class="mname" style="font-weight:600">${m.name}</span>
+          <span class="mname" style="font-weight:600">${moduleName(m)}</span>
           <span class="cv2-badge">${inc.length}${exc.length?` · ${exc.length} excluded`:''}</span>
           <span style="flex:1"></span>
           <span class="cv2-cbar">${bar}</span>
@@ -4017,7 +4035,7 @@
       return `<div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);
         border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);margin-bottom:var(--sp-2)">
         <span style="font-size:12px;color:var(--text-faint);width:20px">${i+1}</span>
-        <span style="flex:1;font-weight:600;font-size:14px">${m.name}</span>
+        <span style="flex:1;font-weight:600;font-size:14px">${moduleName(m)}</span>
         <span class="cv2-badge">${inc}</span>
         <button class="btn btn-secondary" style="padding:2px 8px" onclick="wizMove(${i},-1)" ${i===0?'disabled style="opacity:.3"':''}>↑</button>
         <button class="btn btn-secondary" style="padding:2px 8px" onclick="wizMove(${i},1)" ${i===WIZ.moduleOrder.length-1?'disabled style="opacity:.3"':''}>↓</button>
@@ -4159,7 +4177,7 @@
       <div class="row-between" style="margin-bottom:var(--sp-3)">
         <div class="muted" style="font-size:13px">
           <a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent)">Curriculum</a>
-          ${TP.module ? ` › ${TP.module.name}` : ''} › ${t.name}
+          ${TP.module ? ` › ${moduleName(TP.module)}` : ''} › ${t.name}
         </div>
         <div class="cv2-seg">
           <button class="${!admin?'on':''}" onclick="CV2.mode='view';renderTechniquePage()" style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${!admin?'var(--primary)':'var(--surface)'};color:${!admin?'#fff':'var(--text-muted)'}">View</button>
@@ -4171,12 +4189,12 @@
         <div>
           <h1 class="h1" style="margin-bottom:var(--sp-3)">${t.name}</h1>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--sp-5)">
-            ${tpBadge('Category', t.category)}
-            ${tpBadge('Type', t.type)}
-            ${tpBadge('Complexity', t.complexity, 'c-'+t.complexity)}
-            ${tpBadge('Ruleset', t.ruleset)}
-            ${tpBadge('Context', t.context)}
-            ${t.leg_lock_tier && t.leg_lock_tier !== 'None' ? tpBadge('Leg lock', t.leg_lock_tier) : ''}
+            ${tpBadge(ct('ui','colCategory'), ct('category', t.category))}
+            ${tpBadge(ct('ui','colType'), t.type)}
+            ${tpBadge(ct('ui','colComplexity'), ct('complexity', t.complexity), 'c-'+t.complexity)}
+            ${tpBadge(ct('ui','colRuleset'), ct('ruleset', t.ruleset))}
+            ${tpBadge(ct('ui','colContext'), ct('context', t.context))}
+            ${t.leg_lock_tier && t.leg_lock_tier !== 'None' ? tpBadge('Leg lock', ct('legtier', t.leg_lock_tier)) : ''}
           </div>
 
           <div class="card" style="margin-bottom:var(--sp-4)">
@@ -4205,7 +4223,7 @@
           <div class="card">
             <h3 class="card-title" style="margin-bottom:var(--sp-2)">Module</h3>
             ${TP.module
-              ? `<a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent);font-weight:600">${TP.module.name}</a>`
+              ? `<a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent);font-weight:600">${moduleName(TP.module)}</a>`
               : '<span class="muted">—</span>'}
           </div>
           <div class="card">
