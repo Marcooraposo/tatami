@@ -18,10 +18,8 @@ const ENV = {
     anon: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjcWtrbWhtZ3NqbGl0b256eHhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTE1MTYsImV4cCI6MjA5NjIyNzUxNn0.KZKj0fijU-409jTfJU4XLGic1xm1xLWueV0T11mspZc'
   },
   dev: {
-    // TODO: paste your DEV Supabase project's URL + anon key here.
-    // Until then, dev falls back to the prod project (see resolution below).
-    url:  '',
-    anon: ''
+    url:  'https://ozxvvpfhhzgoapbpwida.supabase.co',
+    anon: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im96eHZ2cGZoaHpnb2FwYnB3aWRhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NDcwOTMsImV4cCI6MjA5NjMyMzA5M30.DiwfPyjaFR3rkmsfYs26G5lN9W6v7tomCoRzbPk0LoM'
   }
 };
 
