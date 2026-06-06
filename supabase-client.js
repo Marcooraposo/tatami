@@ -3,13 +3,48 @@
 // Loaded before data.js in every HTML page.
 // =============================================================================
 
-const SUPABASE_URL  = 'https://pcqkkmhmgsjlitonzxxb.supabase.co';
-const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjcWtrbWhtZ3NqbGl0b256eHhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTE1MTYsImV4cCI6MjA5NjIyNzUxNn0.KZKj0fijU-409jTfJU4XLGic1xm1xLWueV0T11mspZc';
+// -----------------------------------------------------------------------------
+// Environment config
+// The app is static (no build step), so we pick the right Supabase project at
+// runtime based on the hostname:
+//   - the production domain(s) below  → PROD project
+//   - everything else (localhost, Vercel preview/dev URLs) → DEV project
+// To finish dev setup: create a second free Supabase project and paste its
+// URL + anon key into ENV.dev below.
+// -----------------------------------------------------------------------------
+const ENV = {
+  prod: {
+    url:  'https://pcqkkmhmgsjlitonzxxb.supabase.co',
+    anon: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBjcWtrbWhtZ3NqbGl0b256eHhiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NTE1MTYsImV4cCI6MjA5NjIyNzUxNn0.KZKj0fijU-409jTfJU4XLGic1xm1xLWueV0T11mspZc'
+  },
+  dev: {
+    // TODO: paste your DEV Supabase project's URL + anon key here.
+    // Until then, dev falls back to the prod project (see resolution below).
+    url:  '',
+    anon: ''
+  }
+};
+
+// Production hostnames — the live, customer-facing deploys.
+// Add a custom domain here later if you point one at the prod project.
+const PROD_HOSTS = ['tatami-dusky.vercel.app'];
+
+function resolveEnv() {
+  const host = (typeof location !== 'undefined' && location.hostname) || '';
+  const isProd = PROD_HOSTS.includes(host);
+  const chosen = isProd ? ENV.prod : ENV.dev;
+  // Fall back to prod config if dev isn't configured yet.
+  const cfg = (chosen.url && chosen.anon) ? chosen : ENV.prod;
+  return { name: isProd ? 'prod' : (cfg === ENV.dev ? 'dev' : 'dev(fallback→prod)'), cfg };
+}
+
+const TATAMI_ENV = resolveEnv();
+console.info(`[tatami] environment: ${TATAMI_ENV.name} · ${TATAMI_ENV.cfg.url}`);
 
 // Loaded via CDN <script> before this file.
 // NOTE: the CDN UMD bundle defines a global `supabase` (the library), so we
 // must name our client differently to avoid an "already declared" clash.
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+const sb = window.supabase.createClient(TATAMI_ENV.cfg.url, TATAMI_ENV.cfg.anon);
 
 // =============================================================================
 // Persistence helpers — called by the UI for write operations
