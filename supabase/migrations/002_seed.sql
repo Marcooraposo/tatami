@@ -128,20 +128,20 @@ on conflict do nothing;
 
 -- Events
 insert into events (id, title, type, date, time, duration_min, location, capacity, notes, registered_student_ids) values
-  ('evt-001', 'Summer Open Mat',                       'open-mat',   '2026-06-07', '10:00', 120, 'Main Mat',          40, 'Free open mat for all levels.',                        '{stu-1,stu-2,stu-3}'),
-  ('evt-002', 'Quarterly Belt Test',                   'belt-test',  '2026-06-28', '10:00',  90, 'Main Mat',          20, 'Promotion grading for promotion-ready students.',      '{stu-4,stu-5}'),
-  ('evt-003', 'Guard Passing Seminar — Prof. Carlos Lima', 'seminar','2026-07-12', '13:00', 180, 'Main Mat',          30, 'Special seminar on guard passing. R$150 per person.',  '{stu-1,stu-6}'),
-  ('evt-004', 'City BJJ Open Championship',            'tournament', '2026-08-02', '08:00', 480, 'City Sports Arena', 60, 'IBJJF-format city championship. Weigh-ins at 08:00.',  '{stu-2,stu-7,stu-8}'),
-  ('evt-005', 'Spring Invitational Tournament',        'tournament', '2026-03-15', '09:00', 360, 'Riverside Sports Hall', 50, 'Internal invitational with 4 guest academies.',    '{stu-1,stu-2,stu-3,stu-4,stu-5}')
+  ('evt-001', 'Summer Open Mat',                       'open-mat',   '2026-06-07', '10:00', 120, 'Main Mat',          40, 'Free open mat for all levels.',                        '{s-1,s-2,s-3}'),
+  ('evt-002', 'Quarterly Belt Test',                   'belt-test',  '2026-06-28', '10:00',  90, 'Main Mat',          20, 'Promotion grading for promotion-ready students.',      '{s-4,s-5}'),
+  ('evt-003', 'Guard Passing Seminar — Prof. Carlos Lima', 'seminar','2026-07-12', '13:00', 180, 'Main Mat',          30, 'Special seminar on guard passing. R$150 per person.',  '{s-1,s-6}'),
+  ('evt-004', 'City BJJ Open Championship',            'tournament', '2026-08-02', '08:00', 480, 'City Sports Arena', 60, 'IBJJF-format city championship. Weigh-ins at 08:00.',  '{s-2,s-7,s-8}'),
+  ('evt-005', 'Spring Invitational Tournament',        'tournament', '2026-03-15', '09:00', 360, 'Riverside Sports Hall', 50, 'Internal invitational with 4 guest academies.',    '{s-1,s-2,s-3,s-4,s-5}')
 on conflict do nothing;
 
 -- Competition results
 insert into competition_results (id, event_id, student_id, division, placement, medal, notes) values
-  ('cr-1', 'evt-005', 'stu-1', 'Adult White Belt -70kg', '1st', 'gold',   'Won all 3 matches by points.'),
-  ('cr-2', 'evt-005', 'stu-2', 'Adult Blue Belt -76kg',  '2nd', 'silver', 'Lost final by advantage.'),
-  ('cr-3', 'evt-005', 'stu-3', 'Adult White Belt -76kg', '3rd', 'bronze', 'Won bronze match by rear naked choke.'),
-  ('cr-4', 'evt-005', 'stu-4', 'Adult Blue Belt -82kg',  '1st', 'gold',   'Submitted all opponents.'),
-  ('cr-5', 'evt-005', 'stu-5', 'Adult White Belt -82kg', '5th', 'none',   'Lost first match by points.')
+  ('cr-1', 'evt-005', 's-1', 'Adult White Belt -70kg', '1st', 'gold',   'Won all 3 matches by points.'),
+  ('cr-2', 'evt-005', 's-2', 'Adult Blue Belt -76kg',  '2nd', 'silver', 'Lost final by advantage.'),
+  ('cr-3', 'evt-005', 's-3', 'Adult White Belt -76kg', '3rd', 'bronze', 'Won bronze match by rear naked choke.'),
+  ('cr-4', 'evt-005', 's-4', 'Adult Blue Belt -82kg',  '1st', 'gold',   'Submitted all opponents.'),
+  ('cr-5', 'evt-005', 's-5', 'Adult White Belt -82kg', '5th', 'none',   'Lost first match by points.')
 on conflict do nothing;
 
 -- Announcements
