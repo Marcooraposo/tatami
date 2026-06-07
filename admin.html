@@ -4635,6 +4635,29 @@
   }
 
   let scheduleWeekOffset = 0; // 0 = current week, -1 = last week, +1 = next week
+  let scheduleView = 'week';   // 'week' | 'month'
+  let scheduleMonthOffset = 0; // 0 = current month, -1 = last, +1 = next
+
+  // Special events (tournaments, seminars, belt tests, open mats) on a given day.
+  function eventsForDate(dateStr) {
+    return (typeof EVENTS !== 'undefined' ? EVENTS : []).filter(e => e.date === dateStr);
+  }
+  // Visual style per event type.
+  const EVENT_TYPE_STYLE = {
+    'tournament': { bg:'#fef3c7', border:'#f59e0b', label:'🏆' },
+    'seminar':    { bg:'#ede9fe', border:'#8b5cf6', label:'🎓' },
+    'belt-test':  { bg:'#dcfce7', border:'#16a34a', label:'🥋' },
+    'open-mat':   { bg:'#dbeafe', border:'#3b82f6', label:'🤼' }
+  };
+  function eventChip(e, compact) {
+    const st = EVENT_TYPE_STYLE[e.type] || { bg:'var(--surface-alt)', border:'var(--border-strong)', label:'📌' };
+    const time = e.time ? `${e.time} ` : '';
+    return `<div onclick="event.stopPropagation();go('events/${e.id}')" title="${(e.title||'').replace(/"/g,'&quot;')}"
+      style="cursor:pointer;background:${st.bg};border:1px solid ${st.border};border-left:3px solid ${st.border};
+      border-radius:var(--r-sm);padding:${compact?'1px 5px':'var(--sp-2) var(--sp-3)'};margin-bottom:var(--sp-1);
+      font-size:${compact?'10px':'11px'};line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+      ${st.label} ${compact ? '' : `<span style="font-weight:700">${time}</span>`}${e.title}</div>`;
+  }
 
   function scheduleStartOfWeek(date) {
     const d = new Date(date);
@@ -4644,7 +4667,17 @@
     return d;
   }
 
+  function scheduleViewToggle() {
+    return `<div class="cv2-seg">
+      <button class="${scheduleView==='week'?'on':''}" onclick="scheduleView='week';renderApp()"
+        style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${scheduleView==='week'?'var(--primary)':'var(--surface)'};color:${scheduleView==='week'?'#fff':'var(--text-muted)'}">Week</button>
+      <button class="${scheduleView==='month'?'on':''}" onclick="scheduleView='month';renderApp()"
+        style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${scheduleView==='month'?'var(--primary)':'var(--surface)'};color:${scheduleView==='month'?'#fff':'var(--text-muted)'}">Month</button>
+    </div>`;
+  }
+
   function Schedule() {
+    if (scheduleView === 'month') return ScheduleMonth();
     const todayMs = new Date(CONFIG.today).setHours(0,0,0,0);
     const weekStart = scheduleStartOfWeek(new Date(todayMs + scheduleWeekOffset * 7 * 24 * 60 * 60 * 1000));
     const weekEnd   = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -4713,6 +4746,8 @@
         ? `<div style="font-size:10px;font-weight:600;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:3px 6px;margin-bottom:var(--sp-2);text-align:center;line-height:1.3">🚫 ${closureLabel(dayDateStr)}</div>`
         : '';
 
+      const dayEvents = eventsForDate(dayDateStr).map(e => eventChip(e)).join('');
+
       return `
         <div style="flex:1;min-width:0;border-right:1px solid var(--border);padding:0 var(--sp-2)">
           <div style="
@@ -4724,6 +4759,7 @@
             ${dayLabel}
           </div>
           ${closureBanner}
+          ${dayEvents}
           ${classCards}
         </div>`;
     }).join('');
@@ -4737,6 +4773,7 @@
       <div class="row-between" style="margin-bottom:var(--sp-4)">
         <h1 class="h1">${t(UI.nav.schedule)}</h1>
         <div class="row" style="gap:var(--sp-2)">
+          ${scheduleViewToggle()}
           <button class="btn btn-secondary" onclick="scheduleWeekOffset--;renderApp()">← Prev</button>
           ${!isCurrentWeek ? `<button class="btn btn-secondary" onclick="scheduleWeekOffset=0;renderApp()">Today</button>` : ''}
           <button class="btn btn-secondary" onclick="scheduleWeekOffset++;renderApp()">Next →</button>
@@ -4771,6 +4808,79 @@
         <div style="display:flex;gap:0;overflow-x:auto">
           ${dayColumns}
         </div>
+      </div>
+    `;
+  }
+
+  // ---------- Schedule: month overview -------------------------------------
+
+  function ScheduleMonth() {
+    const today = new Date(CONFIG.today); today.setHours(0,0,0,0);
+    const todayMs = today.getTime();
+    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    const monthDate = new Date(today.getFullYear(), today.getMonth() + scheduleMonthOffset, 1);
+    const monthIdx = monthDate.getMonth();
+    const gridStart = scheduleStartOfWeek(new Date(monthDate));        // Sunday on/before the 1st
+    const gridEnd   = new Date(gridStart.getTime() + 42 * 86400000);   // 6 weeks
+
+    // Bucket class slots by date string.
+    const slotsByDate = {};
+    getSlotsForRange(gridStart.getTime(), gridEnd.getTime()).forEach(s => {
+      const k = new Date(s.startsAt).toISOString().slice(0,10);
+      (slotsByDate[k] = slotsByDate[k] || []).push(s);
+    });
+
+    const weekRows = [];
+    for (let w = 0; w < 6; w++) {
+      const cells = [];
+      for (let d = 0; d < 7; d++) {
+        const cellDate = new Date(gridStart.getTime() + (w*7 + d) * 86400000);
+        const dateStr = cellDate.toISOString().slice(0,10);
+        const inMonth = cellDate.getMonth() === monthIdx;
+        const isToday = cellDate.getTime() === todayMs;
+        const dayClasses = slotsByDate[dateStr] || [];
+        const dayEvents = eventsForDate(dateStr);
+        // offset (in weeks) from the current week, so a click opens that week.
+        const wkOffset = Math.round((scheduleStartOfWeek(new Date(cellDate)).getTime() - scheduleStartOfWeek(new Date(today)).getTime()) / (7*86400000));
+        cells.push(`
+          <div onclick="scheduleWeekOffset=${wkOffset};scheduleView='week';renderApp()" style="
+            min-height:96px;border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 6px;cursor:pointer;
+            background:${isToday ? '#eff6ff' : inMonth ? 'var(--surface)' : 'var(--surface-alt)'};
+            ${isToday ? 'box-shadow:inset 0 0 0 1px var(--accent)' : ''};opacity:${inMonth?'1':'.55'};overflow:hidden">
+            <div style="font-size:12px;font-weight:${isToday?'700':'600'};color:${isToday?'var(--accent)':'var(--text-muted)'};margin-bottom:3px">${cellDate.getDate()}</div>
+            ${dayEvents.map(e => eventChip(e, true)).join('')}
+            ${dayClasses.length ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">${dayClasses.length} class${dayClasses.length>1?'es':''}</div>` : ''}
+          </div>`);
+      }
+      weekRows.push(`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">${cells.join('')}</div>`);
+    }
+
+    const isCurrentMonth = scheduleMonthOffset === 0;
+    const monthLabel = `${MONTH_NAMES[monthIdx]} ${monthDate.getFullYear()}`;
+
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <h1 class="h1">${t(UI.nav.schedule)}</h1>
+        <div class="row" style="gap:var(--sp-2)">
+          ${scheduleViewToggle()}
+          <button class="btn btn-secondary" onclick="scheduleMonthOffset--;renderApp()">← Prev</button>
+          ${!isCurrentMonth ? `<button class="btn btn-secondary" onclick="scheduleMonthOffset=0;renderApp()">Today</button>` : ''}
+          <button class="btn btn-secondary" onclick="scheduleMonthOffset++;renderApp()">Next →</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:var(--sp-3) var(--sp-4);margin-bottom:var(--sp-4)">
+        <div style="font-size:15px;font-weight:700">${monthLabel}</div>
+        <div class="faint" style="font-size:11px;margin-top:2px">${isCurrentMonth ? 'Current month' : (scheduleMonthOffset<0 ? `${Math.abs(scheduleMonthOffset)} month(s) ago` : `${scheduleMonthOffset} month(s) ahead`)} · click a day to open its week</div>
+      </div>
+
+      <div class="card" style="padding:var(--sp-3)">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">
+          ${DAY_NAMES.map(n => `<div style="text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint)">${n}</div>`).join('')}
+        </div>
+        ${weekRows.join('')}
       </div>
     `;
   }
