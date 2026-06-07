@@ -23,6 +23,18 @@ Check the browser console on load — it logs `[tatami] environment: …`.
 - Preview deployments are automatic for every other branch/PR, including `dev`.
 - Add any custom production domain to `PROD_HOSTS` so it maps to the prod DB.
 
+## Current topology (as of demo launch)
+**Prod = the gated, read-only demo.** There is no real customer data yet, so the
+polished prod URL doubles as the showcase:
+- `main` → `tatami-dusky.vercel.app` → prod Supabase (`pcqkkmhmgsjlitonzxxb`)
+- Password gate ON (`DEMO_PASSWORD` set on the Vercel **Production** env)
+- `006_demo_readonly.sql` has been run on prod → DB is SELECT-only for `anon`
+- `dev` stays open + writable for development
+
+⚠️ When the real multi-tenant product is built, **prod must become writable
+again** with proper auth-scoped RLS (tenancy phase). `006` is demo-only — replace
+its SELECT-only policies with per-academy policies at that point.
+
 ## Securing the demo
 **1. Password gate (Edge Middleware, `middleware.js`)**
 - Set env vars in Vercel → Settings → Environment Variables:
