@@ -1507,6 +1507,7 @@
                 <span style="font-size:12px;color:var(--text-muted)">${enrollment.currentStripes} / ${maxStripes}</span>
               </div>
             </div>
+            <div id="tagRow-${student.id}" style="margin-top:var(--sp-2)">${studentTagRow(student)}</div>
             <div style="margin-top:var(--sp-2);display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
               <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Membership</span>
               <select class="input" style="font-size:12px;padding:4px 10px;width:auto"
@@ -1668,6 +1669,42 @@
     persistData();
     renderApp();
   }
+
+  // ---------- Student audience tags (admin only) ---------------------------
+  function studentTagRow(student) {
+    const tags = studentTags(student);
+    const chips = tags.length
+      ? tags.map(id => `<span class="cv2-pill" style="font-size:11px">${tagLabel(id)}</span>`).join(' ')
+      : '<span class="muted" style="font-size:12px">No tags</span>';
+    return `<div style="display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Audience tags</span>
+      ${chips}
+      <button class="btn btn-secondary" style="font-size:12px;padding:2px 10px" onclick="editStudentTags('${student.id}')">Edit</button>
+    </div>`;
+  }
+  window.editStudentTags = function (studentId) {
+    const student = DB.student(studentId);
+    const row = document.getElementById('tagRow-' + studentId);
+    if (!student || !row) return;
+    const current = studentTags(student);
+    row.innerHTML = `<div style="display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Audience tags</span>
+      ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px">
+        <input type="checkbox" value="${tg.id}" ${current.includes(tg.id)?'checked':''} data-tagedit="${studentId}"> ${t(tg.label)}</label>`).join(' ')}
+      <button class="btn" style="font-size:12px;padding:2px 10px" onclick="saveStudentTags('${studentId}')">Save</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:2px 10px" onclick="document.getElementById('tagRow-${studentId}').innerHTML=studentTagRow(DB.student('${studentId}'))">Cancel</button>
+    </div>`;
+  };
+  window.saveStudentTags = function (studentId) {
+    const student = DB.student(studentId);
+    if (!student) return;
+    const picked = [...document.querySelectorAll(`input[data-tagedit="${studentId}"]:checked`)].map(c => c.value);
+    student.tags = picked;            // admin override persists on the student record
+    persistData();
+    const row = document.getElementById('tagRow-' + studentId);
+    if (row) row.innerHTML = studentTagRow(student);
+    showToast('Tags updated');
+  };
 
   function setStudentStripes(studentId, sportId, newCount) {
     const enr = ENROLLMENTS.find(e => e.studentId === studentId && e.sportId === sportId);
@@ -4286,7 +4323,7 @@
 
   let studentWizardState = {
     step: 1,
-    details: { name: '', dob: '', email: '', phone: '', emergencyName: '', emergencyPhone: '' },
+    details: { name: '', dob: '', gender: '', competes: false, email: '', phone: '', emergencyName: '', emergencyPhone: '' },
     guardian: { name: '', phone: '', email: '' },
     membership: null,
     signature: ''
@@ -4303,6 +4340,8 @@
       const el = document.getElementById(['sw-name','sw-dob','sw-email','sw-phone','sw-emg-name','sw-emg-phone'][i]);
       if (el) d[key] = el.value;
     });
+    const genderEl = document.getElementById('sw-gender'); if (genderEl) d.gender = genderEl.value;
+    const competesEl = document.getElementById('sw-competes'); if (competesEl) d.competes = competesEl.checked;
     ['name','phone','email'].forEach(key => {
       const el = document.getElementById('sw-guardian-' + key);
       if (el) studentWizardState.guardian[key] = el.value;
@@ -4347,14 +4386,19 @@
     const id = 'stu-' + Date.now();
     const name = expected;
     const initials = name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    STUDENTS.push({
+    const newStudent = {
       id, name, initials,
       dob: studentWizardState.details.dob,
+      gender: studentWizardState.details.gender || '',
+      competes: !!studentWizardState.details.competes,
       contact: studentWizardState.details.email || studentWizardState.details.phone,
       emergencyContact: `${studentWizardState.details.emergencyName} · ${studentWizardState.details.emergencyPhone}`,
       joinedAt: new Date().toISOString(),
       notes: studentWizardState.guardian.name ? `Guardian: ${studentWizardState.guardian.name}` : ''
-    });
+    };
+    // Auto-assign audience tags from age / gender / competition interest.
+    newStudent.tags = deriveStudentTags(newStudent);
+    STUDENTS.push(newStudent);
     const sc = ACADEMY.sportConfigs[0] || {};
     ENROLLMENTS.push({
       studentId: id,
@@ -4369,7 +4413,7 @@
     persistData();
     studentWizardState = {
       step: 1,
-      details: { name: '', dob: '', email: '', phone: '', emergencyName: '', emergencyPhone: '' },
+      details: { name: '', dob: '', gender: '', competes: false, email: '', phone: '', emergencyName: '', emergencyPhone: '' },
       guardian: { name: '', phone: '', email: '' },
       membership: null, signature: ''
     };
@@ -4434,6 +4478,23 @@
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Date of birth *</label>
             <input id="sw-dob" type="date" class="input" style="width:100%" value="${d.dob}" />
+            <div class="faint" style="font-size:11px;margin-top:4px">Under 16 is tagged as Kid, otherwise Adult.</div>
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Gender *</label>
+            <select id="sw-gender" class="input" style="width:100%">
+              <option value="" ${!d.gender?'selected':''}>Select…</option>
+              <option value="female" ${d.gender==='female'?'selected':''}>Female</option>
+              <option value="male" ${d.gender==='male'?'selected':''}>Male</option>
+              <option value="other" ${d.gender==='other'?'selected':''}>Other / prefer not to say</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:flex;align-items:center;gap:var(--sp-2);font-weight:600;font-size:13px">
+              <input id="sw-competes" type="checkbox" ${d.competes?'checked':''} />
+              Interested in competing
+            </label>
+            <div class="faint" style="font-size:11px;margin-top:4px">Adds the Competition tag, unlocking competition classes.</div>
           </div>
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Email</label>
@@ -5682,7 +5743,7 @@
 
   let newClassState = {
     date: '', time: '19:00', durationMin: 60,
-    classType: 'Fundamentals', instructorId: '', capacity: 20
+    classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: []
   };
 
   function collectNewClassForm() {
@@ -5694,20 +5755,21 @@
     if (dur) newClassState.durationMin = parseInt(dur.value) || 60;
     const cap = document.getElementById('nc-capacity');
     if (cap) newClassState.capacity = parseInt(cap.value) || 20;
+    newClassState.audienceTags = [...document.querySelectorAll('input[data-nc-aud]:checked')].map(c => c.value);
   }
 
   function saveNewClass() {
     collectNewClassForm();
-    const { date, time, classType, instructorId, durationMin, capacity } = newClassState;
+    const { date, time, classType, instructorId, durationMin, capacity, audienceTags } = newClassState;
     if (!date) { alert('Please set a date.'); return; }
     if (!instructorId) { alert('Please select an instructor.'); return; }
     const startsAt = new Date(`${date}T${time}:00`).toISOString();
     const id = 'cls-' + Date.now();
     CLASSES.push({ id, startsAt, durationMin, classType, instructorId,
-      sportId: 'sport-bjj', capacity, plannedItemIds: [], status: 'scheduled' });
+      sportId: 'sport-bjj', capacity, audienceTags: audienceTags || [], plannedItemIds: [], status: 'scheduled' });
     persistData();
     newClassState = { date: '', time: '19:00', durationMin: 60,
-      classType: 'Fundamentals', instructorId: '', capacity: 20 };
+      classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [] };
     go('classes/' + id);
   }
 
@@ -5763,6 +5825,14 @@
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Capacity</label>
                 <input id="nc-capacity" type="number" class="input" style="width:100%"
                   value="${newClassState.capacity}" min="1" />
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Who can attend</label>
+              <div class="faint" style="font-size:11px;margin-bottom:var(--sp-2)">Leave all unchecked for open to everyone. Otherwise only students with a selected tag can book.</div>
+              <div style="display:flex;flex-wrap:wrap;gap:var(--sp-3)">
+                ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px">
+                  <input type="checkbox" data-nc-aud value="${tg.id}" ${(newClassState.audienceTags||[]).includes(tg.id)?'checked':''}> ${t(tg.label)}</label>`).join('')}
               </div>
             </div>
           </div>

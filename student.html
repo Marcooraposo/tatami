@@ -1601,9 +1601,6 @@ function renderHome() {
         <!-- Latest announcement -->
         ${annCard}
 
-        <!-- Upcoming events -->
-        ${buildEventsSection()}
-
       </div>
     </div>
     ${bottomNav('home')}
@@ -1747,9 +1744,11 @@ function renderSchedule() {
     return null;
   }
 
-  // Group templates by dow
+  // Group templates by dow — hide classes this student can't attend.
+  const me = DB.student(currentStudentId);
   const byDow = {};
   RECURRING_TEMPLATES.forEach(rt => {
+    if (me && typeof canStudentBook === 'function' && !canStudentBook(me, rt)) return;
     if (!byDow[rt.dow]) byDow[rt.dow] = [];
     byDow[rt.dow].push(rt);
   });
@@ -2006,6 +2005,14 @@ function renderClassDetail(classId) {
 
 function bookClass(classId) {
   materializeVirtualClass(classId); // persist virtual slot so admin can see the booking
+  // Enforce class audience restrictions.
+  const cls = CLASSES.find(c => c.id === classId);
+  const me = DB.student(currentStudentId);
+  if (cls && me && typeof canStudentBook === 'function' && !canStudentBook(me, cls)) {
+    const allowed = classAudienceTags(cls).map(tagLabel).join(', ');
+    showToast(`This class is for: ${allowed}. Not available for your profile.`);
+    return;
+  }
   const existing = BOOKINGS.find(b => b.classId === classId && b.studentId === currentStudentId);
   if (existing) { existing.status = 'booked'; }
   else {
