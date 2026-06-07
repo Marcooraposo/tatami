@@ -72,6 +72,44 @@ Also the basis for pricing tiers.
 Decide the tenant boundary (`academy_id` + RLS) **before** migrating screens off
 `data.js`. Retrofitting isolation later means rewriting the data layer.
 
+## Grading systems (planned)
+Each academy picks **one** grading system per sport at setup (1:1 via
+`academy_sports.grading_system_id`), chosen from a list of available systems
+(global templates + the academy's own customs). Custom systems are created by
+**cloning a default template** (`is_default` marks templates; `academy_id`
+null = global, set = academy-owned; add `based_on_id` for lineage).
+
+A grading system is **self-contained for both age groups**. Reshape the
+current flat `levels`/`promotion_rules` into:
+```js
+{
+  ageBoundary: 16,                 // < boundary = kids track, ≥ = adult track
+  tracks: {
+    adult: { levels: [...], promotionRules: {...} },
+    kids:  { levels: [...], promotionRules: {...} }
+  },
+  transition: { mapping: { 'kids-green': 'adult-blue', ... }, stripeReset: true }
+}
+```
+- Both tracks are always specified (identical if the system doesn't differ by age).
+- A student's **track is derived from age** (reuse the Kid/Adult age logic);
+  `enrollments.currentLevelId` refers to a level within that track.
+- **Kid→adult crossover** is defined by the system: when a kid reaches
+  `ageBoundary` at the top of the kids track, map their belt to the adult track
+  via `transition.mapping`, apply `stripeReset`, and log a `GRADING_LOG` entry of
+  type `transition`.
+
+Work required:
+- Schema: add `age_boundary`, `based_on_id`; make `academy_sports.grading_system_id`
+  a real FK; reshape `levels`/`promotion_rules` → `tracks`/`transition`.
+- Make all promotion/stripe logic track-aware (`computePromotionStatus`,
+  `computeNextSteps`, Grading screen, student profile, student app card,
+  `setStudentStripes`, `promoteStudent`) with the crossover as a special case.
+- UI: setup picker; grading-system editor (both tracks + transition + boundary);
+  Promotion Rules split by Adult/Kids; track badge on belt displays.
+- Migration: existing IBJJF system → `tracks.adult` + a new `tracks.kids`.
+- Depends on grading data moving off `data.js` onto Supabase.
+
 ## Known tech debt (see code review)
 - Split data layer: most screens use `data.js`, not Supabase; `DB_PERSIST` unused.
 - `admin.html` is a 14k-line monolith with heavy inline styles.
