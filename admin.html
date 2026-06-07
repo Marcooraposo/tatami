@@ -514,6 +514,59 @@
       case 'dashboard':
       default:           content.innerHTML = Dashboard();  break;
     }
+    autoPaginate(content);
+  }
+
+  // ---------- Generic table/list pagination --------------------------------
+  // Runs after each render. Any <table> or .list with more than PAGE_SIZE rows
+  // gets page controls; extra rows are hidden. Re-callable after partial
+  // re-renders (e.g. filtered lists).
+  const PAGE_SIZE = 15;
+  function autoPaginate(root) {
+    root = root || document.getElementById('content');
+    if (!root) return;
+    root.querySelectorAll('table').forEach(tbl => {
+      const tb = tbl.tBodies && tbl.tBodies[0];
+      if (!tb) return;
+      const rows = [...tb.rows];
+      _applyPager(rows, tbl, tb);
+    });
+    root.querySelectorAll('.list').forEach(list => {
+      const rows = [...list.children].filter(c =>
+        c.classList && c.classList.contains('list-row') && !c.classList.contains('list-header'));
+      _applyPager(rows, list, list);
+    });
+  }
+
+  function _applyPager(rows, container, anchorParent) {
+    if (!rows.length || rows.length <= PAGE_SIZE) return;
+    if (container.dataset.pgInit === '1') return;
+    container.dataset.pgInit = '1';
+    let page = 1;
+    const pageCount = Math.ceil(rows.length / PAGE_SIZE);
+    const ctrl = document.createElement('div');
+    ctrl.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:var(--sp-3);padding:var(--sp-3);font-size:13px';
+    // place controls right after the table/list
+    (container.tagName === 'TABLE' ? container : container).insertAdjacentElement('afterend', ctrl);
+
+    function show() {
+      const start = (page - 1) * PAGE_SIZE, end = start + PAGE_SIZE;
+      rows.forEach((r, i) => { r.style.display = (i >= start && i < end) ? '' : 'none'; });
+      ctrl.innerHTML = '';
+      const prev = document.createElement('button');
+      prev.className = 'btn btn-secondary'; prev.style.cssText = 'font-size:12px;padding:2px 10px';
+      prev.textContent = '← Prev'; prev.disabled = page === 1; prev.style.opacity = page === 1 ? '.4' : '1';
+      prev.onclick = () => { if (page > 1) { page--; show(); } };
+      const next = document.createElement('button');
+      next.className = 'btn btn-secondary'; next.style.cssText = 'font-size:12px;padding:2px 10px';
+      next.textContent = 'Next →'; next.disabled = page === pageCount; next.style.opacity = page === pageCount ? '.4' : '1';
+      next.onclick = () => { if (page < pageCount) { page++; show(); } };
+      const label = document.createElement('span');
+      label.style.color = 'var(--text-muted)';
+      label.textContent = `Page ${page} of ${pageCount} · ${rows.length} rows`;
+      ctrl.append(prev, label, next);
+    }
+    show();
   }
 
   // ---------- Layout components ---------------------------------------------
@@ -902,6 +955,7 @@
       </div>
       ${_studentBulkBar()}
       <div id="student-belt-chips">${_studentBeltFilterChips()}</div>
+      <div id="student-tag-chips">${_studentTagFilterChips()}</div>
       <div class="card" style="padding:0">
         <div class="list">
           ${_studentListHeader()}
@@ -918,6 +972,7 @@
   let studentSortKey = 'name';   // 'name' | 'belt' | 'lastSeen' | 'classes'
   let studentSortDir = 1;        // 1 = asc, -1 = desc
   let studentBeltFilter = null;  // null = all, or a levelId string
+  let studentTagFilter = null;   // null = all, or an audience tag id
 
   function _studentLastSeen(studentId) {
     // Returns days since last attended class, or null if never
@@ -988,6 +1043,9 @@
     // Re-render belt chips to update active state
     const chipWrap = document.getElementById('student-belt-chips');
     if (chipWrap) chipWrap.outerHTML = `<div id="student-belt-chips">${_studentBeltFilterChips()}</div>`;
+    const tagWrap = document.getElementById('student-tag-chips');
+    if (tagWrap) tagWrap.outerHTML = `<div id="student-tag-chips">${_studentTagFilterChips()}</div>`;
+    if (list) autoPaginate(list.parentNode);
   }
 
   function getFilteredStudents() {
@@ -1006,7 +1064,26 @@
         return enr && enr.currentLevelId === studentBeltFilter;
       });
     }
+    if (studentTagFilter) {
+      base = base.filter(stu => studentTags(stu).includes(studentTagFilter));
+    }
     return _sortStudents(base);
+  }
+
+  function _studentTagFilterChips() {
+    const chip = (id, label, active) => `<button
+      onclick="studentTagFilter=${active ? 'null' : `'${id}'`};filterStudents(studentSearchQuery)"
+      style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+        background:${active ? 'var(--primary)' : 'var(--surface-alt)'};color:${active ? '#fff' : 'var(--text)'};
+        border:1px solid ${active ? 'var(--primary)' : 'var(--border)'}">${label}</button>`;
+    const tagChips = AUDIENCE_TAGS.map(tg => {
+      const count = STUDENTS.filter(s => !s.inactive && studentTags(s).includes(tg.id)).length;
+      if (!count) return '';
+      return chip(tg.id, `${t(tg.label)} <span style="opacity:.7;font-weight:400">${count}</span>`, studentTagFilter === tg.id);
+    }).join('');
+    if (!tagChips) return '';
+    return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:var(--sp-3)">
+      ${chip('', 'All tags', !studentTagFilter)}${tagChips}</div>`;
   }
 
   function _studentBeltFilterChips() {
