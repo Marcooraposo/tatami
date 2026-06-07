@@ -555,15 +555,15 @@
       ctrl.innerHTML = '';
       const prev = document.createElement('button');
       prev.className = 'btn btn-secondary'; prev.style.cssText = 'font-size:12px;padding:2px 10px';
-      prev.textContent = '← Prev'; prev.disabled = page === 1; prev.style.opacity = page === 1 ? '.4' : '1';
+      prev.textContent = tr('common.prev'); prev.disabled = page === 1; prev.style.opacity = page === 1 ? '.4' : '1';
       prev.onclick = () => { if (page > 1) { page--; show(); } };
       const next = document.createElement('button');
       next.className = 'btn btn-secondary'; next.style.cssText = 'font-size:12px;padding:2px 10px';
-      next.textContent = 'Next →'; next.disabled = page === pageCount; next.style.opacity = page === pageCount ? '.4' : '1';
+      next.textContent = tr('common.nextarr'); next.disabled = page === pageCount; next.style.opacity = page === pageCount ? '.4' : '1';
       next.onclick = () => { if (page < pageCount) { page++; show(); } };
       const label = document.createElement('span');
       label.style.color = 'var(--text-muted)';
-      label.textContent = `Page ${page} of ${pageCount} · ${rows.length} rows`;
+      label.textContent = tr('pager.page', { a: page, b: pageCount, n: rows.length });
       ctrl.append(prev, label, next);
     }
     show();
@@ -1752,9 +1752,9 @@
     const tags = studentTags(student);
     const chips = tags.length
       ? tags.map(id => `<span class="cv2-pill" style="font-size:11px">${tagLabel(id)}</span>`).join(' ')
-      : '<span class="muted" style="font-size:12px">No tags</span>';
+      : `<span class="muted" style="font-size:12px">${tr('tags.noTags')}</span>`;
     return `<div style="display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
-      <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Audience tags</span>
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted)">${tr('tags.audience')}</span>
       ${chips}
       <button class="btn btn-secondary" style="font-size:12px;padding:2px 10px" onclick="editStudentTags('${student.id}')">Edit</button>
     </div>`;
@@ -1765,7 +1765,7 @@
     if (!student || !row) return;
     const current = studentTags(student);
     row.innerHTML = `<div style="display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
-      <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Audience tags</span>
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted)">${tr('tags.audience')}</span>
       ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px">
         <input type="checkbox" value="${tg.id}" ${current.includes(tg.id)?'checked':''} data-tagedit="${studentId}"> ${t(tg.label)}</label>`).join(' ')}
       <button class="btn" style="font-size:12px;padding:2px 10px" onclick="saveStudentTags('${studentId}')">Save</button>
@@ -2694,7 +2694,7 @@
               ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px">
                 <input type="checkbox" data-tpl-aud value="${tg.id}" ${(rt.audienceTags || []).includes(tg.id) ? 'checked' : ''}> ${t(tg.label)}</label>`).join('')}
             </div>
-            <div class="faint" style="font-size:11px;margin-top:4px">None checked = open to everyone.</div>
+            <div class="faint" style="font-size:11px;margin-top:4px">${tr('aud.openHintShort')}</div>
           </div>
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-1)">Instructor</label>
@@ -3909,7 +3909,7 @@
   function renderWizard() {
     const root = document.getElementById('wizRoot');
     if (!root) return;
-    const steps = ['Academy', 'Philosophy', 'Students', 'Preview', 'Sequence'];
+    const steps = [tr('wiz.step.academy'), tr('wiz.step.philosophy'), tr('wiz.step.students'), tr('wiz.step.preview'), tr('wiz.step.sequence')];
     const stepper = steps.map((s, i) => {
       const n = i + 1, on = n === WIZ.step, done = n < WIZ.step;
       return `<div style="display:flex;align-items:center;gap:var(--sp-2)">
@@ -3924,7 +3924,7 @@
 
     root.innerHTML = `
       <div class="row-between" style="margin-bottom:var(--sp-4)">
-        <h1 class="h1">Curriculum Wizard</h1>
+        <h1 class="h1">${tr('wiz.title')}</h1>
         <button class="btn btn-secondary" onclick="go('curriculum')">Cancel</button>
       </div>
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-5)">${stepper}</div>
@@ -3963,7 +3963,7 @@
     const a = WIZ.answers;
     return `
       <div class="card" style="max-width:560px">
-        <h3 class="card-title" style="margin-bottom:var(--sp-4)">Academy profile</h3>
+        <h3 class="card-title" style="margin-bottom:var(--sp-4)">${tr('wiz.academyProfile')}</h3>
         <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px">Academy name</label>
         <input class="input" id="wizName" value="${a.name.replace(/"/g,'&quot;')}" placeholder="Iron Roots Academy"
           style="width:100%;margin-bottom:var(--sp-4)" oninput="WIZ.answers.name=this.value;wizUpdateNext()" />
@@ -4006,7 +4006,7 @@
   function wizScreen2() {
     return `
       <div class="stack" style="gap:var(--sp-5)">
-        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Primary focus</h3>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">${tr('wiz.primaryFocus')}</h3>
           ${wizCards('focus', [
             { value:'Self-Defense', label:'Self-Defense', icon:'🛡', desc:'Practical, situational' },
             { value:'Sport Gi', label:'Sport Gi', icon:'🥋', desc:'Competition with the gi' },
@@ -4014,19 +4014,19 @@
             { value:'MMA Base', label:'MMA Base', icon:'🥊', desc:'Striking-aware grappling' },
             { value:'Mixed', label:'Mixed', icon:'⚖️', desc:'A balance of everything' }
           ])}</div>
-        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Leg lock stance</h3>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">${tr('wiz.legLockStance')}</h3>
           ${wizCards('legLock', [
             { value:'Conservative', label:'Conservative', icon:'🦶', desc:'Ankle locks only' },
             { value:'Moderate', label:'Moderate', icon:'🦵', desc:'+ toe holds' },
             { value:'Full', label:'Full', icon:'🔥', desc:'Including heel hooks' }
           ])}</div>
-        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Takedowns</h3>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">${tr('wiz.takedowns')}</h3>
           ${wizCards('takedowns', [
             { value:'Minimal', label:'Minimal', icon:'🤏', desc:'Pull guard, hide wrestling' },
             { value:'Moderate', label:'Moderate', icon:'👍', desc:'Core takedowns' },
             { value:'Wrestling-integrated', label:'Wrestling-integrated', icon:'🤼', desc:'Heavy stand-up' }
           ])}</div>
-        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Ruleset</h3>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">${tr('wiz.ruleset')}</h3>
           ${wizCards('ruleset', [
             { value:'Gi only', label:'Gi only', icon:'🥋', desc:'Exclude No-Gi techniques' },
             { value:'No-Gi only', label:'No-Gi only', icon:'🩳', desc:'Exclude Gi techniques' },
@@ -4045,7 +4045,7 @@
       { value:"Women's self-defense", icon:'🛡', desc:'Self-defense emphasis' }
     ];
     return `
-      <h3 class="card-title" style="margin-bottom:var(--sp-2)">Who trains here?</h3>
+      <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('wiz.whoTrains')}</h3>
       <p class="muted" style="font-size:13px;margin-bottom:var(--sp-4)">Select all that apply. This shapes module ordering and emphasis, not which techniques are included.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--sp-3)">
         ${opts.map(o => {
@@ -4115,11 +4115,11 @@
     return `
       <div class="row-between" style="margin-bottom:var(--sp-4)">
         <div>
-          <h3 class="card-title">Curriculum preview</h3>
+          <h3 class="card-title">${tr('wiz.preview')}</h3>
           <div class="muted" style="font-size:13px">${wizTypeSummary()} · <strong>${totalIncluded}</strong> techniques${totalExcluded?` · ${totalExcluded} excluded`:''}</div>
         </div>
         <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer">
-          <input type="checkbox" ${WIZ.showExcluded?'checked':''} onchange="WIZ.showExcluded=this.checked;renderWizard()"> Show excluded
+          <input type="checkbox" ${WIZ.showExcluded?'checked':''} onchange="WIZ.showExcluded=this.checked;renderWizard()"> ${tr('wiz.showExcluded')}
         </label>
       </div>
       ${cards || '<div class="cv2-empty">No techniques.</div>'}
@@ -4147,7 +4147,7 @@
       </div>`;
     }).join('');
     return `
-      <h3 class="card-title" style="margin-bottom:var(--sp-2)">Module sequence</h3>
+      <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('wiz.moduleSequence')}</h3>
       <p class="muted" style="font-size:13px;margin-bottom:var(--sp-4)">Order the modules as you'd teach them. Empty modules are skipped on save.</p>
       ${rows}
       ${wizNav('Back', WIZ.saving ? 'Saving…' : 'Finish & save ✓', null, WIZ.saving)}`;
@@ -4267,7 +4267,7 @@
          <div style="margin-top:var(--sp-2);display:flex;gap:var(--sp-2)">
            <button class="btn btn-primary" onclick="tpSaveField('description')">Save</button>
            <button class="btn btn-secondary" onclick="TP.editing=null;renderTechniquePage()">Cancel</button></div>`
-      : `<p style="font-size:14px;line-height:1.6">${t.description || '<span class="muted">No description yet.</span>'}</p>
+      : `<p style="font-size:14px;line-height:1.6">${t.description || `<span class="muted">${tr('tech.noDescription')}</span>`}</p>
          ${admin ? `<button class="btn btn-secondary" style="font-size:12px" onclick="TP.editing='description';renderTechniquePage()">Edit</button>` : ''}`;
 
     const keyBlock = TP.editing === 'key_details'
@@ -4275,7 +4275,7 @@
          <div style="margin-top:var(--sp-2);display:flex;gap:var(--sp-2)">
            <button class="btn btn-primary" onclick="tpSaveField('key_details')">Save</button>
            <button class="btn btn-secondary" onclick="TP.editing=null;renderTechniquePage()">Cancel</button></div>`
-      : `<p style="font-size:14px;line-height:1.6">${t.key_details || '<span class="muted">No key details yet.</span>'}</p>
+      : `<p style="font-size:14px;line-height:1.6">${t.key_details || `<span class="muted">${tr('tech.noKeyDetails')}</span>`}</p>
          ${admin ? `<button class="btn btn-secondary" style="font-size:12px" onclick="TP.editing='key_details';renderTechniquePage()">Edit</button>` : ''}`;
 
     root.innerHTML = `
@@ -4299,22 +4299,22 @@
             ${tpBadge(ct('ui','colComplexity'), ct('complexity', t.complexity), 'c-'+t.complexity)}
             ${tpBadge(ct('ui','colRuleset'), ct('ruleset', t.ruleset))}
             ${tpBadge(ct('ui','colContext'), ct('context', t.context))}
-            ${t.leg_lock_tier && t.leg_lock_tier !== 'None' ? tpBadge('Leg lock', ct('legtier', t.leg_lock_tier)) : ''}
+            ${t.leg_lock_tier && t.leg_lock_tier !== 'None' ? tpBadge(tr('tech.badge.legLock'), ct('legtier', t.leg_lock_tier)) : ''}
           </div>
 
           <div class="card" style="margin-bottom:var(--sp-4)">
-            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Description</h3>
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.description')}</h3>
             ${descBlock}
           </div>
           <div class="card" style="margin-bottom:var(--sp-4);border-color:var(--accent)">
-            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Key Details &amp; Common Errors</h3>
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.keyDetails')}</h3>
             ${keyBlock}
           </div>
           <div class="card">
-            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Video</h3>
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.video')}</h3>
             <div style="border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:var(--sp-6);text-align:center;color:var(--text-muted)">
-              No video added yet.
-              ${admin ? `<div style="margin-top:var(--sp-3)"><button class="btn btn-secondary" onclick="showToast('Video upload coming soon')">Upload video</button></div>` : ''}
+              ${tr('tech.noVideo')}
+              ${admin ? `<div style="margin-top:var(--sp-3)"><button class="btn btn-secondary" onclick="showToast(tr('tech.uploadVideo'))">${tr('tech.uploadVideo')}</button></div>` : ''}
             </div>
           </div>
 
@@ -4326,27 +4326,27 @@
 
         <div class="stack" style="gap:var(--sp-4)">
           <div class="card">
-            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Module</h3>
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.module')}</h3>
             ${TP.module
               ? `<a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent);font-weight:600">${moduleName(TP.module)}</a>`
               : '<span class="muted">—</span>'}
           </div>
           <div class="card">
-            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Prerequisites</h3>
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.prerequisites')}</h3>
             ${linkList(TP.prereqs)}
-            ${admin ? `<button class="btn btn-secondary" style="font-size:12px;margin-top:var(--sp-2)" onclick="tpAddRel('prerequisite')">+ Add prerequisite</button>` : ''}
+            ${admin ? `<button class="btn btn-secondary" style="font-size:12px;margin-top:var(--sp-2)" onclick="tpAddRel('prerequisite')">${tr('tech.addPrereq')}</button>` : ''}
           </div>
           <div class="card">
-            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Chains to</h3>
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.chainsTo')}</h3>
             ${linkList(TP.chains)}
-            ${admin ? `<button class="btn btn-secondary" style="font-size:12px;margin-top:var(--sp-2)" onclick="tpAddRel('chains_to')">+ Add chain</button>` : ''}
+            ${admin ? `<button class="btn btn-secondary" style="font-size:12px;margin-top:var(--sp-2)" onclick="tpAddRel('chains_to')">${tr('tech.addChain')}</button>` : ''}
           </div>
           <div class="card">
-            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Academy context</h3>
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.academyContext')}</h3>
             <span class="muted" style="font-size:13px">Belt/stripe association — editable per academy. Coming soon.</span>
           </div>
           <div class="card" style="background:var(--surface-alt)">
-            <h3 class="card-title" style="margin-bottom:var(--sp-2)">Student progress</h3>
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.studentProgress')}</h3>
             <span class="muted" style="font-size:13px">Coming soon.</span>
           </div>
         </div>
@@ -4535,7 +4535,7 @@
         <div style="margin-bottom:var(--sp-4)">
           <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('students')">← Back to students</a>
         </div>
-        <h1 class="h1" style="margin-bottom:var(--sp-2)">Add new student</h1>
+        <h1 class="h1" style="margin-bottom:var(--sp-2)">${tr('screen.addStudent')}</h1>
         <p class="muted" style="margin-bottom:var(--sp-5)">Complete all steps to onboard a new student.</p>
         <div class="card" style="margin-bottom:var(--sp-4)">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-1)">${stepBar}</div>
@@ -4558,23 +4558,23 @@
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Date of birth *</label>
             <input id="sw-dob" type="date" class="input" style="width:100%" value="${d.dob}" />
-            <div class="faint" style="font-size:11px;margin-top:4px">Under 16 is tagged as Kid, otherwise Adult.</div>
+            <div class="faint" style="font-size:11px;margin-top:4px">${tr('tags.kidHint')}</div>
           </div>
           <div>
-            <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Gender *</label>
+            <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${tr('tags.gender')} *</label>
             <select id="sw-gender" class="input" style="width:100%">
-              <option value="" ${!d.gender?'selected':''}>Select…</option>
-              <option value="female" ${d.gender==='female'?'selected':''}>Female</option>
-              <option value="male" ${d.gender==='male'?'selected':''}>Male</option>
-              <option value="other" ${d.gender==='other'?'selected':''}>Other / prefer not to say</option>
+              <option value="" ${!d.gender?'selected':''}>${tr('tags.select')}</option>
+              <option value="female" ${d.gender==='female'?'selected':''}>${tr('tags.female')}</option>
+              <option value="male" ${d.gender==='male'?'selected':''}>${tr('tags.male')}</option>
+              <option value="other" ${d.gender==='other'?'selected':''}>${tr('tags.other')}</option>
             </select>
           </div>
           <div>
             <label style="display:flex;align-items:center;gap:var(--sp-2);font-weight:600;font-size:13px">
               <input id="sw-competes" type="checkbox" ${d.competes?'checked':''} />
-              Interested in competing
+              ${tr('tags.competeQ')}
             </label>
-            <div class="faint" style="font-size:11px;margin-top:4px">Adds the Competition tag, unlocking competition classes.</div>
+            <div class="faint" style="font-size:11px;margin-top:4px">${tr('tags.competeHint')}</div>
           </div>
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Email</label>
@@ -4811,9 +4811,9 @@
   function scheduleViewToggle() {
     return `<div class="cv2-seg">
       <button class="${scheduleView==='week'?'on':''}" onclick="scheduleView='week';renderApp()"
-        style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${scheduleView==='week'?'var(--primary)':'var(--surface)'};color:${scheduleView==='week'?'#fff':'var(--text-muted)'}">Week</button>
+        style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${scheduleView==='week'?'var(--primary)':'var(--surface)'};color:${scheduleView==='week'?'#fff':'var(--text-muted)'}">${tr('sched.week')}</button>
       <button class="${scheduleView==='month'?'on':''}" onclick="scheduleView='month';renderApp()"
-        style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${scheduleView==='month'?'var(--primary)':'var(--surface)'};color:${scheduleView==='month'?'#fff':'var(--text-muted)'}">Month</button>
+        style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${scheduleView==='month'?'var(--primary)':'var(--surface)'};color:${scheduleView==='month'?'#fff':'var(--text-muted)'}">${tr('sched.month')}</button>
     </div>`;
   }
 
@@ -5867,7 +5867,7 @@
         <div style="margin-bottom:var(--sp-4)">
           <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('classes')">← Back to classes</a>
         </div>
-        <h1 class="h1" style="margin-bottom:var(--sp-5)">New class</h1>
+        <h1 class="h1" style="margin-bottom:var(--sp-5)">${tr('screen.newClass')}</h1>
         <div class="card">
           <div class="stack" style="gap:var(--sp-4)">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
@@ -5908,8 +5908,8 @@
               </div>
             </div>
             <div>
-              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Who can attend</label>
-              <div class="faint" style="font-size:11px;margin-bottom:var(--sp-2)">Leave all unchecked for open to everyone. Otherwise only students with a selected tag can book.</div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${tr('aud.whoCanAttend')}</label>
+              <div class="faint" style="font-size:11px;margin-bottom:var(--sp-2)">${tr('aud.openHint')}</div>
               <div style="display:flex;flex-wrap:wrap;gap:var(--sp-3)">
                 ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px">
                   <input type="checkbox" data-nc-aud value="${tg.id}" ${(newClassState.audienceTags||[]).includes(tg.id)?'checked':''}> ${t(tg.label)}</label>`).join('')}
@@ -5993,7 +5993,7 @@
         </div>
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:4px">Promotion Rules</h1>
+            <h1 class="h1" style="margin-bottom:4px">${tr('screen.promotionRules')}</h1>
             <p class="muted" style="font-size:13px">${t(grading.name)} — set the thresholds a student must meet before promotion.</p>
           </div>
         </div>
@@ -6059,7 +6059,7 @@
 
     return `
       <div style="max-width:680px;margin:0 auto">
-        <h1 class="h1" style="margin-bottom:var(--sp-2)">Settings</h1>
+        <h1 class="h1" style="margin-bottom:var(--sp-2)">${tr('screen.settings')}</h1>
         <p class="muted" style="margin-bottom:var(--sp-5)">Manage your academy details and gym rules.</p>
 
         <div class="card" style="margin-bottom:var(--sp-4)">
@@ -6322,7 +6322,7 @@
         </div>
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:var(--sp-1)">Membership plans</h1>
+            <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.membershipPlans')}</h1>
             <p class="muted">Edit existing plans or add new ones.</p>
           </div>
           <button class="btn" onclick="addMembershipPlan()">+ New plan</button>
@@ -6836,7 +6836,7 @@
       <div style="max-width:900px;margin:0 auto">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:var(--sp-1)">Billing</h1>
+            <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.billing')}</h1>
             <p class="muted">${currentMonthLabel} · Membership invoices</p>
           </div>
           <div class="card" style="padding:var(--sp-3) var(--sp-4);display:flex;gap:var(--sp-5);align-items:center">
@@ -7628,7 +7628,7 @@
       <div style="max-width:960px;margin:0 auto">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:var(--sp-1)">Instructors</h1>
+            <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.instructors')}</h1>
             <p class="muted">Workload and attendance summary per instructor.</p>
           </div>
         </div>

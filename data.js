@@ -20,7 +20,8 @@ let CURRENT_LOCALE = (typeof localStorage !== 'undefined' && localStorage.getIte
 function setLocale(code) {
   CURRENT_LOCALE = code;
   if (typeof localStorage !== 'undefined') localStorage.setItem('tatami_locale', code);
-  if (typeof renderApp === 'function') renderApp();
+  if (typeof renderApp === 'function') renderApp();   // admin app
+  else if (typeof render === 'function') render();      // student app
 }
 
 // Resolve a localized field. Accepts either a string or { en, pt, ... } object.
@@ -28,6 +29,152 @@ function t(field) {
   if (field == null) return '';
   if (typeof field === 'string') return field;
   return field[CURRENT_LOCALE] || field[CONFIG.defaultLocale] || Object.values(field)[0] || '';
+}
+
+// =============================================================================
+// i18n string catalog + tr() helper
+// -----------------------------------------------------------------------------
+// HOW TO ADD A LANGUAGE:
+//   1. Add it to CONFIG.supportedLocales, e.g. { code: 'es', label: 'Español' }.
+//   2. Add that locale's value to entries in STRINGS below. Any missing key
+//      falls back to English automatically, so you can translate incrementally.
+// The header language switcher and t()/tr() all read CONFIG.supportedLocales,
+// so no other code changes are needed to support a new language.
+//
+// USAGE:
+//   tr('common.save')                      -> "Save" / "Guardar"
+//   tr('pager.page', { a: 1, b: 3, n: 42 }) -> "Page 1 of 3 · 42 rows"
+// =============================================================================
+const STRINGS = {
+  // ---- Common ----
+  'common.save':    { en: 'Save',    pt: 'Guardar' },
+  'common.cancel':  { en: 'Cancel',  pt: 'Cancelar' },
+  'common.edit':    { en: 'Edit',    pt: 'Editar' },
+  'common.delete':  { en: 'Delete',  pt: 'Eliminar' },
+  'common.add':     { en: 'Add',     pt: 'Adicionar' },
+  'common.next':    { en: 'Next →',  pt: 'Seguinte →' },
+  'common.back':    { en: '← Back',  pt: '← Voltar' },
+  'common.clear':   { en: 'Clear',   pt: 'Limpar' },
+  'common.search':  { en: 'Search…', pt: 'Procurar…' },
+  'common.view':    { en: 'View',    pt: 'Ver' },
+  'common.admin':   { en: 'Admin',   pt: 'Admin' },
+  'common.settings':{ en: '⚙ Settings', pt: '⚙ Definições' },
+  'common.today':   { en: 'Today',   pt: 'Hoje' },
+  'common.prev':    { en: '← Prev',  pt: '← Anterior' },
+  'common.nextarr': { en: 'Next →',  pt: 'Próximo →' },
+  'common.comingSoon': { en: 'Coming soon.', pt: 'Em breve.' },
+  'common.none':    { en: 'None.',   pt: 'Nenhum.' },
+
+  // ---- Pagination ----
+  'pager.page': { en: 'Page {a} of {b} · {n} rows', pt: 'Página {a} de {b} · {n} linhas' },
+
+  // ---- Schedule ----
+  'sched.week':  { en: 'Week',  pt: 'Semana' },
+  'sched.month': { en: 'Month', pt: 'Mês' },
+  'sched.currentMonth': { en: 'Current month', pt: 'Mês atual' },
+  'sched.clickDay': { en: 'click a day to open its week', pt: 'clique num dia para abrir a semana' },
+
+  // ---- Student tags / onboarding ----
+  'tags.audience':    { en: 'Audience tags',  pt: 'Etiquetas de público' },
+  'tags.noTags':      { en: 'No tags',        pt: 'Sem etiquetas' },
+  'tags.gender':      { en: 'Gender',         pt: 'Género' },
+  'tags.female':      { en: 'Female',         pt: 'Feminino' },
+  'tags.male':        { en: 'Male',           pt: 'Masculino' },
+  'tags.other':       { en: 'Other / prefer not to say', pt: 'Outro / prefiro não dizer' },
+  'tags.select':      { en: 'Select…',        pt: 'Selecionar…' },
+  'tags.competeQ':    { en: 'Interested in competing', pt: 'Interessado em competir' },
+  'tags.competeHint': { en: 'Adds the Competition tag, unlocking competition classes.', pt: 'Adiciona a etiqueta Competição, desbloqueando aulas de competição.' },
+  'tags.kidHint':     { en: 'Under 16 is tagged as Kid, otherwise Adult.', pt: 'Menores de 16 são marcados como Criança, caso contrário Adulto.' },
+
+  // ---- Class audience ----
+  'aud.whoCanAttend': { en: 'Who can attend', pt: 'Quem pode participar' },
+  'aud.openHint':     { en: 'Leave all unchecked for open to everyone. Otherwise only students with a selected tag can book.', pt: 'Deixe tudo desmarcado para aberto a todos. Caso contrário, só alunos com uma etiqueta selecionada podem reservar.' },
+  'aud.openHintShort':{ en: 'None checked = open to everyone.', pt: 'Nada marcado = aberto a todos.' },
+
+  // ---- Curriculum wizard ----
+  'wiz.title':        { en: 'Curriculum Wizard', pt: 'Assistente de Currículo' },
+  'wiz.step.academy':    { en: 'Academy',    pt: 'Academia' },
+  'wiz.step.philosophy': { en: 'Philosophy', pt: 'Filosofia' },
+  'wiz.step.students':   { en: 'Students',   pt: 'Alunos' },
+  'wiz.step.preview':    { en: 'Preview',    pt: 'Pré-visualização' },
+  'wiz.step.sequence':   { en: 'Sequence',   pt: 'Sequência' },
+  'wiz.academyProfile':  { en: 'Academy profile', pt: 'Perfil da academia' },
+  'wiz.academyName':     { en: 'Academy name', pt: 'Nome da academia' },
+  'wiz.location':        { en: 'Location',   pt: 'Localização' },
+  'wiz.language':        { en: 'Primary language', pt: 'Idioma principal' },
+  'wiz.primaryFocus':    { en: 'Primary focus', pt: 'Foco principal' },
+  'wiz.legLockStance':   { en: 'Leg lock stance', pt: 'Postura de chaves de perna' },
+  'wiz.takedowns':       { en: 'Takedowns',  pt: 'Quedas' },
+  'wiz.ruleset':         { en: 'Ruleset',    pt: 'Conjunto de regras' },
+  'wiz.whoTrains':       { en: 'Who trains here?', pt: 'Quem treina aqui?' },
+  'wiz.whoTrainsHint':   { en: 'Select all that apply. This shapes module ordering and emphasis, not which techniques are included.', pt: 'Selecione todas as opções aplicáveis. Isto molda a ordem e ênfase dos módulos, não as técnicas incluídas.' },
+  'wiz.preview':         { en: 'Curriculum preview', pt: 'Pré-visualização do currículo' },
+  'wiz.showExcluded':    { en: 'Show excluded', pt: 'Mostrar excluídas' },
+  'wiz.moduleSequence':  { en: 'Module sequence', pt: 'Sequência de módulos' },
+  'wiz.sequenceHint':    { en: "Order the modules as you'd teach them. Empty modules are skipped on save.", pt: 'Ordene os módulos como os ensinaria. Módulos vazios são ignorados ao guardar.' },
+  'wiz.finish':          { en: 'Finish & save ✓', pt: 'Concluir e guardar ✓' },
+  'wiz.saving':          { en: 'Saving…', pt: 'A guardar…' },
+  'wiz.addLabel':        { en: '+ Add', pt: '+ Adicionar' },
+  'wiz.hide':            { en: 'Hide', pt: 'Ocultar' },
+  'wiz.show':            { en: 'Show', pt: 'Mostrar' },
+  'wiz.excluded':        { en: 'excluded', pt: 'excluídas' },
+
+  // ---- Technique page ----
+  'tech.description':    { en: 'Description', pt: 'Descrição' },
+  'tech.keyDetails':     { en: 'Key Details & Common Errors', pt: 'Detalhes-chave e Erros Comuns' },
+  'tech.video':          { en: 'Video', pt: 'Vídeo' },
+  'tech.noVideo':        { en: 'No video added yet.', pt: 'Ainda sem vídeo.' },
+  'tech.uploadVideo':    { en: 'Upload video', pt: 'Carregar vídeo' },
+  'tech.module':         { en: 'Module', pt: 'Módulo' },
+  'tech.prerequisites':  { en: 'Prerequisites', pt: 'Pré-requisitos' },
+  'tech.chainsTo':       { en: 'Chains to', pt: 'Encadeia para' },
+  'tech.academyContext': { en: 'Academy context', pt: 'Contexto da academia' },
+  'tech.academyCtxHint': { en: 'Belt/stripe association — editable per academy. Coming soon.', pt: 'Associação de faixa/grau — editável por academia. Em breve.' },
+  'tech.studentProgress':{ en: 'Student progress', pt: 'Progresso do aluno' },
+  'tech.addPrereq':      { en: '+ Add prerequisite', pt: '+ Adicionar pré-requisito' },
+  'tech.addChain':       { en: '+ Add chain', pt: '+ Adicionar encadeamento' },
+  'tech.noDescription':  { en: 'No description yet.', pt: 'Ainda sem descrição.' },
+  'tech.noKeyDetails':   { en: 'No key details yet.', pt: 'Ainda sem detalhes.' },
+  'tech.notFound':       { en: 'Technique not found.', pt: 'Técnica não encontrada.' },
+  'tech.badge.category': { en: 'Category', pt: 'Categoria' },
+  'tech.badge.type':     { en: 'Type', pt: 'Tipo' },
+  'tech.badge.complexity':{ en: 'Complexity', pt: 'Complexidade' },
+  'tech.badge.ruleset':  { en: 'Ruleset', pt: 'Regras' },
+  'tech.badge.context':  { en: 'Context', pt: 'Contexto' },
+  'tech.badge.legLock':  { en: 'Leg lock', pt: 'Chave de perna' },
+
+  // ---- Student app section headers ----
+  'sapp.upNext':       { en: 'Up next', pt: 'A seguir' },
+  'sapp.latestNews':   { en: 'Latest news', pt: 'Últimas notícias' },
+  'sapp.privateLesson':{ en: 'Private lesson', pt: 'Aula particular' },
+  'sapp.lessonPlan':   { en: 'On the lesson plan', pt: 'No plano de aula' },
+  'sapp.trainingCalendar': { en: 'Training calendar', pt: 'Calendário de treino' },
+  'sapp.trainingGoal': { en: 'Training goal', pt: 'Objetivo de treino' },
+  'sapp.beltProgression': { en: 'Belt progression', pt: 'Progressão de faixa' },
+  'sapp.techniqueProgress': { en: 'Technique progress', pt: 'Progresso técnico' },
+
+  // ---- Admin screen headings ----
+  'screen.settings':      { en: 'Settings', pt: 'Definições' },
+  'screen.billing':       { en: 'Billing', pt: 'Faturação' },
+  'screen.promotionRules':{ en: 'Promotion Rules', pt: 'Regras de Graduação' },
+  'screen.membershipPlans':{ en: 'Membership plans', pt: 'Planos de adesão' },
+  'screen.instructors':   { en: 'Instructors', pt: 'Professores' },
+  'screen.newClass':      { en: 'New class', pt: 'Nova aula' },
+  'screen.addStudent':    { en: 'Add new student', pt: 'Adicionar novo aluno' },
+};
+
+// tr: look up a catalog key for the current locale, with {var} interpolation.
+function tr(key, vars) {
+  const entry = STRINGS[key];
+  let s = entry ? (entry[CURRENT_LOCALE] || entry[CONFIG.defaultLocale] || entry.en) : null;
+  if (s == null) {
+    if (typeof console !== 'undefined' && CURRENT_LOCALE !== CONFIG.defaultLocale) {
+      console.warn('[i18n] missing string key:', key);
+    }
+    s = key; // last-resort: show the key so it's obvious in the UI
+  }
+  if (vars) Object.keys(vars).forEach(k => { s = s.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]); });
+  return s;
 }
 
 // UI chrome strings (not part of the data model — just for the prototype UI)
