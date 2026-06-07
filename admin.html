@@ -89,11 +89,9 @@
     { id: 'prospects',          label: 'Prospects',           icon: '🎯' },
     { id: 'referrals',          label: 'Referrals',           icon: '🔗' },
     { id: 'memberships',    label: 'Memberships',     icon: '◈' },
-    { id: 'packages',       label: 'Packages',        icon: '🎟' },
     { id: 'discounts',      label: 'Discounts',       icon: '%' },
     { id: 'grading',        label: 'Grading',         icon: '★' },
     { id: 'instructors',    label: 'Instructors',     icon: '👤' },
-    { id: 'waivers',        label: 'Documents / Waivers', icon: '📋' },
     { id: 'billing',        label: 'Billing',         icon: '💳' },
     { id: 'analytics',      label: 'Analytics',       icon: '📊' },
     { id: 'ratings',        label: 'Feedback / Ratings', icon: '⭐' },
@@ -101,9 +99,6 @@
     { id: 'goals',          label: 'Goals',           icon: '◎' },
     { id: 'events',         label: 'Events',          icon: '🏆' },
     { id: 'announcements',  label: 'Announcements',   icon: '📢' },
-    { id: 'messages',       label: 'Messages',        icon: '✉' },
-    { id: 'comm-log',       label: 'Communication Log',icon: '📬' },
-    { id: 'kiosk',          label: 'Check-in Kiosk',  icon: '🖥' },
     { id: 'settings',       label: 'Settings',        icon: '⚙' },
   ];
 
@@ -612,7 +607,6 @@
         id: 'finance-group', label: 'Finance', icon: '💳',
         items: [
           { id: 'memberships', label: 'Memberships', icon: '◈' },
-          { id: 'packages',    label: 'Packages',    icon: '🎟' },
           { id: 'discounts',   label: 'Discounts',   icon: '%' },
           { id: 'billing',     label: 'Billing',     icon: '💳' },
         ]
@@ -622,7 +616,6 @@
         items: [
           { id: 'curriculum', label: 'Curriculum', icon: '☰' },
           { id: 'grading',    label: 'Grading',    icon: '★' },
-          { id: 'waivers',    label: 'Documents',  icon: '📋' },
         ]
       },
       {
@@ -638,8 +631,6 @@
         id: 'comms-group', label: 'Comms', icon: '📢',
         items: [
           { id: 'announcements', label: 'Announcements', icon: '📢' },
-          { id: 'messages',      label: 'Messages',      icon: '✉' },
-          { id: 'comm-log',      label: 'Comm. Log',     icon: '📬' },
         ]
       },
     ];
@@ -5813,7 +5804,6 @@
         </div>
       </div>
 
-      ${renewalCard}
 
       ${planCards}
     `;
