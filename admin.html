@@ -2690,9 +2690,11 @@
           </div>
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-1)">Audience</label>
-            <select id="tpl-audience" class="input" style="width:100%">
-              ${AUDIENCES.map(a => `<option value="${a}" ${(rt.audience || 'Adults') === a ? 'selected' : ''}>${a}</option>`).join('')}
-            </select>
+            <div style="display:flex;flex-wrap:wrap;gap:var(--sp-3);padding-top:6px">
+              ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px">
+                <input type="checkbox" data-tpl-aud value="${tg.id}" ${(rt.audienceTags || []).includes(tg.id) ? 'checked' : ''}> ${t(tg.label)}</label>`).join('')}
+            </div>
+            <div class="faint" style="font-size:11px;margin-top:4px">None checked = open to everyone.</div>
           </div>
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-1)">Instructor</label>
@@ -2716,7 +2718,7 @@
   }
   function startNewTemplate() {
     editingTemplateId = 'new';
-    editTemplateState = { dow: 1, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'Adults', instructorId: '', capacity: 20 };
+    editTemplateState = { dow: 1, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'All', audienceTags: [], instructorId: '', capacity: 20 };
     document.getElementById('content').innerHTML = ClassesList();
   }
   function cancelEditTemplate() {
@@ -2729,17 +2731,18 @@
     const time     = document.getElementById('tpl-time')?.value || '19:00';
     const dur      = parseInt(document.getElementById('tpl-dur')?.value) || 60;
     const type     = document.getElementById('tpl-type')?.value || 'Fundamentals';
-    const audience = document.getElementById('tpl-audience')?.value || 'Adults';
+    const audienceTags = [...document.querySelectorAll('input[data-tpl-aud]:checked')].map(c => c.value);
+    const audience = audienceTags.length ? audienceTags.map(tagLabel).join(', ') : 'All';
     const inst     = document.getElementById('tpl-inst')?.value || '';
     const cap      = parseInt(document.getElementById('tpl-cap')?.value) || 20;
 
     if (!inst) { alert('Please select an instructor.'); return; }
 
     if (id === 'new') {
-      RECURRING_TEMPLATES.push({ id: 'rt-' + Date.now(), dow, time, durationMin: dur, classType: type, audience, instructorId: inst, capacity: cap, sportId: 'sport-bjj' });
+      RECURRING_TEMPLATES.push({ id: 'rt-' + Date.now(), dow, time, durationMin: dur, classType: type, audience, audienceTags, instructorId: inst, capacity: cap, sportId: 'sport-bjj' });
     } else {
       const rt = RECURRING_TEMPLATES.find(r => r.id === id);
-      if (rt) Object.assign(rt, { dow, time, durationMin: dur, classType: type, audience, instructorId: inst, capacity: cap });
+      if (rt) Object.assign(rt, { dow, time, durationMin: dur, classType: type, audience, audienceTags, instructorId: inst, capacity: cap });
     }
     editingTemplateId = null;
     editTemplateState = {};
