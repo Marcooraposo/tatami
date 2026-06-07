@@ -22,3 +22,22 @@ Check the browser console on load — it logs `[tatami] environment: …`.
 - Production branch = `main` (Settings → Git → Production Branch).
 - Preview deployments are automatic for every other branch/PR, including `dev`.
 - Add any custom production domain to `PROD_HOSTS` so it maps to the prod DB.
+
+## Securing the demo
+**1. Password gate (Edge Middleware, `middleware.js`)**
+- Set env vars in Vercel → Settings → Environment Variables:
+  - `DEMO_PASSWORD` = the shared password (required to enable the gate)
+  - `DEMO_USER` = username (optional, defaults to `demo`)
+- With no `DEMO_PASSWORD` set, the gate is disabled (fails open) — so set it on
+  the deployment you want protected. Visitors get a browser Basic-Auth prompt.
+- `robots.txt` disallows indexing.
+
+**2. Read-only demo database (`supabase/migrations/006_demo_readonly.sql`)**
+- Run on the **demo** Supabase project only. Replaces the open `allow_all`
+  policies with SELECT-only access for `anon`, so visitors can read everything
+  but cannot insert/update/delete.
+- Do NOT run on prod (prod gets auth-scoped policies later).
+- The app degrades gracefully: curriculum wizard/hide writes show
+  "read-only demo — changes are not saved" instead of an error. The rest of the
+  app runs on in-memory `data.js` + `localStorage`, so each visitor gets a
+  private sandbox that resets on reload.

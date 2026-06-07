@@ -3813,7 +3813,11 @@
     const next = !m.is_hidden;
     m.is_hidden = next; renderCV2();
     const { error } = await sb.from('curriculum_techniques').update({ is_hidden: next }).eq('id', m.id);
-    if (error) { m.is_hidden = !next; renderCV2(); showToast('Failed to save.'); }
+    if (error) {
+      m.is_hidden = !next; renderCV2();
+      const ro = error.code === '42501' || /policy|permission|row-level/i.test(error.message || '');
+      showToast(ro ? 'This is a read-only demo — changes are not saved.' : 'Failed to save.');
+    }
   }
 
   async function cv2RestoreModule(moduleId) {
@@ -4178,7 +4182,12 @@
       const { sport_id, ...noSport } = cfgRow;
       ({ data: cfg, error: cErr } = await sb.from('curriculum_configs').insert(noSport).select().single());
     }
-    if (cErr || !cfg) { WIZ.saving = false; renderWizard(); showToast('Save failed: ' + (cErr?.message||'unknown')); return; }
+    if (cErr || !cfg) {
+      WIZ.saving = false; renderWizard();
+      const ro = cErr && (cErr.code === '42501' || /policy|permission|row-level/i.test(cErr.message || ''));
+      showToast(ro ? 'This is a read-only demo — changes are not saved.' : 'Save failed: ' + (cErr?.message || 'unknown'));
+      return;
+    }
 
     const included = wizIncludedTechs();
     let seq = 0;
