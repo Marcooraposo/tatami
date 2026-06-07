@@ -382,3 +382,54 @@ body {
   .list-row { grid-template-columns: 36px 1fr 0.6fr; }
   .list-row .list-col-hide { display: none; }
 }
+
+/* ---------- Curriculum (CV2) + technique page ---------- */
+.cv2-bar { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;
+  margin-bottom:var(--sp-5); padding:var(--sp-3); background:var(--surface);
+  border:1px solid var(--border); border-radius:var(--r-md); }
+.cv2-bar select, .cv2-bar input { font:inherit; font-size:13px; padding:6px 8px;
+  border:1px solid var(--border-strong); border-radius:var(--r-sm);
+  background:var(--surface); color:var(--text); }
+.cv2-bar .spacer { flex:1; }
+.cv2-mod { border:1px solid var(--border); border-radius:var(--r-md);
+  background:var(--surface); margin-bottom:var(--sp-4); overflow:hidden;
+  scroll-margin-top:var(--sp-4); }
+.cv2-head { display:flex; align-items:center; gap:var(--sp-3);
+  padding:var(--sp-3) var(--sp-4); cursor:pointer; user-select:none; }
+.cv2-head:hover { background:var(--surface-alt); }
+.cv2-head .chev { color:var(--text-faint); transition:transform .15s; }
+.cv2-mod.collapsed .chev { transform:rotate(-90deg); }
+.cv2-mod.collapsed .cv2-body { display:none; }
+.cv2-head .mname { font-weight:600; font-size:15px; }
+.cv2-head .mspacer { flex:1; }
+.cv2-badge { background:var(--surface-alt); color:var(--text-muted);
+  border:1px solid var(--border); border-radius:999px; padding:1px 8px;
+  font-size:11px; font-variant-numeric:tabular-nums; }
+.cv2-cbar { display:inline-flex; height:6px; width:120px; border-radius:999px;
+  overflow:hidden; background:var(--surface-alt); }
+.cv2-cbar span { display:block; height:100%; }
+.cb-Beginner{background:var(--success)} .cb-Intermediate{background:var(--accent)}
+.cb-Advanced{background:var(--warn)} .cb-Expert{background:var(--danger)}
+.cv2-tbl { width:100%; border-collapse:collapse; font-size:13px; }
+.cv2-tbl th { text-align:left; font-size:11px; text-transform:uppercase;
+  letter-spacing:.04em; color:var(--text-faint); padding:var(--sp-2) var(--sp-4);
+  border-top:1px solid var(--border); }
+.cv2-tbl td { padding:var(--sp-3) var(--sp-4); border-top:1px solid var(--border); }
+.cv2-tbl tr:hover td { background:var(--surface-alt); }
+.cv2-name { font-weight:500; color:var(--text); text-decoration:none; cursor:pointer; }
+.cv2-name:hover { color:var(--accent); text-decoration:underline; }
+.cv2-pill { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px;
+  border:1px solid var(--border); background:var(--surface-alt); color:var(--text-muted); }
+.cv2-pill.c-Beginner{color:var(--success);border-color:var(--success)}
+.cv2-pill.c-Intermediate{color:var(--accent);border-color:var(--accent)}
+.cv2-pill.c-Advanced{color:var(--warn);border-color:var(--warn)}
+.cv2-pill.c-Expert{color:var(--danger);border-color:var(--danger)}
+.cv2-row-hidden td { opacity:.45; }
+.cv2-seg { display:inline-flex; border:1px solid var(--border-strong);
+  border-radius:var(--r-sm); overflow:hidden; }
+.cv2-seg button { font:inherit; font-size:12px; padding:6px 12px; border:none;
+  background:var(--surface); color:var(--text-muted); cursor:pointer; }
+.cv2-seg button.on { background:var(--primary); color:#fff; }
+.cv2-admin { display:none; }
+.cv2[data-mode="admin"] .cv2-admin { display:inline-flex; }
+.cv2-empty { padding:var(--sp-5); text-align:center; color:var(--text-muted); }

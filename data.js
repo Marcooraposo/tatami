@@ -20,7 +20,8 @@ let CURRENT_LOCALE = (typeof localStorage !== 'undefined' && localStorage.getIte
 function setLocale(code) {
   CURRENT_LOCALE = code;
   if (typeof localStorage !== 'undefined') localStorage.setItem('tatami_locale', code);
-  if (typeof renderApp === 'function') renderApp();
+  if (typeof renderApp === 'function') renderApp();   // admin app
+  else if (typeof render === 'function') render();      // student app
 }
 
 // Resolve a localized field. Accepts either a string or { en, pt, ... } object.
@@ -28,6 +29,152 @@ function t(field) {
   if (field == null) return '';
   if (typeof field === 'string') return field;
   return field[CURRENT_LOCALE] || field[CONFIG.defaultLocale] || Object.values(field)[0] || '';
+}
+
+// =============================================================================
+// i18n string catalog + tr() helper
+// -----------------------------------------------------------------------------
+// HOW TO ADD A LANGUAGE:
+//   1. Add it to CONFIG.supportedLocales, e.g. { code: 'es', label: 'Español' }.
+//   2. Add that locale's value to entries in STRINGS below. Any missing key
+//      falls back to English automatically, so you can translate incrementally.
+// The header language switcher and t()/tr() all read CONFIG.supportedLocales,
+// so no other code changes are needed to support a new language.
+//
+// USAGE:
+//   tr('common.save')                      -> "Save" / "Guardar"
+//   tr('pager.page', { a: 1, b: 3, n: 42 }) -> "Page 1 of 3 · 42 rows"
+// =============================================================================
+const STRINGS = {
+  // ---- Common ----
+  'common.save':    { en: 'Save',    pt: 'Guardar' },
+  'common.cancel':  { en: 'Cancel',  pt: 'Cancelar' },
+  'common.edit':    { en: 'Edit',    pt: 'Editar' },
+  'common.delete':  { en: 'Delete',  pt: 'Eliminar' },
+  'common.add':     { en: 'Add',     pt: 'Adicionar' },
+  'common.next':    { en: 'Next →',  pt: 'Seguinte →' },
+  'common.back':    { en: '← Back',  pt: '← Voltar' },
+  'common.clear':   { en: 'Clear',   pt: 'Limpar' },
+  'common.search':  { en: 'Search…', pt: 'Procurar…' },
+  'common.view':    { en: 'View',    pt: 'Ver' },
+  'common.admin':   { en: 'Admin',   pt: 'Admin' },
+  'common.settings':{ en: '⚙ Settings', pt: '⚙ Definições' },
+  'common.today':   { en: 'Today',   pt: 'Hoje' },
+  'common.prev':    { en: '← Prev',  pt: '← Anterior' },
+  'common.nextarr': { en: 'Next →',  pt: 'Próximo →' },
+  'common.comingSoon': { en: 'Coming soon.', pt: 'Em breve.' },
+  'common.none':    { en: 'None.',   pt: 'Nenhum.' },
+
+  // ---- Pagination ----
+  'pager.page': { en: 'Page {a} of {b} · {n} rows', pt: 'Página {a} de {b} · {n} linhas' },
+
+  // ---- Schedule ----
+  'sched.week':  { en: 'Week',  pt: 'Semana' },
+  'sched.month': { en: 'Month', pt: 'Mês' },
+  'sched.currentMonth': { en: 'Current month', pt: 'Mês atual' },
+  'sched.clickDay': { en: 'click a day to open its week', pt: 'clique num dia para abrir a semana' },
+
+  // ---- Student tags / onboarding ----
+  'tags.audience':    { en: 'Audience tags',  pt: 'Etiquetas de público' },
+  'tags.noTags':      { en: 'No tags',        pt: 'Sem etiquetas' },
+  'tags.gender':      { en: 'Gender',         pt: 'Género' },
+  'tags.female':      { en: 'Female',         pt: 'Feminino' },
+  'tags.male':        { en: 'Male',           pt: 'Masculino' },
+  'tags.other':       { en: 'Other / prefer not to say', pt: 'Outro / prefiro não dizer' },
+  'tags.select':      { en: 'Select…',        pt: 'Selecionar…' },
+  'tags.competeQ':    { en: 'Interested in competing', pt: 'Interessado em competir' },
+  'tags.competeHint': { en: 'Adds the Competition tag, unlocking competition classes.', pt: 'Adiciona a etiqueta Competição, desbloqueando aulas de competição.' },
+  'tags.kidHint':     { en: 'Under 16 is tagged as Kid, otherwise Adult.', pt: 'Menores de 16 são marcados como Criança, caso contrário Adulto.' },
+
+  // ---- Class audience ----
+  'aud.whoCanAttend': { en: 'Who can attend', pt: 'Quem pode participar' },
+  'aud.openHint':     { en: 'Leave all unchecked for open to everyone. Otherwise only students with a selected tag can book.', pt: 'Deixe tudo desmarcado para aberto a todos. Caso contrário, só alunos com uma etiqueta selecionada podem reservar.' },
+  'aud.openHintShort':{ en: 'None checked = open to everyone.', pt: 'Nada marcado = aberto a todos.' },
+
+  // ---- Curriculum wizard ----
+  'wiz.title':        { en: 'Curriculum Wizard', pt: 'Assistente de Currículo' },
+  'wiz.step.academy':    { en: 'Academy',    pt: 'Academia' },
+  'wiz.step.philosophy': { en: 'Philosophy', pt: 'Filosofia' },
+  'wiz.step.students':   { en: 'Students',   pt: 'Alunos' },
+  'wiz.step.preview':    { en: 'Preview',    pt: 'Pré-visualização' },
+  'wiz.step.sequence':   { en: 'Sequence',   pt: 'Sequência' },
+  'wiz.academyProfile':  { en: 'Academy profile', pt: 'Perfil da academia' },
+  'wiz.academyName':     { en: 'Academy name', pt: 'Nome da academia' },
+  'wiz.location':        { en: 'Location',   pt: 'Localização' },
+  'wiz.language':        { en: 'Primary language', pt: 'Idioma principal' },
+  'wiz.primaryFocus':    { en: 'Primary focus', pt: 'Foco principal' },
+  'wiz.legLockStance':   { en: 'Leg lock stance', pt: 'Postura de chaves de perna' },
+  'wiz.takedowns':       { en: 'Takedowns',  pt: 'Quedas' },
+  'wiz.ruleset':         { en: 'Ruleset',    pt: 'Conjunto de regras' },
+  'wiz.whoTrains':       { en: 'Who trains here?', pt: 'Quem treina aqui?' },
+  'wiz.whoTrainsHint':   { en: 'Select all that apply. This shapes module ordering and emphasis, not which techniques are included.', pt: 'Selecione todas as opções aplicáveis. Isto molda a ordem e ênfase dos módulos, não as técnicas incluídas.' },
+  'wiz.preview':         { en: 'Curriculum preview', pt: 'Pré-visualização do currículo' },
+  'wiz.showExcluded':    { en: 'Show excluded', pt: 'Mostrar excluídas' },
+  'wiz.moduleSequence':  { en: 'Module sequence', pt: 'Sequência de módulos' },
+  'wiz.sequenceHint':    { en: "Order the modules as you'd teach them. Empty modules are skipped on save.", pt: 'Ordene os módulos como os ensinaria. Módulos vazios são ignorados ao guardar.' },
+  'wiz.finish':          { en: 'Finish & save ✓', pt: 'Concluir e guardar ✓' },
+  'wiz.saving':          { en: 'Saving…', pt: 'A guardar…' },
+  'wiz.addLabel':        { en: '+ Add', pt: '+ Adicionar' },
+  'wiz.hide':            { en: 'Hide', pt: 'Ocultar' },
+  'wiz.show':            { en: 'Show', pt: 'Mostrar' },
+  'wiz.excluded':        { en: 'excluded', pt: 'excluídas' },
+
+  // ---- Technique page ----
+  'tech.description':    { en: 'Description', pt: 'Descrição' },
+  'tech.keyDetails':     { en: 'Key Details & Common Errors', pt: 'Detalhes-chave e Erros Comuns' },
+  'tech.video':          { en: 'Video', pt: 'Vídeo' },
+  'tech.noVideo':        { en: 'No video added yet.', pt: 'Ainda sem vídeo.' },
+  'tech.uploadVideo':    { en: 'Upload video', pt: 'Carregar vídeo' },
+  'tech.module':         { en: 'Module', pt: 'Módulo' },
+  'tech.prerequisites':  { en: 'Prerequisites', pt: 'Pré-requisitos' },
+  'tech.chainsTo':       { en: 'Chains to', pt: 'Encadeia para' },
+  'tech.academyContext': { en: 'Academy context', pt: 'Contexto da academia' },
+  'tech.academyCtxHint': { en: 'Belt/stripe association — editable per academy. Coming soon.', pt: 'Associação de faixa/grau — editável por academia. Em breve.' },
+  'tech.studentProgress':{ en: 'Student progress', pt: 'Progresso do aluno' },
+  'tech.addPrereq':      { en: '+ Add prerequisite', pt: '+ Adicionar pré-requisito' },
+  'tech.addChain':       { en: '+ Add chain', pt: '+ Adicionar encadeamento' },
+  'tech.noDescription':  { en: 'No description yet.', pt: 'Ainda sem descrição.' },
+  'tech.noKeyDetails':   { en: 'No key details yet.', pt: 'Ainda sem detalhes.' },
+  'tech.notFound':       { en: 'Technique not found.', pt: 'Técnica não encontrada.' },
+  'tech.badge.category': { en: 'Category', pt: 'Categoria' },
+  'tech.badge.type':     { en: 'Type', pt: 'Tipo' },
+  'tech.badge.complexity':{ en: 'Complexity', pt: 'Complexidade' },
+  'tech.badge.ruleset':  { en: 'Ruleset', pt: 'Regras' },
+  'tech.badge.context':  { en: 'Context', pt: 'Contexto' },
+  'tech.badge.legLock':  { en: 'Leg lock', pt: 'Chave de perna' },
+
+  // ---- Student app section headers ----
+  'sapp.upNext':       { en: 'Up next', pt: 'A seguir' },
+  'sapp.latestNews':   { en: 'Latest news', pt: 'Últimas notícias' },
+  'sapp.privateLesson':{ en: 'Private lesson', pt: 'Aula particular' },
+  'sapp.lessonPlan':   { en: 'On the lesson plan', pt: 'No plano de aula' },
+  'sapp.trainingCalendar': { en: 'Training calendar', pt: 'Calendário de treino' },
+  'sapp.trainingGoal': { en: 'Training goal', pt: 'Objetivo de treino' },
+  'sapp.beltProgression': { en: 'Belt progression', pt: 'Progressão de faixa' },
+  'sapp.techniqueProgress': { en: 'Technique progress', pt: 'Progresso técnico' },
+
+  // ---- Admin screen headings ----
+  'screen.settings':      { en: 'Settings', pt: 'Definições' },
+  'screen.billing':       { en: 'Billing', pt: 'Faturação' },
+  'screen.promotionRules':{ en: 'Promotion Rules', pt: 'Regras de Graduação' },
+  'screen.membershipPlans':{ en: 'Membership plans', pt: 'Planos de adesão' },
+  'screen.instructors':   { en: 'Instructors', pt: 'Professores' },
+  'screen.newClass':      { en: 'New class', pt: 'Nova aula' },
+  'screen.addStudent':    { en: 'Add new student', pt: 'Adicionar novo aluno' },
+};
+
+// tr: look up a catalog key for the current locale, with {var} interpolation.
+function tr(key, vars) {
+  const entry = STRINGS[key];
+  let s = entry ? (entry[CURRENT_LOCALE] || entry[CONFIG.defaultLocale] || entry.en) : null;
+  if (s == null) {
+    if (typeof console !== 'undefined' && CURRENT_LOCALE !== CONFIG.defaultLocale) {
+      console.warn('[i18n] missing string key:', key);
+    }
+    s = key; // last-resort: show the key so it's obvious in the UI
+  }
+  if (vars) Object.keys(vars).forEach(k => { s = s.replace(new RegExp('\\{' + k + '\\}', 'g'), vars[k]); });
+  return s;
 }
 
 // UI chrome strings (not part of the data model — just for the prototype UI)
@@ -196,23 +343,74 @@ const INSTRUCTORS = [
 ];
 
 const STUDENTS = [
-  { id: 's-1',  name: 'João Silva',       initials: 'JS', dob: '1992-04-12', weightKg: 78, joinedAt: '2025-09-15', contact: 'joao@example.com',    referredBy: 's-3' },
-  { id: 's-2',  name: 'Ana Pereira',      initials: 'AP', dob: '1988-11-03', weightKg: 62, joinedAt: '2024-02-20', contact: 'ana@example.com',     referredBy: null  },
-  { id: 's-3',  name: 'Miguel Santos',    initials: 'MS', dob: '1995-07-22', weightKg: 84, joinedAt: '2023-06-10', contact: 'miguel@example.com',  referredBy: null  },
-  { id: 's-4',  name: 'Sofia Martins',    initials: 'SM', dob: '1998-01-30', weightKg: 58, joinedAt: '2026-04-01', contact: 'sofia@example.com',   referredBy: 's-3' },
-  { id: 's-5',  name: 'Pedro Oliveira',   initials: 'PO', dob: '1985-09-17', weightKg: 92, joinedAt: '2022-03-15', contact: 'pedro@example.com',   referredBy: 's-2' },
+  { id: 's-1',  name: 'João Silva',       initials: 'JS', dob: '1992-04-12', gender: 'male',   competes: false, weightKg: 78, joinedAt: '2025-09-15', contact: 'joao@example.com',    referredBy: 's-3' },
+  { id: 's-2',  name: 'Ana Pereira',      initials: 'AP', dob: '1988-11-03', gender: 'female', competes: true,  weightKg: 62, joinedAt: '2024-02-20', contact: 'ana@example.com',     referredBy: null  },
+  { id: 's-3',  name: 'Miguel Santos',    initials: 'MS', dob: '1995-07-22', gender: 'male',   competes: true,  weightKg: 84, joinedAt: '2023-06-10', contact: 'miguel@example.com',  referredBy: null  },
+  { id: 's-4',  name: 'Sofia Martins',    initials: 'SM', dob: '1998-01-30', gender: 'female', competes: false, weightKg: 58, joinedAt: '2026-04-01', contact: 'sofia@example.com',   referredBy: 's-3' },
+  { id: 's-5',  name: 'Pedro Oliveira',   initials: 'PO', dob: '1985-09-17', gender: 'male',   competes: true,  weightKg: 92, joinedAt: '2022-03-15', contact: 'pedro@example.com',   referredBy: 's-2' },
   // Extended roster — gives analytics, retention, and referral screens enough data to show
-  { id: 's-6',  name: 'Inês Rodrigues',   initials: 'IR', dob: '1994-03-08', weightKg: 60, joinedAt: '2024-08-12', contact: 'ines.r@example.com',  referredBy: 's-2' },
-  { id: 's-7',  name: 'Tomás Ferreira',   initials: 'TF', dob: '1990-12-25', weightKg: 88, joinedAt: '2023-11-05', contact: 'tomas@example.com',   referredBy: null  },
-  { id: 's-8',  name: 'Beatriz Costa',    initials: 'BC', dob: '2000-06-14', weightKg: 55, joinedAt: '2025-03-20', contact: 'bea.costa@example.com',referredBy: 's-1' },
-  { id: 's-9',  name: 'Rúben Gomes',      initials: 'RG', dob: '1987-09-02', weightKg: 80, joinedAt: '2022-11-01', contact: 'ruben@example.com',   referredBy: null  },
-  { id: 's-10', name: 'Catarina Lima',    initials: 'CL', dob: '1996-02-19', weightKg: 63, joinedAt: '2026-01-10', contact: 'cat.lima@example.com', referredBy: 's-3' },
-  { id: 's-11', name: 'Diogo Neves',      initials: 'DN', dob: '1993-08-30', weightKg: 76, joinedAt: '2024-05-22', contact: 'diogo.n@example.com',  referredBy: 's-7' },
-  { id: 's-12', name: 'Mariana Fonseca',  initials: 'MF', dob: '1991-11-11', weightKg: 59, joinedAt: '2025-07-01', contact: 'mariana@example.com',  referredBy: 's-2' },
-  { id: 's-13', name: 'André Carvalho',   initials: 'AC', dob: '1989-05-17', weightKg: 85, joinedAt: '2023-02-14', contact: 'andre.c@example.com',  referredBy: null  },
-  { id: 's-14', name: 'Lara Mendes',      initials: 'LM', dob: '1997-07-04', weightKg: 57, joinedAt: '2026-03-15', contact: 'lara.m@example.com',   referredBy: 's-4' },
-  { id: 's-15', name: 'Francisco Pires',  initials: 'FP', dob: '1983-01-28', weightKg: 95, joinedAt: '2024-10-08', contact: null,                   referredBy: null  },
+  { id: 's-6',  name: 'Inês Rodrigues',   initials: 'IR', dob: '1994-03-08', gender: 'female', competes: false, weightKg: 60, joinedAt: '2024-08-12', contact: 'ines.r@example.com',  referredBy: 's-2' },
+  { id: 's-7',  name: 'Tomás Ferreira',   initials: 'TF', dob: '1990-12-25', gender: 'male',   competes: false, weightKg: 88, joinedAt: '2023-11-05', contact: 'tomas@example.com',   referredBy: null  },
+  { id: 's-8',  name: 'Beatriz Costa',    initials: 'BC', dob: '2012-06-14', gender: 'female', competes: false, weightKg: 38, joinedAt: '2025-03-20', contact: 'bea.costa@example.com',referredBy: 's-1' },
+  { id: 's-9',  name: 'Rúben Gomes',      initials: 'RG', dob: '1987-09-02', gender: 'male',   competes: false, weightKg: 80, joinedAt: '2022-11-01', contact: 'ruben@example.com',   referredBy: null  },
+  { id: 's-10', name: 'Catarina Lima',    initials: 'CL', dob: '1996-02-19', gender: 'female', competes: true,  weightKg: 63, joinedAt: '2026-01-10', contact: 'cat.lima@example.com', referredBy: 's-3' },
+  { id: 's-11', name: 'Diogo Neves',      initials: 'DN', dob: '1993-08-30', gender: 'male',   competes: false, weightKg: 76, joinedAt: '2024-05-22', contact: 'diogo.n@example.com',  referredBy: 's-7' },
+  { id: 's-12', name: 'Mariana Fonseca',  initials: 'MF', dob: '1991-11-11', gender: 'female', competes: false, weightKg: 59, joinedAt: '2025-07-01', contact: 'mariana@example.com',  referredBy: 's-2' },
+  { id: 's-13', name: 'André Carvalho',   initials: 'AC', dob: '1989-05-17', gender: 'male',   competes: true,  weightKg: 85, joinedAt: '2023-02-14', contact: 'andre.c@example.com',  referredBy: null  },
+  { id: 's-14', name: 'Lara Mendes',      initials: 'LM', dob: '2013-07-04', gender: 'female', competes: false, weightKg: 35, joinedAt: '2026-03-15', contact: 'lara.m@example.com',   referredBy: 's-4' },
+  { id: 's-15', name: 'Francisco Pires',  initials: 'FP', dob: '1983-01-28', gender: 'male',   competes: false, weightKg: 95, joinedAt: '2024-10-08', contact: null,                   referredBy: null  },
 ];
+
+// ---------- Student audience tags -------------------------------------------
+// Admin-only classification used to control which classes a student may book.
+const KID_MAX_AGE = 15; // under 16 → kid
+const AUDIENCE_TAGS = [
+  { id: 'kid',         label: { en: 'Kid',         pt: 'Criança' } },
+  { id: 'adult',       label: { en: 'Adult',       pt: 'Adulto' } },
+  { id: 'women',       label: { en: 'Women',       pt: 'Feminino' } },
+  { id: 'competition', label: { en: 'Competition', pt: 'Competição' } },
+];
+function ageFromDob(dob) {
+  if (!dob) return null;
+  const d = new Date(dob);
+  return Math.floor((CONFIG.today - d) / (1000 * 60 * 60 * 24 * 365.25));
+}
+// Derive default tags from a student's attributes.
+function deriveStudentTags(s) {
+  const tags = [];
+  const age = ageFromDob(s.dob);
+  tags.push(age != null && age <= KID_MAX_AGE ? 'kid' : 'adult');
+  if (s.gender === 'female') tags.push('women');
+  if (s.competes) tags.push('competition');
+  return tags;
+}
+// Effective tags: admin override (s.tags) if set, else derived.
+function studentTags(s) {
+  return (s && Array.isArray(s.tags) && s.tags.length) ? s.tags : deriveStudentTags(s || {});
+}
+function tagLabel(id) {
+  const t0 = AUDIENCE_TAGS.find(x => x.id === id);
+  return t0 ? t(t0.label) : id;
+}
+
+// Audience tags allowed for a class (empty/null = open to everyone).
+// Resolves from the class itself or its recurring template.
+function classAudienceTags(cls) {
+  if (!cls) return [];
+  if (Array.isArray(cls.audienceTags)) return cls.audienceTags;
+  const tplId = cls._templateId;
+  let tpl = tplId ? RECURRING_TEMPLATES.find(r => r.id === tplId) : null;
+  if (!tpl) tpl = RECURRING_TEMPLATES.find(r => r.classType === cls.classType && r.instructorId === cls.instructorId)
+             || RECURRING_TEMPLATES.find(r => r.classType === cls.classType);
+  return (tpl && Array.isArray(tpl.audienceTags)) ? tpl.audienceTags : [];
+}
+// Whether a student is allowed to book a class given audience restrictions.
+function canStudentBook(student, cls) {
+  const allowed = classAudienceTags(cls);
+  if (!allowed.length) return true;        // open to all
+  const st = studentTags(student);
+  return allowed.some(tag => st.includes(tag));
+}
 
 // Per-student, per-sport grading state
 const ENROLLMENTS = [
@@ -273,7 +471,7 @@ const EVENTS = [
     location: 'Main Mat',
     capacity: 40,
     notes: 'Free open mat for all levels. Bring your gi and no-gi gear.',
-    registeredStudentIds: ['stu-1', 'stu-2', 'stu-3'],
+    registeredStudentIds: ['s-1', 's-2', 's-3'],
     createdAt: '2026-05-01T10:00:00.000Z'
   },
   {
@@ -286,7 +484,7 @@ const EVENTS = [
     location: 'Main Mat',
     capacity: 20,
     notes: 'Promotion grading for promotion-ready students. Attendance mandatory for candidates.',
-    registeredStudentIds: ['stu-4', 'stu-5'],
+    registeredStudentIds: ['s-4', 's-5'],
     createdAt: '2026-05-10T10:00:00.000Z'
   },
   {
@@ -299,7 +497,7 @@ const EVENTS = [
     location: 'Main Mat',
     capacity: 30,
     notes: 'Special seminar on guard passing mechanics. R$150 per person, paid in advance.',
-    registeredStudentIds: ['stu-1', 'stu-6'],
+    registeredStudentIds: ['s-1', 's-6'],
     createdAt: '2026-05-15T10:00:00.000Z'
   },
   {
@@ -312,7 +510,7 @@ const EVENTS = [
     location: 'City Sports Arena',
     capacity: 60,
     notes: 'IBJJF-format city championship. Weigh-ins at 08:00; first matches at 09:30.',
-    registeredStudentIds: ['stu-2', 'stu-7', 'stu-8'],
+    registeredStudentIds: ['s-2', 's-7', 's-8'],
     createdAt: '2026-05-20T10:00:00.000Z'
   },
   {
@@ -325,7 +523,7 @@ const EVENTS = [
     location: 'Riverside Sports Hall',
     capacity: 50,
     notes: 'Internal invitational with 4 guest academies. Gi only.',
-    registeredStudentIds: ['stu-1', 'stu-2', 'stu-3', 'stu-4', 'stu-5'],
+    registeredStudentIds: ['s-1', 's-2', 's-3', 's-4', 's-5'],
     createdAt: '2026-02-10T10:00:00.000Z'
   }
 ];
@@ -334,11 +532,11 @@ const EVENTS = [
 // placement: '1st' | '2nd' | '3rd' | '5th' | 'DNP'
 // medal: 'gold' | 'silver' | 'bronze' | 'none'
 const COMPETITION_RESULTS = [
-  { id: 'cr-1', eventId: 'evt-005', studentId: 'stu-1', division: 'Adult White Belt -70kg', placement: '1st', medal: 'gold',   notes: 'Won all 3 matches by points.',      loggedAt: '2026-03-15T17:00:00.000Z' },
-  { id: 'cr-2', eventId: 'evt-005', studentId: 'stu-2', division: 'Adult Blue Belt -76kg',  placement: '2nd', medal: 'silver', notes: 'Lost final by advantage.',          loggedAt: '2026-03-15T17:00:00.000Z' },
-  { id: 'cr-3', eventId: 'evt-005', studentId: 'stu-3', division: 'Adult White Belt -76kg', placement: '3rd', medal: 'bronze', notes: 'Won bronze match by rear naked choke.', loggedAt: '2026-03-15T17:00:00.000Z' },
-  { id: 'cr-4', eventId: 'evt-005', studentId: 'stu-4', division: 'Adult Blue Belt -82kg',  placement: '1st', medal: 'gold',   notes: 'Submitted all opponents.',          loggedAt: '2026-03-15T17:00:00.000Z' },
-  { id: 'cr-5', eventId: 'evt-005', studentId: 'stu-5', division: 'Adult White Belt -82kg', placement: '5th', medal: 'none',  notes: 'Lost first match by points.',       loggedAt: '2026-03-15T17:00:00.000Z' }
+  { id: 'cr-1', eventId: 'evt-005', studentId: 's-1', division: 'Adult White Belt -70kg', placement: '1st', medal: 'gold',   notes: 'Won all 3 matches by points.',         loggedAt: '2026-03-15T17:00:00.000Z' },
+  { id: 'cr-2', eventId: 'evt-005', studentId: 's-2', division: 'Adult Blue Belt -76kg',  placement: '2nd', medal: 'silver', notes: 'Lost final by advantage.',             loggedAt: '2026-03-15T17:00:00.000Z' },
+  { id: 'cr-3', eventId: 'evt-005', studentId: 's-3', division: 'Adult White Belt -76kg', placement: '3rd', medal: 'bronze', notes: 'Won bronze match by rear naked choke.', loggedAt: '2026-03-15T17:00:00.000Z' },
+  { id: 'cr-4', eventId: 'evt-005', studentId: 's-4', division: 'Adult Blue Belt -82kg',  placement: '1st', medal: 'gold',   notes: 'Submitted all opponents.',             loggedAt: '2026-03-15T17:00:00.000Z' },
+  { id: 'cr-5', eventId: 'evt-005', studentId: 's-5', division: 'Adult White Belt -82kg', placement: '5th', medal: 'none',  notes: 'Lost first match by points.',          loggedAt: '2026-03-15T17:00:00.000Z' }
 ];
 
 // Discount codes / promotions — redeemable codes for membership discounts
@@ -375,9 +573,9 @@ const ANNOUNCEMENTS = [
 // type: 'sprain' | 'strain' | 'bruise' | 'soreness' | 'fracture' | 'other'
 // status: 'active' | 'recovered'
 const STUDENT_INJURIES = [
-  { id: 'inj-1', studentId: 'stu-1', date: '2026-05-10', type: 'sprain',   bodyPart: 'Left knee',     status: 'active',    notes: 'Twisted during guard pass. Avoiding leg locks.',          loggedAt: '2026-05-10T18:30:00.000Z' },
-  { id: 'inj-2', studentId: 'stu-2', date: '2026-04-22', type: 'soreness', bodyPart: 'Right shoulder', status: 'recovered', notes: 'Rotator cuff soreness after competition. Cleared to train.', loggedAt: '2026-04-22T10:00:00.000Z' },
-  { id: 'inj-3', studentId: 'stu-3', date: '2026-05-18', type: 'bruise',   bodyPart: 'Ribs',          status: 'active',    notes: 'Took a hard knee during sparring. No fracture confirmed.', loggedAt: '2026-05-18T20:00:00.000Z' },
+  { id: 'inj-1', studentId: 's-1', date: '2026-05-10', type: 'sprain',   bodyPart: 'Left knee',      status: 'active',    notes: 'Twisted during guard pass. Avoiding leg locks.',             loggedAt: '2026-05-10T18:30:00.000Z' },
+  { id: 'inj-2', studentId: 's-2', date: '2026-04-22', type: 'soreness', bodyPart: 'Right shoulder', status: 'recovered', notes: 'Rotator cuff soreness after competition. Cleared to train.', loggedAt: '2026-04-22T10:00:00.000Z' },
+  { id: 'inj-3', studentId: 's-3', date: '2026-05-18', type: 'bruise',   bodyPart: 'Ribs',           status: 'active',    notes: 'Took a hard knee during sparring. No fracture confirmed.',  loggedAt: '2026-05-18T20:00:00.000Z' },
 ];
 
 // Prospect / lead pipeline — trial students who haven't converted yet
@@ -393,12 +591,12 @@ const PROSPECTS = [
 
 // Weekly recurring class templates — source of truth for the schedule
 const RECURRING_TEMPLATES = [
-  { id: 'rt-1', dow: 1, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'Adults',      instructorId: 'inst-1', capacity: 20, sportId: 'sport-bjj' },
-  { id: 'rt-2', dow: 2, time: '19:00', durationMin: 60, classType: 'Open Class',   audience: 'Adults',      instructorId: 'inst-2', capacity: 20, sportId: 'sport-bjj' },
-  { id: 'rt-3', dow: 3, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'Adults',      instructorId: 'inst-1', capacity: 20, sportId: 'sport-bjj' },
-  { id: 'rt-4', dow: 4, time: '19:00', durationMin: 60, classType: 'Open Class',   audience: 'Adults',      instructorId: 'inst-2', capacity: 20, sportId: 'sport-bjj' },
-  { id: 'rt-5', dow: 5, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'Adults',      instructorId: 'inst-1', capacity: 20, sportId: 'sport-bjj' },
-  { id: 'rt-6', dow: 6, time: '10:00', durationMin: 75, classType: 'Advanced',     audience: 'Competition', instructorId: 'inst-2', capacity: 20, sportId: 'sport-bjj' },
+  { id: 'rt-1', dow: 1, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'Adults',      audienceTags: ['adult'],              instructorId: 'inst-1', capacity: 20, sportId: 'sport-bjj' },
+  { id: 'rt-2', dow: 2, time: '19:00', durationMin: 60, classType: 'Open Class',   audience: 'Adults',      audienceTags: ['adult'],              instructorId: 'inst-2', capacity: 20, sportId: 'sport-bjj' },
+  { id: 'rt-3', dow: 3, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'Adults',      audienceTags: ['adult'],              instructorId: 'inst-1', capacity: 20, sportId: 'sport-bjj' },
+  { id: 'rt-4', dow: 4, time: '19:00', durationMin: 60, classType: 'Kids Class',   audience: 'Kids',        audienceTags: ['kid'],                instructorId: 'inst-2', capacity: 20, sportId: 'sport-bjj' },
+  { id: 'rt-5', dow: 5, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'Adults',      audienceTags: ['adult'],              instructorId: 'inst-1', capacity: 20, sportId: 'sport-bjj' },
+  { id: 'rt-6', dow: 6, time: '10:00', durationMin: 75, classType: 'Advanced',     audience: 'Competition', audienceTags: ['competition'],        instructorId: 'inst-2', capacity: 20, sportId: 'sport-bjj' },
 ];
 
 (function seedSchedule() {

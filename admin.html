@@ -81,26 +81,20 @@
   const CMD_NAV_ITEMS = [
     { id: 'dashboard',      label: 'Dashboard',       icon: '◆' },
     { id: 'schedule',       label: 'Schedule',        icon: '▦' },
-    { id: 'templates',      label: 'Templates',       icon: '🔁' },
-    { id: 'closures',       label: 'Holiday Calendar',icon: '🗓' },
     { id: 'classes',        label: 'Classes',         icon: '◷' },
     { id: 'private-lessons',label: 'Private Lessons', icon: '🥋' },
     { id: 'curriculum',     label: 'Curriculum',      icon: '☰' },
     { id: 'students',       label: 'Students',        icon: '◉' },
     { id: 'families',       label: 'Families',        icon: '👪' },
     { id: 'prospects',          label: 'Prospects',           icon: '🎯' },
-    { id: 'onboarding-pipeline',label: 'Onboarding Pipeline', icon: '🚀' },
     { id: 'referrals',          label: 'Referrals',           icon: '🔗' },
     { id: 'memberships',    label: 'Memberships',     icon: '◈' },
     { id: 'packages',       label: 'Packages',        icon: '🎟' },
     { id: 'discounts',      label: 'Discounts',       icon: '%' },
     { id: 'grading',        label: 'Grading',         icon: '★' },
     { id: 'instructors',    label: 'Instructors',     icon: '👤' },
-    { id: 'retention',      label: 'Retention',       icon: '⚠' },
     { id: 'waivers',        label: 'Documents / Waivers', icon: '📋' },
-    { id: 'equipment',      label: 'Equipment',       icon: '🥊' },
     { id: 'billing',        label: 'Billing',         icon: '💳' },
-    { id: 'renewals',       label: 'Renewals',        icon: '🔄' },
     { id: 'analytics',      label: 'Analytics',       icon: '📊' },
     { id: 'ratings',        label: 'Feedback / Ratings', icon: '⭐' },
     { id: 'attendance-log', label: 'Attendance Log',  icon: '✓' },
@@ -478,6 +472,7 @@
         break;
       case 'curriculum':        content.innerHTML = CurriculumBuilder();     break;
       case 'curriculum-wizard': content.innerHTML = CurriculumWizard();      break;
+      case 'curriculum-tech':   content.innerHTML = TechniquePage(route.params[0]); break;
       case 'promotion-rules':   content.innerHTML = PromotionRulesScreen(); break;
       case 'packages':          content.innerHTML = PackagesScreen();       break;
       case 'grading':           content.innerHTML = GradingScreen();        break;
@@ -519,6 +514,59 @@
       case 'dashboard':
       default:           content.innerHTML = Dashboard();  break;
     }
+    autoPaginate(content);
+  }
+
+  // ---------- Generic table/list pagination --------------------------------
+  // Runs after each render. Any <table> or .list with more than PAGE_SIZE rows
+  // gets page controls; extra rows are hidden. Re-callable after partial
+  // re-renders (e.g. filtered lists).
+  const PAGE_SIZE = 15;
+  function autoPaginate(root) {
+    root = root || document.getElementById('content');
+    if (!root) return;
+    root.querySelectorAll('table').forEach(tbl => {
+      const tb = tbl.tBodies && tbl.tBodies[0];
+      if (!tb) return;
+      const rows = [...tb.rows];
+      _applyPager(rows, tbl, tb);
+    });
+    root.querySelectorAll('.list').forEach(list => {
+      const rows = [...list.children].filter(c =>
+        c.classList && c.classList.contains('list-row') && !c.classList.contains('list-header'));
+      _applyPager(rows, list, list);
+    });
+  }
+
+  function _applyPager(rows, container, anchorParent) {
+    if (!rows.length || rows.length <= PAGE_SIZE) return;
+    if (container.dataset.pgInit === '1') return;
+    container.dataset.pgInit = '1';
+    let page = 1;
+    const pageCount = Math.ceil(rows.length / PAGE_SIZE);
+    const ctrl = document.createElement('div');
+    ctrl.style.cssText = 'display:flex;align-items:center;justify-content:center;gap:var(--sp-3);padding:var(--sp-3);font-size:13px';
+    // place controls right after the table/list
+    (container.tagName === 'TABLE' ? container : container).insertAdjacentElement('afterend', ctrl);
+
+    function show() {
+      const start = (page - 1) * PAGE_SIZE, end = start + PAGE_SIZE;
+      rows.forEach((r, i) => { r.style.display = (i >= start && i < end) ? '' : 'none'; });
+      ctrl.innerHTML = '';
+      const prev = document.createElement('button');
+      prev.className = 'btn btn-secondary'; prev.style.cssText = 'font-size:12px;padding:2px 10px';
+      prev.textContent = tr('common.prev'); prev.disabled = page === 1; prev.style.opacity = page === 1 ? '.4' : '1';
+      prev.onclick = () => { if (page > 1) { page--; show(); } };
+      const next = document.createElement('button');
+      next.className = 'btn btn-secondary'; next.style.cssText = 'font-size:12px;padding:2px 10px';
+      next.textContent = tr('common.nextarr'); next.disabled = page === pageCount; next.style.opacity = page === pageCount ? '.4' : '1';
+      next.onclick = () => { if (page < pageCount) { page++; show(); } };
+      const label = document.createElement('span');
+      label.style.color = 'var(--text-muted)';
+      label.textContent = tr('pager.page', { a: page, b: pageCount, n: rows.length });
+      ctrl.append(prev, label, next);
+    }
+    show();
   }
 
   // ---------- Layout components ---------------------------------------------
@@ -545,8 +593,6 @@
         id: 'schedule-group', label: 'Schedule', icon: '📅',
         items: [
           { id: 'schedule',        label: 'Schedule',         icon: '▦' },
-          { id: 'templates',       label: 'Templates',        icon: '🔁' },
-          { id: 'closures',        label: 'Holiday Calendar', icon: '🗓' },
           { id: 'classes',         label: 'Classes',          icon: '◷' },
           { id: 'private-lessons', label: 'Private Lessons',  icon: '🥋' },
           { id: 'events',          label: 'Events',           icon: '🏆' },
@@ -558,9 +604,7 @@
           { id: 'students',             label: 'Students',    icon: '◉' },
           { id: 'families',             label: 'Families',    icon: '👪' },
           { id: 'prospects',            label: 'Prospects',   icon: '🎯' },
-          { id: 'onboarding-pipeline',  label: 'Onboarding',  icon: '🚀' },
           { id: 'referrals',            label: 'Referrals',   icon: '🔗' },
-          { id: 'retention',            label: 'Retention',   icon: '⚠' },
           { id: 'instructors',          label: 'Instructors', icon: '👤' },
         ]
       },
@@ -571,7 +615,6 @@
           { id: 'packages',    label: 'Packages',    icon: '🎟' },
           { id: 'discounts',   label: 'Discounts',   icon: '%' },
           { id: 'billing',     label: 'Billing',     icon: '💳' },
-          { id: 'renewals',    label: 'Renewals',    icon: '🔄' },
         ]
       },
       {
@@ -579,7 +622,6 @@
         items: [
           { id: 'curriculum', label: 'Curriculum', icon: '☰' },
           { id: 'grading',    label: 'Grading',    icon: '★' },
-          { id: 'equipment',  label: 'Equipment',  icon: '🥊' },
           { id: 'waivers',    label: 'Documents',  icon: '📋' },
         ]
       },
@@ -913,6 +955,7 @@
       </div>
       ${_studentBulkBar()}
       <div id="student-belt-chips">${_studentBeltFilterChips()}</div>
+      <div id="student-tag-chips">${_studentTagFilterChips()}</div>
       <div class="card" style="padding:0">
         <div class="list">
           ${_studentListHeader()}
@@ -929,6 +972,7 @@
   let studentSortKey = 'name';   // 'name' | 'belt' | 'lastSeen' | 'classes'
   let studentSortDir = 1;        // 1 = asc, -1 = desc
   let studentBeltFilter = null;  // null = all, or a levelId string
+  let studentTagFilter = null;   // null = all, or an audience tag id
 
   function _studentLastSeen(studentId) {
     // Returns days since last attended class, or null if never
@@ -999,6 +1043,9 @@
     // Re-render belt chips to update active state
     const chipWrap = document.getElementById('student-belt-chips');
     if (chipWrap) chipWrap.outerHTML = `<div id="student-belt-chips">${_studentBeltFilterChips()}</div>`;
+    const tagWrap = document.getElementById('student-tag-chips');
+    if (tagWrap) tagWrap.outerHTML = `<div id="student-tag-chips">${_studentTagFilterChips()}</div>`;
+    if (list) autoPaginate(list.parentNode);
   }
 
   function getFilteredStudents() {
@@ -1017,7 +1064,26 @@
         return enr && enr.currentLevelId === studentBeltFilter;
       });
     }
+    if (studentTagFilter) {
+      base = base.filter(stu => studentTags(stu).includes(studentTagFilter));
+    }
     return _sortStudents(base);
+  }
+
+  function _studentTagFilterChips() {
+    const chip = (id, label, active) => `<button
+      onclick="studentTagFilter=${active ? 'null' : `'${id}'`};filterStudents(studentSearchQuery)"
+      style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;
+        background:${active ? 'var(--primary)' : 'var(--surface-alt)'};color:${active ? '#fff' : 'var(--text)'};
+        border:1px solid ${active ? 'var(--primary)' : 'var(--border)'}">${label}</button>`;
+    const tagChips = AUDIENCE_TAGS.map(tg => {
+      const count = STUDENTS.filter(s => !s.inactive && studentTags(s).includes(tg.id)).length;
+      if (!count) return '';
+      return chip(tg.id, `${t(tg.label)} <span style="opacity:.7;font-weight:400">${count}</span>`, studentTagFilter === tg.id);
+    }).join('');
+    if (!tagChips) return '';
+    return `<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:var(--sp-3)">
+      ${chip('', 'All tags', !studentTagFilter)}${tagChips}</div>`;
   }
 
   function _studentBeltFilterChips() {
@@ -1518,6 +1584,7 @@
                 <span style="font-size:12px;color:var(--text-muted)">${enrollment.currentStripes} / ${maxStripes}</span>
               </div>
             </div>
+            <div id="tagRow-${student.id}" style="margin-top:var(--sp-2)">${studentTagRow(student)}</div>
             <div style="margin-top:var(--sp-2);display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
               <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Membership</span>
               <select class="input" style="font-size:12px;padding:4px 10px;width:auto"
@@ -1679,6 +1746,42 @@
     persistData();
     renderApp();
   }
+
+  // ---------- Student audience tags (admin only) ---------------------------
+  function studentTagRow(student) {
+    const tags = studentTags(student);
+    const chips = tags.length
+      ? tags.map(id => `<span class="cv2-pill" style="font-size:11px">${tagLabel(id)}</span>`).join(' ')
+      : `<span class="muted" style="font-size:12px">${tr('tags.noTags')}</span>`;
+    return `<div style="display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted)">${tr('tags.audience')}</span>
+      ${chips}
+      <button class="btn btn-secondary" style="font-size:12px;padding:2px 10px" onclick="editStudentTags('${student.id}')">Edit</button>
+    </div>`;
+  }
+  window.editStudentTags = function (studentId) {
+    const student = DB.student(studentId);
+    const row = document.getElementById('tagRow-' + studentId);
+    if (!student || !row) return;
+    const current = studentTags(student);
+    row.innerHTML = `<div style="display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
+      <span style="font-size:12px;font-weight:600;color:var(--text-muted)">${tr('tags.audience')}</span>
+      ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:4px;font-size:12px">
+        <input type="checkbox" value="${tg.id}" ${current.includes(tg.id)?'checked':''} data-tagedit="${studentId}"> ${t(tg.label)}</label>`).join(' ')}
+      <button class="btn" style="font-size:12px;padding:2px 10px" onclick="saveStudentTags('${studentId}')">Save</button>
+      <button class="btn btn-secondary" style="font-size:12px;padding:2px 10px" onclick="document.getElementById('tagRow-${studentId}').innerHTML=studentTagRow(DB.student('${studentId}'))">Cancel</button>
+    </div>`;
+  };
+  window.saveStudentTags = function (studentId) {
+    const student = DB.student(studentId);
+    if (!student) return;
+    const picked = [...document.querySelectorAll(`input[data-tagedit="${studentId}"]:checked`)].map(c => c.value);
+    student.tags = picked;            // admin override persists on the student record
+    persistData();
+    const row = document.getElementById('tagRow-' + studentId);
+    if (row) row.innerHTML = studentTagRow(student);
+    showToast('Tags updated');
+  };
 
   function setStudentStripes(studentId, sportId, newCount) {
     const enr = ENROLLMENTS.find(e => e.studentId === studentId && e.sportId === sportId);
@@ -2587,9 +2690,11 @@
           </div>
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-1)">Audience</label>
-            <select id="tpl-audience" class="input" style="width:100%">
-              ${AUDIENCES.map(a => `<option value="${a}" ${(rt.audience || 'Adults') === a ? 'selected' : ''}>${a}</option>`).join('')}
-            </select>
+            <div style="display:flex;flex-wrap:wrap;gap:var(--sp-3);padding-top:6px">
+              ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px">
+                <input type="checkbox" data-tpl-aud value="${tg.id}" ${(rt.audienceTags || []).includes(tg.id) ? 'checked' : ''}> ${t(tg.label)}</label>`).join('')}
+            </div>
+            <div class="faint" style="font-size:11px;margin-top:4px">${tr('aud.openHintShort')}</div>
           </div>
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-1)">Instructor</label>
@@ -2613,7 +2718,7 @@
   }
   function startNewTemplate() {
     editingTemplateId = 'new';
-    editTemplateState = { dow: 1, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'Adults', instructorId: '', capacity: 20 };
+    editTemplateState = { dow: 1, time: '19:00', durationMin: 60, classType: 'Fundamentals', audience: 'All', audienceTags: [], instructorId: '', capacity: 20 };
     document.getElementById('content').innerHTML = ClassesList();
   }
   function cancelEditTemplate() {
@@ -2626,17 +2731,18 @@
     const time     = document.getElementById('tpl-time')?.value || '19:00';
     const dur      = parseInt(document.getElementById('tpl-dur')?.value) || 60;
     const type     = document.getElementById('tpl-type')?.value || 'Fundamentals';
-    const audience = document.getElementById('tpl-audience')?.value || 'Adults';
+    const audienceTags = [...document.querySelectorAll('input[data-tpl-aud]:checked')].map(c => c.value);
+    const audience = audienceTags.length ? audienceTags.map(tagLabel).join(', ') : 'All';
     const inst     = document.getElementById('tpl-inst')?.value || '';
     const cap      = parseInt(document.getElementById('tpl-cap')?.value) || 20;
 
     if (!inst) { alert('Please select an instructor.'); return; }
 
     if (id === 'new') {
-      RECURRING_TEMPLATES.push({ id: 'rt-' + Date.now(), dow, time, durationMin: dur, classType: type, audience, instructorId: inst, capacity: cap, sportId: 'sport-bjj' });
+      RECURRING_TEMPLATES.push({ id: 'rt-' + Date.now(), dow, time, durationMin: dur, classType: type, audience, audienceTags, instructorId: inst, capacity: cap, sportId: 'sport-bjj' });
     } else {
       const rt = RECURRING_TEMPLATES.find(r => r.id === id);
-      if (rt) Object.assign(rt, { dow, time, durationMin: dur, classType: type, audience, instructorId: inst, capacity: cap });
+      if (rt) Object.assign(rt, { dow, time, durationMin: dur, classType: type, audience, audienceTags, instructorId: inst, capacity: cap });
     }
     editingTemplateId = null;
     editTemplateState = {};
@@ -3346,6 +3452,75 @@
   // Modules inline (no sidebar). Filters: category, complexity, type, ruleset,
   // context, status, search. View/Admin mode. Reads live from Supabase.
 
+  // Curriculum i18n — translates the controlled vocabulary (module names,
+  // categories, complexity, ruleset, context) and UI chrome. Technique names,
+  // descriptions and key-details are free-text content and shown as stored.
+  const CURRIC_I18N = {
+    module: {
+      'mod-standing': { en:'Standing & Takedowns', pt:'Em Pé & Quedas' },
+      'mod-passing':  { en:'Guard Passing',        pt:'Passagem de Guarda' },
+      'mod-side':     { en:'Side Control Battle',  pt:'Cem Quilos' },
+      'mod-mount':    { en:'Mount Battle',         pt:'Montada' },
+      'mod-back':     { en:'Back Battle',          pt:'Costas' },
+      'mod-guard':    { en:'Guard Battle',         pt:'Guarda' },
+      'mod-legs':     { en:'Leg Locks',            pt:'Chaves de Perna' },
+      'mod-subs':     { en:'Submissions',          pt:'Finalizações' },
+      'mod-concepts': { en:'Concepts',             pt:'Conceitos' },
+      'mod-drills':   { en:'Drills',               pt:'Exercícios' }
+    },
+    category: {
+      'Escape':{en:'Escape',pt:'Saída'}, 'Sweep':{en:'Sweep',pt:'Raspagem'},
+      'Submission':{en:'Submission',pt:'Finalização'}, 'Guard Pass':{en:'Guard Pass',pt:'Passagem'},
+      'Takedown':{en:'Takedown',pt:'Queda'}, 'Control':{en:'Control',pt:'Controlo'},
+      'Transition':{en:'Transition',pt:'Transição'}, 'Guard Retention':{en:'Guard Retention',pt:'Retenção de Guarda'},
+      'Concept':{en:'Concept',pt:'Conceito'}, 'Drill':{en:'Drill',pt:'Exercício'}
+    },
+    complexity: {
+      'Beginner':{en:'Beginner',pt:'Iniciante'}, 'Intermediate':{en:'Intermediate',pt:'Intermédio'},
+      'Advanced':{en:'Advanced',pt:'Avançado'}, 'Expert':{en:'Expert',pt:'Especialista'}
+    },
+    ruleset: { 'Both':{en:'Both',pt:'Ambos'}, 'Gi':{en:'Gi',pt:'Gi'}, 'No-Gi':{en:'No-Gi',pt:'No-Gi'} },
+    context: { 'Self-Defense':{en:'Self-Defense',pt:'Defesa Pessoal'}, 'Sport':{en:'Sport',pt:'Desporto'}, 'Both':{en:'Both',pt:'Ambos'} },
+    legtier: { 'None':{en:'None',pt:'Nenhuma'}, 'Basic':{en:'Basic',pt:'Básica'}, 'Advanced':{en:'Advanced',pt:'Avançada'} },
+    ui: {
+      master:        {en:'Master Curriculum', pt:'Currículo Base'},
+      techniques:    {en:'techniques',        pt:'técnicas'},
+      sport:         {en:'Sport',             pt:'Modalidade'},
+      curriculum:    {en:'Curriculum',        pt:'Currículo'},
+      allCategories: {en:'All categories',    pt:'Todas as categorias'},
+      allComplexity: {en:'All complexity',    pt:'Toda a complexidade'},
+      allTypes:      {en:'All types',         pt:'Todos os tipos'},
+      allRulesets:   {en:'All rulesets',      pt:'Todas as regras'},
+      allContexts:   {en:'All contexts',      pt:'Todos os contextos'},
+      active:        {en:'Active',            pt:'Ativas'},
+      activeHidden:  {en:'Active + hidden',   pt:'Ativas + ocultas'},
+      hiddenOnly:    {en:'Hidden only',       pt:'Apenas ocultas'},
+      hidden:        {en:'Hidden',            pt:'Oculta'},
+      search:        {en:'Search techniques…',pt:'Procurar técnicas…'},
+      clear:         {en:'Clear',             pt:'Limpar'},
+      reconfigure:   {en:'✦ Build / Reconfigure', pt:'✦ Construir / Reconfigurar'},
+      settings:      {en:'⚙ Settings',        pt:'⚙ Definições'},
+      view:          {en:'View',              pt:'Ver'},
+      admin:         {en:'Admin',             pt:'Admin'},
+      hide:          {en:'Hide',              pt:'Ocultar'},
+      restore:       {en:'Restore',           pt:'Restaurar'},
+      restoreAll:    {en:'Restore all',       pt:'Restaurar todas'},
+      allHidden:     {en:'All techniques in this module are hidden.', pt:'Todas as técnicas deste módulo estão ocultas.'},
+      noMatch:       {en:'No techniques match the current filters.',  pt:'Nenhuma técnica corresponde aos filtros.'},
+      colName:       {en:'Name',pt:'Nome'}, colCategory:{en:'Category',pt:'Categoria'},
+      colType:       {en:'Type',pt:'Tipo'}, colComplexity:{en:'Complexity',pt:'Complexidade'},
+      colRuleset:    {en:'Ruleset',pt:'Regras'}, colContext:{en:'Context',pt:'Contexto'},
+      colStatus:     {en:'Status',pt:'Estado'}
+    }
+  };
+  // ct: translate a controlled value; falls back to the raw value if no entry.
+  function ct(group, value) {
+    const entry = CURRIC_I18N[group] && CURRIC_I18N[group][value];
+    return entry ? t(entry) : (value || '');
+  }
+  // moduleName: localized module name from a module row (DB name is English).
+  function moduleName(m) { if (!m) return ''; const tr = ct('module', m.id); return tr === m.id ? m.name : tr; }
+
   const CV2 = {
     loaded: false,
     sports: [],
@@ -3364,57 +3539,6 @@
     // Return a shell synchronously; fill it asynchronously from Supabase.
     setTimeout(loadCurriculumV2, 0);
     return `
-      <style>
-        .cv2-bar { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:center;
-          margin-bottom:var(--sp-5); padding:var(--sp-3); background:var(--surface);
-          border:1px solid var(--border); border-radius:var(--r-md); }
-        .cv2-bar select, .cv2-bar input { font:inherit; font-size:13px; padding:6px 8px;
-          border:1px solid var(--border-strong); border-radius:var(--r-sm);
-          background:var(--surface); color:var(--text); }
-        .cv2-bar .spacer { flex:1; }
-        .cv2-mod { border:1px solid var(--border); border-radius:var(--r-md);
-          background:var(--surface); margin-bottom:var(--sp-4); overflow:hidden;
-          scroll-margin-top:var(--sp-4); }
-        .cv2-head { display:flex; align-items:center; gap:var(--sp-3);
-          padding:var(--sp-3) var(--sp-4); cursor:pointer; user-select:none; }
-        .cv2-head:hover { background:var(--surface-alt); }
-        .cv2-head .chev { color:var(--text-faint); transition:transform .15s; }
-        .cv2-mod.collapsed .chev { transform:rotate(-90deg); }
-        .cv2-mod.collapsed .cv2-body { display:none; }
-        .cv2-head .mname { font-weight:600; font-size:15px; }
-        .cv2-head .mspacer { flex:1; }
-        .cv2-badge { background:var(--surface-alt); color:var(--text-muted);
-          border:1px solid var(--border); border-radius:999px; padding:1px 8px;
-          font-size:11px; font-variant-numeric:tabular-nums; }
-        .cv2-cbar { display:inline-flex; height:6px; width:120px; border-radius:999px;
-          overflow:hidden; background:var(--surface-alt); }
-        .cv2-cbar span { display:block; height:100%; }
-        .cb-Beginner{background:var(--success)} .cb-Intermediate{background:var(--accent)}
-        .cb-Advanced{background:var(--warn)} .cb-Expert{background:var(--danger)}
-        .cv2-tbl { width:100%; border-collapse:collapse; font-size:13px; }
-        .cv2-tbl th { text-align:left; font-size:11px; text-transform:uppercase;
-          letter-spacing:.04em; color:var(--text-faint); padding:var(--sp-2) var(--sp-4);
-          border-top:1px solid var(--border); }
-        .cv2-tbl td { padding:var(--sp-3) var(--sp-4); border-top:1px solid var(--border); }
-        .cv2-tbl tr:hover td { background:var(--surface-alt); }
-        .cv2-name { font-weight:500; color:var(--text); text-decoration:none; cursor:pointer; }
-        .cv2-name:hover { color:var(--accent); text-decoration:underline; }
-        .cv2-pill { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px;
-          border:1px solid var(--border); background:var(--surface-alt); color:var(--text-muted); }
-        .cv2-pill.c-Beginner{color:var(--success);border-color:var(--success)}
-        .cv2-pill.c-Intermediate{color:var(--accent);border-color:var(--accent)}
-        .cv2-pill.c-Advanced{color:var(--warn);border-color:var(--warn)}
-        .cv2-pill.c-Expert{color:var(--danger);border-color:var(--danger)}
-        .cv2-row-hidden td { opacity:.45; }
-        .cv2-seg { display:inline-flex; border:1px solid var(--border-strong);
-          border-radius:var(--r-sm); overflow:hidden; }
-        .cv2-seg button { font:inherit; font-size:12px; padding:6px 12px; border:none;
-          background:var(--surface); color:var(--text-muted); cursor:pointer; }
-        .cv2-seg button.on { background:var(--primary); color:#fff; }
-        .cv2-admin { display:none; }
-        .cv2[data-mode="admin"] .cv2-admin { display:inline-flex; }
-        .cv2-empty { padding:var(--sp-5); text-align:center; color:var(--text-muted); }
-      </style>
       <div class="cv2" data-mode="${CV2.mode}">
         <div class="row-between" style="margin-bottom:var(--sp-4)">
           <div>
@@ -3423,33 +3547,33 @@
           </div>
           <div class="row" style="gap:var(--sp-2)">
             <div class="cv2-seg" id="cv2Mode">
-              <button data-mode="view" class="${CV2.mode==='view'?'on':''}">View</button>
-              <button data-mode="admin" class="${CV2.mode==='admin'?'on':''}">Admin</button>
+              <button data-mode="view" class="${CV2.mode==='view'?'on':''}">${ct('ui','view')}</button>
+              <button data-mode="admin" class="${CV2.mode==='admin'?'on':''}">${ct('ui','admin')}</button>
             </div>
-            <button class="btn btn-primary" onclick="go('curriculum-wizard')">✦ Build / Reconfigure</button>
-            <button class="btn btn-secondary" onclick="go('settings')">⚙ Settings</button>
+            <button class="btn btn-primary" onclick="go('curriculum-wizard')">${ct('ui','reconfigure')}</button>
+            <button class="btn btn-secondary" onclick="go('settings')">${ct('ui','settings')}</button>
           </div>
         </div>
         <div class="cv2-bar" style="margin-bottom:var(--sp-3)">
-          <label style="font-size:12px;color:var(--text-muted);font-weight:600">Sport</label>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600">${ct('ui','sport')}</label>
           <select id="cv2Sport"></select>
-          <label style="font-size:12px;color:var(--text-muted);font-weight:600;margin-left:var(--sp-3)">Curriculum</label>
+          <label style="font-size:12px;color:var(--text-muted);font-weight:600;margin-left:var(--sp-3)">${ct('ui','curriculum')}</label>
           <select id="cv2Curriculum"></select>
         </div>
         <div class="cv2-bar">
-          <select id="cv2Category"><option value="">All categories</option></select>
-          <select id="cv2Complexity"><option value="">All complexity</option></select>
-          <select id="cv2Type"><option value="">All types</option></select>
-          <select id="cv2Ruleset"><option value="">All rulesets</option></select>
-          <select id="cv2Context"><option value="">All contexts</option></select>
+          <select id="cv2Category"><option value="">${ct('ui','allCategories')}</option></select>
+          <select id="cv2Complexity"><option value="">${ct('ui','allComplexity')}</option></select>
+          <select id="cv2Type"><option value="">${ct('ui','allTypes')}</option></select>
+          <select id="cv2Ruleset"><option value="">${ct('ui','allRulesets')}</option></select>
+          <select id="cv2Context"><option value="">${ct('ui','allContexts')}</option></select>
           <select id="cv2Status">
-            <option value="active">Active</option>
-            <option value="">Active + hidden</option>
-            <option value="hidden">Hidden only</option>
+            <option value="active">${ct('ui','active')}</option>
+            <option value="">${ct('ui','activeHidden')}</option>
+            <option value="hidden">${ct('ui','hiddenOnly')}</option>
           </select>
-          <input id="cv2Search" type="search" placeholder="Search techniques…" />
+          <input id="cv2Search" type="search" placeholder="${ct('ui','search')}" />
           <span class="spacer"></span>
-          <button class="btn btn-secondary" id="cv2Clear" style="font-size:12px">Clear</button>
+          <button class="btn btn-secondary" id="cv2Clear" style="font-size:12px">${ct('ui','clear')}</button>
         </div>
         <div id="cv2Content"><div class="cv2-empty">Loading curriculum…</div></div>
       </div>
@@ -3511,7 +3635,7 @@
     const sel = document.getElementById('cv2Curriculum');
     if (!sel) return;
     const forSport = CV2.configs.filter(c => (c.sport_id || 'sport-bjj') === CV2.sportId);
-    sel.innerHTML = `<option value="">Master Curriculum</option>` +
+    sel.innerHTML = `<option value="">${ct('ui','master')}</option>` +
       forSport.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     sel.value = CV2.curriculumId || '';
   }
@@ -3557,13 +3681,13 @@
 
   function buildCV2Filters() {
     const uniq = (k) => [...new Set(CV2.techniques.map(t => t[k]).filter(Boolean))].sort();
-    const fill = (id, vals) => { const s = document.getElementById(id); if (!s) return;
-      vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; s.appendChild(o); }); };
-    fill('cv2Category', uniq('category'));
-    fill('cv2Complexity', ['Beginner','Intermediate','Advanced','Expert']);
+    const fill = (id, vals, group) => { const s = document.getElementById(id); if (!s) return;
+      vals.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = group ? ct(group, v) : v; s.appendChild(o); }); };
+    fill('cv2Category', uniq('category'), 'category');
+    fill('cv2Complexity', ['Beginner','Intermediate','Advanced','Expert'], 'complexity');
     fill('cv2Type', uniq('type'));
-    fill('cv2Ruleset', uniq('ruleset'));
-    fill('cv2Context', uniq('context'));
+    fill('cv2Ruleset', uniq('ruleset'), 'ruleset');
+    fill('cv2Context', uniq('context'), 'context');
   }
 
   function bindCV2() {
@@ -3608,9 +3732,9 @@
     if (!content) return;
     const rows = cv2Rows();
     const cfg = CV2.configs.find(c => c.id === CV2.curriculumId);
-    document.getElementById('cv2Title').textContent = cfg ? cfg.name : 'Master Curriculum';
+    document.getElementById('cv2Title').textContent = cfg ? cfg.name : ct('ui','master');
     const sportName = CV2.sports.find(s => s.id === CV2.sportId);
-    const bits = [sportName ? t(sportName.name) : null, cfg?.type_summary, `${rows.length} techniques`].filter(Boolean);
+    const bits = [sportName ? t(sportName.name) : null, cfg?.type_summary, `${rows.length} ${ct('ui','techniques')}`].filter(Boolean);
     document.getElementById('cv2Summary').textContent = bits.join(' · ');
 
     const byModule = {};
@@ -3639,7 +3763,7 @@
       sec.innerHTML = `
         <div class="cv2-head">
           <span class="chev">▾</span>
-          <span class="mname">${m.name}</span>
+          <span class="mname">${moduleName(m)}</span>
           <span class="cv2-badge">${visible.length}</span>
           <span class="mspacer"></span>
           <span class="cv2-cbar">${bar}</span>
@@ -3651,19 +3775,19 @@
       const body = sec.querySelector('.cv2-body');
       if (!visible.length) {
         body.innerHTML = `<div style="padding:var(--sp-4);color:var(--text-faint);display:flex;justify-content:space-between;align-items:center;gap:var(--sp-3)">
-          <span>All techniques in this module are hidden.</span>
-          <button class="btn btn-secondary cv2-admin" data-restore="${m.id}" style="font-size:12px">Restore all</button></div>`;
+          <span>${ct('ui','allHidden')}</span>
+          <button class="btn btn-secondary cv2-admin" data-restore="${m.id}" style="font-size:12px">${ct('ui','restoreAll')}</button></div>`;
       } else {
         visible.sort((a,b) => a.order - b.order);
         body.innerHTML = `<table class="cv2-tbl">
-          <thead><tr><th>Name</th><th>Category</th><th>Type</th><th>Complexity</th><th>Ruleset</th><th>Context</th><th>Status</th><th></th></tr></thead>
+          <thead><tr><th>${ct('ui','colName')}</th><th>${ct('ui','colCategory')}</th><th>${ct('ui','colType')}</th><th>${ct('ui','colComplexity')}</th><th>${ct('ui','colRuleset')}</th><th>${ct('ui','colContext')}</th><th>${ct('ui','colStatus')}</th><th></th></tr></thead>
           <tbody>${visible.map(cv2RowHtml).join('')}</tbody></table>`;
       }
       content.appendChild(sec);
     });
 
     if (!any) {
-      content.innerHTML = `<div class="cv2-empty">No techniques match the current filters.</div>`;
+      content.innerHTML = `<div class="cv2-empty">${ct('ui','noMatch')}</div>`;
     }
     content.querySelectorAll('[data-toggle]').forEach(b => b.onclick = () => cv2ToggleHidden(b.dataset.toggle));
     content.querySelectorAll('[data-restore]').forEach(b => b.onclick = () => cv2RestoreModule(b.dataset.restore));
@@ -3672,14 +3796,14 @@
   function cv2RowHtml(r) {
     const t = r.tech;
     return `<tr class="${r.hidden ? 'cv2-row-hidden' : ''}">
-      <td><a class="cv2-name" href="/curriculum/techniques/${t.slug}">${t.name}</a></td>
-      <td>${t.category}</td>
+      <td><span class="cv2-name" onclick="go('curriculum-tech/${t.slug}')">${t.name}</span></td>
+      <td>${ct('category', t.category)}</td>
       <td>${t.type || '—'}</td>
-      <td><span class="cv2-pill c-${t.complexity}">${t.complexity}</span></td>
-      <td><span class="cv2-pill">${t.ruleset}</span></td>
-      <td><span class="cv2-pill">${t.context}</span></td>
-      <td>${r.hidden ? '<span class="cv2-pill">Hidden</span>' : '<span class="cv2-pill c-Beginner">Active</span>'}</td>
-      <td><button class="btn btn-secondary cv2-admin" data-toggle="${t.id}" style="font-size:12px">${r.hidden ? 'Restore' : 'Hide'}</button></td>
+      <td><span class="cv2-pill c-${t.complexity}">${ct('complexity', t.complexity)}</span></td>
+      <td><span class="cv2-pill">${ct('ruleset', t.ruleset)}</span></td>
+      <td><span class="cv2-pill">${ct('context', t.context)}</span></td>
+      <td>${r.hidden ? `<span class="cv2-pill">${ct('ui','hidden')}</span>` : `<span class="cv2-pill c-Beginner">${ct('ui','active')}</span>`}</td>
+      <td><button class="btn btn-secondary cv2-admin" data-toggle="${t.id}" style="font-size:12px">${r.hidden ? ct('ui','restore') : ct('ui','hide')}</button></td>
     </tr>`;
   }
 
@@ -3689,7 +3813,11 @@
     const next = !m.is_hidden;
     m.is_hidden = next; renderCV2();
     const { error } = await sb.from('curriculum_techniques').update({ is_hidden: next }).eq('id', m.id);
-    if (error) { m.is_hidden = !next; renderCV2(); showToast('Failed to save.'); }
+    if (error) {
+      m.is_hidden = !next; renderCV2();
+      const ro = error.code === '42501' || /policy|permission|row-level/i.test(error.message || '');
+      showToast(ro ? 'This is a read-only demo — changes are not saved.' : 'Failed to save.');
+    }
   }
 
   async function cv2RestoreModule(moduleId) {
@@ -3785,7 +3913,7 @@
   function renderWizard() {
     const root = document.getElementById('wizRoot');
     if (!root) return;
-    const steps = ['Academy', 'Philosophy', 'Students', 'Preview', 'Sequence'];
+    const steps = [tr('wiz.step.academy'), tr('wiz.step.philosophy'), tr('wiz.step.students'), tr('wiz.step.preview'), tr('wiz.step.sequence')];
     const stepper = steps.map((s, i) => {
       const n = i + 1, on = n === WIZ.step, done = n < WIZ.step;
       return `<div style="display:flex;align-items:center;gap:var(--sp-2)">
@@ -3800,7 +3928,7 @@
 
     root.innerHTML = `
       <div class="row-between" style="margin-bottom:var(--sp-4)">
-        <h1 class="h1">Curriculum Wizard</h1>
+        <h1 class="h1">${tr('wiz.title')}</h1>
         <button class="btn btn-secondary" onclick="go('curriculum')">Cancel</button>
       </div>
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);margin-bottom:var(--sp-5)">${stepper}</div>
@@ -3839,7 +3967,7 @@
     const a = WIZ.answers;
     return `
       <div class="card" style="max-width:560px">
-        <h3 class="card-title" style="margin-bottom:var(--sp-4)">Academy profile</h3>
+        <h3 class="card-title" style="margin-bottom:var(--sp-4)">${tr('wiz.academyProfile')}</h3>
         <label style="display:block;font-size:12px;font-weight:600;color:var(--text-muted);margin-bottom:4px">Academy name</label>
         <input class="input" id="wizName" value="${a.name.replace(/"/g,'&quot;')}" placeholder="Iron Roots Academy"
           style="width:100%;margin-bottom:var(--sp-4)" oninput="WIZ.answers.name=this.value;wizUpdateNext()" />
@@ -3882,7 +4010,7 @@
   function wizScreen2() {
     return `
       <div class="stack" style="gap:var(--sp-5)">
-        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Primary focus</h3>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">${tr('wiz.primaryFocus')}</h3>
           ${wizCards('focus', [
             { value:'Self-Defense', label:'Self-Defense', icon:'🛡', desc:'Practical, situational' },
             { value:'Sport Gi', label:'Sport Gi', icon:'🥋', desc:'Competition with the gi' },
@@ -3890,19 +4018,19 @@
             { value:'MMA Base', label:'MMA Base', icon:'🥊', desc:'Striking-aware grappling' },
             { value:'Mixed', label:'Mixed', icon:'⚖️', desc:'A balance of everything' }
           ])}</div>
-        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Leg lock stance</h3>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">${tr('wiz.legLockStance')}</h3>
           ${wizCards('legLock', [
             { value:'Conservative', label:'Conservative', icon:'🦶', desc:'Ankle locks only' },
             { value:'Moderate', label:'Moderate', icon:'🦵', desc:'+ toe holds' },
             { value:'Full', label:'Full', icon:'🔥', desc:'Including heel hooks' }
           ])}</div>
-        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Takedowns</h3>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">${tr('wiz.takedowns')}</h3>
           ${wizCards('takedowns', [
             { value:'Minimal', label:'Minimal', icon:'🤏', desc:'Pull guard, hide wrestling' },
             { value:'Moderate', label:'Moderate', icon:'👍', desc:'Core takedowns' },
             { value:'Wrestling-integrated', label:'Wrestling-integrated', icon:'🤼', desc:'Heavy stand-up' }
           ])}</div>
-        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">Ruleset</h3>
+        <div><h3 class="card-title" style="margin-bottom:var(--sp-3)">${tr('wiz.ruleset')}</h3>
           ${wizCards('ruleset', [
             { value:'Gi only', label:'Gi only', icon:'🥋', desc:'Exclude No-Gi techniques' },
             { value:'No-Gi only', label:'No-Gi only', icon:'🩳', desc:'Exclude Gi techniques' },
@@ -3921,7 +4049,7 @@
       { value:"Women's self-defense", icon:'🛡', desc:'Self-defense emphasis' }
     ];
     return `
-      <h3 class="card-title" style="margin-bottom:var(--sp-2)">Who trains here?</h3>
+      <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('wiz.whoTrains')}</h3>
       <p class="muted" style="font-size:13px;margin-bottom:var(--sp-4)">Select all that apply. This shapes module ordering and emphasis, not which techniques are included.</p>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:var(--sp-3)">
         ${opts.map(o => {
@@ -3970,8 +4098,8 @@
         return `<div style="display:flex;align-items:center;gap:var(--sp-3);padding:6px var(--sp-3);
           border-top:1px solid var(--border);${ex?'opacity:.5':''}">
           <span style="flex:1;font-size:13px;${hid?'text-decoration:line-through;color:var(--text-faint)':''}">${t.name}</span>
-          <span class="cv2-pill" style="font-size:10px">${t.type||t.category}</span>
-          <span class="cv2-pill c-${t.complexity}" style="font-size:10px">${t.complexity}</span>
+          <span class="cv2-pill" style="font-size:10px">${t.type || ct('category', t.category)}</span>
+          <span class="cv2-pill c-${t.complexity}" style="font-size:10px">${ct('complexity', t.complexity)}</span>
           ${ex
             ? `<button class="btn btn-secondary" style="font-size:11px;padding:2px 8px" onclick="wizAdd('${t.id}')">+ Add</button>`
             : `<button class="btn btn-secondary" style="font-size:11px;padding:2px 8px" onclick="wizHide('${t.id}')">${hid?'Show':'Hide'}</button>`}
@@ -3979,7 +4107,7 @@
       }).join('');
       return `<div class="cv2-mod" style="margin-bottom:var(--sp-3)">
         <div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4)">
-          <span class="mname" style="font-weight:600">${m.name}</span>
+          <span class="mname" style="font-weight:600">${moduleName(m)}</span>
           <span class="cv2-badge">${inc.length}${exc.length?` · ${exc.length} excluded`:''}</span>
           <span style="flex:1"></span>
           <span class="cv2-cbar">${bar}</span>
@@ -3991,11 +4119,11 @@
     return `
       <div class="row-between" style="margin-bottom:var(--sp-4)">
         <div>
-          <h3 class="card-title">Curriculum preview</h3>
+          <h3 class="card-title">${tr('wiz.preview')}</h3>
           <div class="muted" style="font-size:13px">${wizTypeSummary()} · <strong>${totalIncluded}</strong> techniques${totalExcluded?` · ${totalExcluded} excluded`:''}</div>
         </div>
         <label style="font-size:13px;display:flex;align-items:center;gap:6px;cursor:pointer">
-          <input type="checkbox" ${WIZ.showExcluded?'checked':''} onchange="WIZ.showExcluded=this.checked;renderWizard()"> Show excluded
+          <input type="checkbox" ${WIZ.showExcluded?'checked':''} onchange="WIZ.showExcluded=this.checked;renderWizard()"> ${tr('wiz.showExcluded')}
         </label>
       </div>
       ${cards || '<div class="cv2-empty">No techniques.</div>'}
@@ -4016,14 +4144,14 @@
       return `<div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3) var(--sp-4);
         border:1px solid var(--border);border-radius:var(--r-md);background:var(--surface);margin-bottom:var(--sp-2)">
         <span style="font-size:12px;color:var(--text-faint);width:20px">${i+1}</span>
-        <span style="flex:1;font-weight:600;font-size:14px">${m.name}</span>
+        <span style="flex:1;font-weight:600;font-size:14px">${moduleName(m)}</span>
         <span class="cv2-badge">${inc}</span>
         <button class="btn btn-secondary" style="padding:2px 8px" onclick="wizMove(${i},-1)" ${i===0?'disabled style="opacity:.3"':''}>↑</button>
         <button class="btn btn-secondary" style="padding:2px 8px" onclick="wizMove(${i},1)" ${i===WIZ.moduleOrder.length-1?'disabled style="opacity:.3"':''}>↓</button>
       </div>`;
     }).join('');
     return `
-      <h3 class="card-title" style="margin-bottom:var(--sp-2)">Module sequence</h3>
+      <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('wiz.moduleSequence')}</h3>
       <p class="muted" style="font-size:13px;margin-bottom:var(--sp-4)">Order the modules as you'd teach them. Empty modules are skipped on save.</p>
       ${rows}
       ${wizNav('Back', WIZ.saving ? 'Saving…' : 'Finish & save ✓', null, WIZ.saving)}`;
@@ -4054,7 +4182,12 @@
       const { sport_id, ...noSport } = cfgRow;
       ({ data: cfg, error: cErr } = await sb.from('curriculum_configs').insert(noSport).select().single());
     }
-    if (cErr || !cfg) { WIZ.saving = false; renderWizard(); showToast('Save failed: ' + (cErr?.message||'unknown')); return; }
+    if (cErr || !cfg) {
+      WIZ.saving = false; renderWizard();
+      const ro = cErr && (cErr.code === '42501' || /policy|permission|row-level/i.test(cErr.message || ''));
+      showToast(ro ? 'This is a read-only demo — changes are not saved.' : 'Save failed: ' + (cErr?.message || 'unknown'));
+      return;
+    }
 
     const included = wizIncludedTechs();
     let seq = 0;
@@ -4082,6 +4215,182 @@
     go('curriculum');
   }
 
+  // ---------- Technique Item Page ------------------------------------------
+  // Route: #/curriculum-tech/:slug — full detail for a single technique.
+
+  const TP = { slug: null, tech: null, module: null, siblings: [], prereqs: [], chains: [], editing: null };
+
+  function TechniquePage(slug) {
+    TP.slug = slug;
+    setTimeout(loadTechniquePage, 0);
+    return `<div id="tpRoot"><div class="cv2-empty" style="padding:var(--sp-7)">Loading…</div></div>`;
+  }
+
+  async function loadTechniquePage() {
+    const root = document.getElementById('tpRoot');
+    if (!root) return;
+    const { data: tech, error } = await sb.from('techniques').select('*').eq('slug', TP.slug).single();
+    if (error || !tech) { root.innerHTML = `<div class="cv2-empty">Technique not found. <a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent)">Back to curriculum</a></div>`; return; }
+    TP.tech = tech;
+
+    const [modRes, sibRes, relRes] = await Promise.all([
+      tech.default_module_id ? sb.from('modules').select('*').eq('id', tech.default_module_id).single() : Promise.resolve({ data: null }),
+      sb.from('techniques').select('id,name,slug,number').eq('default_module_id', tech.default_module_id || '').order('number'),
+      sb.from('technique_relationships').select('*').eq('technique_id', tech.id)
+    ]);
+    TP.module = modRes.data || null;
+    TP.siblings = sibRes.data || [];
+    const rels = relRes.data || [];
+    const relIds = rels.map(r => r.related_technique_id);
+    let relTechs = [];
+    if (relIds.length) {
+      const { data } = await sb.from('techniques').select('id,name,slug').in('id', relIds);
+      relTechs = data || [];
+    }
+    const nameOf = (id) => relTechs.find(x => x.id === id);
+    TP.prereqs = rels.filter(r => r.relationship_type === 'prerequisite').map(r => nameOf(r.related_technique_id)).filter(Boolean);
+    TP.chains  = rels.filter(r => r.relationship_type === 'chains_to').map(r => nameOf(r.related_technique_id)).filter(Boolean);
+    renderTechniquePage();
+  }
+
+  function tpBadge(label, val, cls) {
+    if (!val) return '';
+    return `<span class="cv2-pill ${cls||''}" style="font-size:11px"><span style="color:var(--text-faint)">${label}:</span> ${val}</span>`;
+  }
+
+  function renderTechniquePage() {
+    const root = document.getElementById('tpRoot');
+    if (!root) return;
+    const t = TP.tech;
+    const admin = CV2.mode === 'admin';
+    const idx = TP.siblings.findIndex(s => s.id === t.id);
+    const prev = idx > 0 ? TP.siblings[idx - 1] : null;
+    const next = idx >= 0 && idx < TP.siblings.length - 1 ? TP.siblings[idx + 1] : null;
+
+    const linkList = (arr) => arr.length
+      ? arr.map(x => `<a onclick="go('curriculum-tech/${x.slug}')" style="cursor:pointer;color:var(--accent);display:block;padding:2px 0">${x.name}</a>`).join('')
+      : `<span class="muted" style="font-size:13px">None.</span>`;
+
+    const descBlock = TP.editing === 'description'
+      ? `<textarea id="tpEdit" class="input" style="width:100%;min-height:90px">${(t.description||'').replace(/</g,'&lt;')}</textarea>
+         <div style="margin-top:var(--sp-2);display:flex;gap:var(--sp-2)">
+           <button class="btn btn-primary" onclick="tpSaveField('description')">Save</button>
+           <button class="btn btn-secondary" onclick="TP.editing=null;renderTechniquePage()">Cancel</button></div>`
+      : `<p style="font-size:14px;line-height:1.6">${t.description || `<span class="muted">${tr('tech.noDescription')}</span>`}</p>
+         ${admin ? `<button class="btn btn-secondary" style="font-size:12px" onclick="TP.editing='description';renderTechniquePage()">Edit</button>` : ''}`;
+
+    const keyBlock = TP.editing === 'key_details'
+      ? `<textarea id="tpEdit" class="input" style="width:100%;min-height:90px">${(t.key_details||'').replace(/</g,'&lt;')}</textarea>
+         <div style="margin-top:var(--sp-2);display:flex;gap:var(--sp-2)">
+           <button class="btn btn-primary" onclick="tpSaveField('key_details')">Save</button>
+           <button class="btn btn-secondary" onclick="TP.editing=null;renderTechniquePage()">Cancel</button></div>`
+      : `<p style="font-size:14px;line-height:1.6">${t.key_details || `<span class="muted">${tr('tech.noKeyDetails')}</span>`}</p>
+         ${admin ? `<button class="btn btn-secondary" style="font-size:12px" onclick="TP.editing='key_details';renderTechniquePage()">Edit</button>` : ''}`;
+
+    root.innerHTML = `
+      <div class="row-between" style="margin-bottom:var(--sp-3)">
+        <div class="muted" style="font-size:13px">
+          <a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent)">Curriculum</a>
+          ${TP.module ? ` › ${moduleName(TP.module)}` : ''} › ${t.name}
+        </div>
+        <div class="cv2-seg">
+          <button class="${!admin?'on':''}" onclick="CV2.mode='view';renderTechniquePage()" style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${!admin?'var(--primary)':'var(--surface)'};color:${!admin?'#fff':'var(--text-muted)'}">View</button>
+          <button class="${admin?'on':''}" onclick="CV2.mode='admin';renderTechniquePage()" style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${admin?'var(--primary)':'var(--surface)'};color:${admin?'#fff':'var(--text-muted)'}">Admin</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1.9fr 1fr;gap:var(--sp-5);align-items:start">
+        <div>
+          <h1 class="h1" style="margin-bottom:var(--sp-3)">${t.name}</h1>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:var(--sp-5)">
+            ${tpBadge(ct('ui','colCategory'), ct('category', t.category))}
+            ${tpBadge(ct('ui','colType'), t.type)}
+            ${tpBadge(ct('ui','colComplexity'), ct('complexity', t.complexity), 'c-'+t.complexity)}
+            ${tpBadge(ct('ui','colRuleset'), ct('ruleset', t.ruleset))}
+            ${tpBadge(ct('ui','colContext'), ct('context', t.context))}
+            ${t.leg_lock_tier && t.leg_lock_tier !== 'None' ? tpBadge(tr('tech.badge.legLock'), ct('legtier', t.leg_lock_tier)) : ''}
+          </div>
+
+          <div class="card" style="margin-bottom:var(--sp-4)">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.description')}</h3>
+            ${descBlock}
+          </div>
+          <div class="card" style="margin-bottom:var(--sp-4);border-color:var(--accent)">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.keyDetails')}</h3>
+            ${keyBlock}
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.video')}</h3>
+            <div style="border:1px dashed var(--border-strong);border-radius:var(--r-md);padding:var(--sp-6);text-align:center;color:var(--text-muted)">
+              ${tr('tech.noVideo')}
+              ${admin ? `<div style="margin-top:var(--sp-3)"><button class="btn btn-secondary" onclick="showToast(tr('tech.uploadVideo'))">${tr('tech.uploadVideo')}</button></div>` : ''}
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;margin-top:var(--sp-5)">
+            ${prev ? `<button class="btn btn-secondary" onclick="go('curriculum-tech/${prev.slug}')">← ${prev.name}</button>` : '<span></span>'}
+            ${next ? `<button class="btn btn-secondary" onclick="go('curriculum-tech/${next.slug}')">${next.name} →</button>` : '<span></span>'}
+          </div>
+        </div>
+
+        <div class="stack" style="gap:var(--sp-4)">
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.module')}</h3>
+            ${TP.module
+              ? `<a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent);font-weight:600">${moduleName(TP.module)}</a>`
+              : '<span class="muted">—</span>'}
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.prerequisites')}</h3>
+            ${linkList(TP.prereqs)}
+            ${admin ? `<button class="btn btn-secondary" style="font-size:12px;margin-top:var(--sp-2)" onclick="tpAddRel('prerequisite')">${tr('tech.addPrereq')}</button>` : ''}
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.chainsTo')}</h3>
+            ${linkList(TP.chains)}
+            ${admin ? `<button class="btn btn-secondary" style="font-size:12px;margin-top:var(--sp-2)" onclick="tpAddRel('chains_to')">${tr('tech.addChain')}</button>` : ''}
+          </div>
+          <div class="card">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.academyContext')}</h3>
+            <span class="muted" style="font-size:13px">Belt/stripe association — editable per academy. Coming soon.</span>
+          </div>
+          <div class="card" style="background:var(--surface-alt)">
+            <h3 class="card-title" style="margin-bottom:var(--sp-2)">${tr('tech.studentProgress')}</h3>
+            <span class="muted" style="font-size:13px">Coming soon.</span>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function tpSaveField(field) {
+    const el = document.getElementById('tpEdit');
+    if (!el) return;
+    const val = el.value;
+    const { error } = await sb.from('techniques').update({ [field]: val }).eq('id', TP.tech.id);
+    if (error) { showToast('Save failed: ' + error.message); return; }
+    TP.tech[field] = val; TP.editing = null;
+    // keep curriculum cache fresh
+    const cached = CV2.techniques.find(x => x.id === TP.tech.id); if (cached) cached[field] = val;
+    showToast('Saved ✓'); renderTechniquePage();
+  }
+
+  async function tpAddRel(type) {
+    // Build a quick picker from the technique list (reuse CV2 cache or fetch).
+    let list = CV2.techniques;
+    if (!list || !list.length) { const { data } = await sb.from('techniques').select('id,name,slug').order('number'); list = data || []; }
+    const options = list.filter(x => x.id !== TP.tech.id);
+    const name = prompt(`Add ${type === 'prerequisite' ? 'prerequisite' : 'chain'} — type part of a technique name:`);
+    if (!name) return;
+    const match = options.find(x => x.name.toLowerCase().includes(name.toLowerCase()));
+    if (!match) { showToast('No matching technique found.'); return; }
+    const { error } = await sb.from('technique_relationships').insert({
+      technique_id: TP.tech.id, related_technique_id: match.id, relationship_type: type
+    });
+    if (error) { showToast('Failed: ' + error.message); return; }
+    showToast(`Linked ${match.name} ✓`);
+    loadTechniquePage();
+  }
+
   // ---------- Student onboarding wizard ------------------------------------
 
   const MEMBERSHIP_PLANS_DEFAULT = [
@@ -4103,7 +4412,7 @@
 
   let studentWizardState = {
     step: 1,
-    details: { name: '', dob: '', email: '', phone: '', emergencyName: '', emergencyPhone: '' },
+    details: { name: '', dob: '', gender: '', competes: false, email: '', phone: '', emergencyName: '', emergencyPhone: '' },
     guardian: { name: '', phone: '', email: '' },
     membership: null,
     signature: ''
@@ -4120,6 +4429,8 @@
       const el = document.getElementById(['sw-name','sw-dob','sw-email','sw-phone','sw-emg-name','sw-emg-phone'][i]);
       if (el) d[key] = el.value;
     });
+    const genderEl = document.getElementById('sw-gender'); if (genderEl) d.gender = genderEl.value;
+    const competesEl = document.getElementById('sw-competes'); if (competesEl) d.competes = competesEl.checked;
     ['name','phone','email'].forEach(key => {
       const el = document.getElementById('sw-guardian-' + key);
       if (el) studentWizardState.guardian[key] = el.value;
@@ -4164,14 +4475,19 @@
     const id = 'stu-' + Date.now();
     const name = expected;
     const initials = name.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    STUDENTS.push({
+    const newStudent = {
       id, name, initials,
       dob: studentWizardState.details.dob,
+      gender: studentWizardState.details.gender || '',
+      competes: !!studentWizardState.details.competes,
       contact: studentWizardState.details.email || studentWizardState.details.phone,
       emergencyContact: `${studentWizardState.details.emergencyName} · ${studentWizardState.details.emergencyPhone}`,
       joinedAt: new Date().toISOString(),
       notes: studentWizardState.guardian.name ? `Guardian: ${studentWizardState.guardian.name}` : ''
-    });
+    };
+    // Auto-assign audience tags from age / gender / competition interest.
+    newStudent.tags = deriveStudentTags(newStudent);
+    STUDENTS.push(newStudent);
     const sc = ACADEMY.sportConfigs[0] || {};
     ENROLLMENTS.push({
       studentId: id,
@@ -4186,7 +4502,7 @@
     persistData();
     studentWizardState = {
       step: 1,
-      details: { name: '', dob: '', email: '', phone: '', emergencyName: '', emergencyPhone: '' },
+      details: { name: '', dob: '', gender: '', competes: false, email: '', phone: '', emergencyName: '', emergencyPhone: '' },
       guardian: { name: '', phone: '', email: '' },
       membership: null, signature: ''
     };
@@ -4228,7 +4544,7 @@
         <div style="margin-bottom:var(--sp-4)">
           <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('students')">← Back to students</a>
         </div>
-        <h1 class="h1" style="margin-bottom:var(--sp-2)">Add new student</h1>
+        <h1 class="h1" style="margin-bottom:var(--sp-2)">${tr('screen.addStudent')}</h1>
         <p class="muted" style="margin-bottom:var(--sp-5)">Complete all steps to onboard a new student.</p>
         <div class="card" style="margin-bottom:var(--sp-4)">
           <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-1)">${stepBar}</div>
@@ -4251,6 +4567,23 @@
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Date of birth *</label>
             <input id="sw-dob" type="date" class="input" style="width:100%" value="${d.dob}" />
+            <div class="faint" style="font-size:11px;margin-top:4px">${tr('tags.kidHint')}</div>
+          </div>
+          <div>
+            <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${tr('tags.gender')} *</label>
+            <select id="sw-gender" class="input" style="width:100%">
+              <option value="" ${!d.gender?'selected':''}>${tr('tags.select')}</option>
+              <option value="female" ${d.gender==='female'?'selected':''}>${tr('tags.female')}</option>
+              <option value="male" ${d.gender==='male'?'selected':''}>${tr('tags.male')}</option>
+              <option value="other" ${d.gender==='other'?'selected':''}>${tr('tags.other')}</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:flex;align-items:center;gap:var(--sp-2);font-weight:600;font-size:13px">
+              <input id="sw-competes" type="checkbox" ${d.competes?'checked':''} />
+              ${tr('tags.competeQ')}
+            </label>
+            <div class="faint" style="font-size:11px;margin-top:4px">${tr('tags.competeHint')}</div>
           </div>
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Email</label>
@@ -4452,6 +4785,29 @@
   }
 
   let scheduleWeekOffset = 0; // 0 = current week, -1 = last week, +1 = next week
+  let scheduleView = 'week';   // 'week' | 'month'
+  let scheduleMonthOffset = 0; // 0 = current month, -1 = last, +1 = next
+
+  // Special events (tournaments, seminars, belt tests, open mats) on a given day.
+  function eventsForDate(dateStr) {
+    return (typeof EVENTS !== 'undefined' ? EVENTS : []).filter(e => e.date === dateStr);
+  }
+  // Visual style per event type.
+  const EVENT_TYPE_STYLE = {
+    'tournament': { bg:'#fef3c7', border:'#f59e0b', label:'🏆' },
+    'seminar':    { bg:'#ede9fe', border:'#8b5cf6', label:'🎓' },
+    'belt-test':  { bg:'#dcfce7', border:'#16a34a', label:'🥋' },
+    'open-mat':   { bg:'#dbeafe', border:'#3b82f6', label:'🤼' }
+  };
+  function eventChip(e, compact) {
+    const st = EVENT_TYPE_STYLE[e.type] || { bg:'var(--surface-alt)', border:'var(--border-strong)', label:'📌' };
+    const time = e.time ? `${e.time} ` : '';
+    return `<div onclick="event.stopPropagation();go('events/${e.id}')" title="${(e.title||'').replace(/"/g,'&quot;')}"
+      style="cursor:pointer;background:${st.bg};border:1px solid ${st.border};border-left:3px solid ${st.border};
+      border-radius:var(--r-sm);padding:${compact?'1px 5px':'var(--sp-2) var(--sp-3)'};margin-bottom:var(--sp-1);
+      font-size:${compact?'10px':'11px'};line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+      ${st.label} ${compact ? '' : `<span style="font-weight:700">${time}</span>`}${e.title}</div>`;
+  }
 
   function scheduleStartOfWeek(date) {
     const d = new Date(date);
@@ -4461,7 +4817,17 @@
     return d;
   }
 
+  function scheduleViewToggle() {
+    return `<div class="cv2-seg">
+      <button class="${scheduleView==='week'?'on':''}" onclick="scheduleView='week';renderApp()"
+        style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${scheduleView==='week'?'var(--primary)':'var(--surface)'};color:${scheduleView==='week'?'#fff':'var(--text-muted)'}">${tr('sched.week')}</button>
+      <button class="${scheduleView==='month'?'on':''}" onclick="scheduleView='month';renderApp()"
+        style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${scheduleView==='month'?'var(--primary)':'var(--surface)'};color:${scheduleView==='month'?'#fff':'var(--text-muted)'}">${tr('sched.month')}</button>
+    </div>`;
+  }
+
   function Schedule() {
+    if (scheduleView === 'month') return ScheduleMonth();
     const todayMs = new Date(CONFIG.today).setHours(0,0,0,0);
     const weekStart = scheduleStartOfWeek(new Date(todayMs + scheduleWeekOffset * 7 * 24 * 60 * 60 * 1000));
     const weekEnd   = new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -4530,6 +4896,8 @@
         ? `<div style="font-size:10px;font-weight:600;color:#b91c1c;background:#fef2f2;border:1px solid #fecaca;border-radius:4px;padding:3px 6px;margin-bottom:var(--sp-2);text-align:center;line-height:1.3">🚫 ${closureLabel(dayDateStr)}</div>`
         : '';
 
+      const dayEvents = eventsForDate(dayDateStr).map(e => eventChip(e)).join('');
+
       return `
         <div style="flex:1;min-width:0;border-right:1px solid var(--border);padding:0 var(--sp-2)">
           <div style="
@@ -4541,6 +4909,7 @@
             ${dayLabel}
           </div>
           ${closureBanner}
+          ${dayEvents}
           ${classCards}
         </div>`;
     }).join('');
@@ -4554,6 +4923,7 @@
       <div class="row-between" style="margin-bottom:var(--sp-4)">
         <h1 class="h1">${t(UI.nav.schedule)}</h1>
         <div class="row" style="gap:var(--sp-2)">
+          ${scheduleViewToggle()}
           <button class="btn btn-secondary" onclick="scheduleWeekOffset--;renderApp()">← Prev</button>
           ${!isCurrentWeek ? `<button class="btn btn-secondary" onclick="scheduleWeekOffset=0;renderApp()">Today</button>` : ''}
           <button class="btn btn-secondary" onclick="scheduleWeekOffset++;renderApp()">Next →</button>
@@ -4588,6 +4958,79 @@
         <div style="display:flex;gap:0;overflow-x:auto">
           ${dayColumns}
         </div>
+      </div>
+    `;
+  }
+
+  // ---------- Schedule: month overview -------------------------------------
+
+  function ScheduleMonth() {
+    const today = new Date(CONFIG.today); today.setHours(0,0,0,0);
+    const todayMs = today.getTime();
+    const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    const monthDate = new Date(today.getFullYear(), today.getMonth() + scheduleMonthOffset, 1);
+    const monthIdx = monthDate.getMonth();
+    const gridStart = scheduleStartOfWeek(new Date(monthDate));        // Sunday on/before the 1st
+    const gridEnd   = new Date(gridStart.getTime() + 42 * 86400000);   // 6 weeks
+
+    // Bucket class slots by date string.
+    const slotsByDate = {};
+    getSlotsForRange(gridStart.getTime(), gridEnd.getTime()).forEach(s => {
+      const k = new Date(s.startsAt).toISOString().slice(0,10);
+      (slotsByDate[k] = slotsByDate[k] || []).push(s);
+    });
+
+    const weekRows = [];
+    for (let w = 0; w < 6; w++) {
+      const cells = [];
+      for (let d = 0; d < 7; d++) {
+        const cellDate = new Date(gridStart.getTime() + (w*7 + d) * 86400000);
+        const dateStr = cellDate.toISOString().slice(0,10);
+        const inMonth = cellDate.getMonth() === monthIdx;
+        const isToday = cellDate.getTime() === todayMs;
+        const dayClasses = slotsByDate[dateStr] || [];
+        const dayEvents = eventsForDate(dateStr);
+        // offset (in weeks) from the current week, so a click opens that week.
+        const wkOffset = Math.round((scheduleStartOfWeek(new Date(cellDate)).getTime() - scheduleStartOfWeek(new Date(today)).getTime()) / (7*86400000));
+        cells.push(`
+          <div onclick="scheduleWeekOffset=${wkOffset};scheduleView='week';renderApp()" style="
+            min-height:96px;border:1px solid var(--border);border-radius:var(--r-sm);padding:4px 6px;cursor:pointer;
+            background:${isToday ? '#eff6ff' : inMonth ? 'var(--surface)' : 'var(--surface-alt)'};
+            ${isToday ? 'box-shadow:inset 0 0 0 1px var(--accent)' : ''};opacity:${inMonth?'1':'.55'};overflow:hidden">
+            <div style="font-size:12px;font-weight:${isToday?'700':'600'};color:${isToday?'var(--accent)':'var(--text-muted)'};margin-bottom:3px">${cellDate.getDate()}</div>
+            ${dayEvents.map(e => eventChip(e, true)).join('')}
+            ${dayClasses.length ? `<div style="font-size:10px;color:var(--text-faint);margin-top:2px">${dayClasses.length} class${dayClasses.length>1?'es':''}</div>` : ''}
+          </div>`);
+      }
+      weekRows.push(`<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px">${cells.join('')}</div>`);
+    }
+
+    const isCurrentMonth = scheduleMonthOffset === 0;
+    const monthLabel = `${MONTH_NAMES[monthIdx]} ${monthDate.getFullYear()}`;
+
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <h1 class="h1">${t(UI.nav.schedule)}</h1>
+        <div class="row" style="gap:var(--sp-2)">
+          ${scheduleViewToggle()}
+          <button class="btn btn-secondary" onclick="scheduleMonthOffset--;renderApp()">← Prev</button>
+          ${!isCurrentMonth ? `<button class="btn btn-secondary" onclick="scheduleMonthOffset=0;renderApp()">Today</button>` : ''}
+          <button class="btn btn-secondary" onclick="scheduleMonthOffset++;renderApp()">Next →</button>
+        </div>
+      </div>
+
+      <div class="card" style="padding:var(--sp-3) var(--sp-4);margin-bottom:var(--sp-4)">
+        <div style="font-size:15px;font-weight:700">${monthLabel}</div>
+        <div class="faint" style="font-size:11px;margin-top:2px">${isCurrentMonth ? 'Current month' : (scheduleMonthOffset<0 ? `${Math.abs(scheduleMonthOffset)} month(s) ago` : `${scheduleMonthOffset} month(s) ahead`)} · click a day to open its week</div>
+      </div>
+
+      <div class="card" style="padding:var(--sp-3)">
+        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">
+          ${DAY_NAMES.map(n => `<div style="text-align:center;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text-faint)">${n}</div>`).join('')}
+        </div>
+        ${weekRows.join('')}
       </div>
     `;
   }
@@ -5389,7 +5832,7 @@
 
   let newClassState = {
     date: '', time: '19:00', durationMin: 60,
-    classType: 'Fundamentals', instructorId: '', capacity: 20
+    classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: []
   };
 
   function collectNewClassForm() {
@@ -5401,20 +5844,21 @@
     if (dur) newClassState.durationMin = parseInt(dur.value) || 60;
     const cap = document.getElementById('nc-capacity');
     if (cap) newClassState.capacity = parseInt(cap.value) || 20;
+    newClassState.audienceTags = [...document.querySelectorAll('input[data-nc-aud]:checked')].map(c => c.value);
   }
 
   function saveNewClass() {
     collectNewClassForm();
-    const { date, time, classType, instructorId, durationMin, capacity } = newClassState;
+    const { date, time, classType, instructorId, durationMin, capacity, audienceTags } = newClassState;
     if (!date) { alert('Please set a date.'); return; }
     if (!instructorId) { alert('Please select an instructor.'); return; }
     const startsAt = new Date(`${date}T${time}:00`).toISOString();
     const id = 'cls-' + Date.now();
     CLASSES.push({ id, startsAt, durationMin, classType, instructorId,
-      sportId: 'sport-bjj', capacity, plannedItemIds: [], status: 'scheduled' });
+      sportId: 'sport-bjj', capacity, audienceTags: audienceTags || [], plannedItemIds: [], status: 'scheduled' });
     persistData();
     newClassState = { date: '', time: '19:00', durationMin: 60,
-      classType: 'Fundamentals', instructorId: '', capacity: 20 };
+      classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [] };
     go('classes/' + id);
   }
 
@@ -5432,7 +5876,7 @@
         <div style="margin-bottom:var(--sp-4)">
           <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('classes')">← Back to classes</a>
         </div>
-        <h1 class="h1" style="margin-bottom:var(--sp-5)">New class</h1>
+        <h1 class="h1" style="margin-bottom:var(--sp-5)">${tr('screen.newClass')}</h1>
         <div class="card">
           <div class="stack" style="gap:var(--sp-4)">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
@@ -5470,6 +5914,14 @@
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Capacity</label>
                 <input id="nc-capacity" type="number" class="input" style="width:100%"
                   value="${newClassState.capacity}" min="1" />
+              </div>
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${tr('aud.whoCanAttend')}</label>
+              <div class="faint" style="font-size:11px;margin-bottom:var(--sp-2)">${tr('aud.openHint')}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:var(--sp-3)">
+                ${AUDIENCE_TAGS.map(tg => `<label style="display:inline-flex;align-items:center;gap:6px;font-size:13px">
+                  <input type="checkbox" data-nc-aud value="${tg.id}" ${(newClassState.audienceTags||[]).includes(tg.id)?'checked':''}> ${t(tg.label)}</label>`).join('')}
               </div>
             </div>
           </div>
@@ -5550,7 +6002,7 @@
         </div>
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:4px">Promotion Rules</h1>
+            <h1 class="h1" style="margin-bottom:4px">${tr('screen.promotionRules')}</h1>
             <p class="muted" style="font-size:13px">${t(grading.name)} — set the thresholds a student must meet before promotion.</p>
           </div>
         </div>
@@ -5616,7 +6068,7 @@
 
     return `
       <div style="max-width:680px;margin:0 auto">
-        <h1 class="h1" style="margin-bottom:var(--sp-2)">Settings</h1>
+        <h1 class="h1" style="margin-bottom:var(--sp-2)">${tr('screen.settings')}</h1>
         <p class="muted" style="margin-bottom:var(--sp-5)">Manage your academy details and gym rules.</p>
 
         <div class="card" style="margin-bottom:var(--sp-4)">
@@ -5879,7 +6331,7 @@
         </div>
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:var(--sp-1)">Membership plans</h1>
+            <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.membershipPlans')}</h1>
             <p class="muted">Edit existing plans or add new ones.</p>
           </div>
           <button class="btn" onclick="addMembershipPlan()">+ New plan</button>
@@ -6207,7 +6659,6 @@
     { id: 'rent',       label: 'Rent / Space',      icon: '🏠' },
     { id: 'instructor', label: 'Instructor Pay',     icon: '👤' },
     { id: 'utilities',  label: 'Utilities',          icon: '💡' },
-    { id: 'equipment',  label: 'Equipment',          icon: '🥊' },
     { id: 'marketing',  label: 'Marketing',          icon: '📣' },
     { id: 'insurance',  label: 'Insurance',          icon: '🛡' },
     { id: 'other',      label: 'Other',              icon: '📦' },
@@ -6394,7 +6845,7 @@
       <div style="max-width:900px;margin:0 auto">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:var(--sp-1)">Billing</h1>
+            <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.billing')}</h1>
             <p class="muted">${currentMonthLabel} · Membership invoices</p>
           </div>
           <div class="card" style="padding:var(--sp-3) var(--sp-4);display:flex;gap:var(--sp-5);align-items:center">
@@ -7186,7 +7637,7 @@
       <div style="max-width:960px;margin:0 auto">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:var(--sp-1)">Instructors</h1>
+            <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.instructors')}</h1>
             <p class="muted">Workload and attendance summary per instructor.</p>
           </div>
         </div>
