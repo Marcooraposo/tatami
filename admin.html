@@ -522,6 +522,7 @@
   }
   function showDemoPicker() {
     if (document.getElementById('demo-picker')) return;
+    try { sessionStorage.setItem('tatami_demo_picker_seen', '1'); } catch {}
     document.body.insertAdjacentHTML('beforeend', DemoPickerOverlay());
   }
   function removeDemoPicker() { document.getElementById('demo-picker')?.remove(); }
@@ -613,7 +614,9 @@
     }
     autoPaginate(content);
     // First-load demo configuration picker (demo deployment only).
-    if (IS_DEMO && !getDemoPreset()) showDemoPicker();
+    // Show the configuration picker once per browser session on the demo,
+    // even if a preset was chosen on a previous visit.
+    if (IS_DEMO && !sessionStorage.getItem('tatami_demo_picker_seen')) showDemoPicker();
   }
 
   // ---------- Generic table/list pagination --------------------------------
