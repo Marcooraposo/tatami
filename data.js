@@ -279,7 +279,7 @@ const GRADING_SYSTEMS = [
       { id: 'bjj-brown',  name: { en: 'Brown',  pt: 'Castanha' }, order: 3, color: '#78350f', textColor: '#ffffff', maxStripes: 4 },
       { id: 'bjj-black',  name: { en: 'Black',  pt: 'Preta'    }, order: 4, color: '#0f172a', textColor: '#ffffff', maxStripes: 6 }
     ],
-    // Promotion rules keyed by "fromLevelId-to-toLevelId"
+    // Promotion rules keyed by "fromLevelId-to-toLevelId" (adult track)
     promotionRules: {
       'bjj-white-to-bjj-blue': {
         minMonthsAtLevel: 12,
@@ -287,9 +287,49 @@ const GRADING_SYSTEMS = [
         minBasicsCoveragePct: 0.80,
         minClassesAtLevel: 80
       }
+    },
+    // ---- Dual-track support (per ARCHITECTURE.md) --------------------------
+    // Below the age boundary a student is tracked on the kids belts; at/above
+    // it, on the adult belts (`levels`/`promotionRules` above).
+    ageBoundary: 16,
+    kidsLevels: [
+      { id: 'bjj-k-white',  name: { en: 'White',  pt: 'Branca'   }, order: 0, color: '#f8fafc', textColor: '#0f172a', maxStripes: 4 },
+      { id: 'bjj-k-grey',   name: { en: 'Grey',   pt: 'Cinzenta' }, order: 1, color: '#9ca3af', textColor: '#0f172a', maxStripes: 4 },
+      { id: 'bjj-k-yellow', name: { en: 'Yellow', pt: 'Amarela'  }, order: 2, color: '#facc15', textColor: '#0f172a', maxStripes: 4 },
+      { id: 'bjj-k-orange', name: { en: 'Orange', pt: 'Laranja'  }, order: 3, color: '#f97316', textColor: '#ffffff', maxStripes: 4 },
+      { id: 'bjj-k-green',  name: { en: 'Green',  pt: 'Verde'    }, order: 4, color: '#16a34a', textColor: '#ffffff', maxStripes: 4 }
+    ],
+    kidsPromotionRules: {
+      'bjj-k-white-to-bjj-k-grey':   { minMonthsAtLevel: 6, minStripes: 4, minBasicsCoveragePct: 0.50, minClassesAtLevel: 30 },
+      'bjj-k-grey-to-bjj-k-yellow':  { minMonthsAtLevel: 9, minStripes: 4, minBasicsCoveragePct: 0.60, minClassesAtLevel: 50 }
+    },
+    // Kid → adult crossover applied at ageBoundary (maps kids belt → adult belt).
+    transition: {
+      mapping: {
+        'bjj-k-white':  'bjj-white',
+        'bjj-k-grey':   'bjj-white',
+        'bjj-k-yellow': 'bjj-white',
+        'bjj-k-orange': 'bjj-blue',
+        'bjj-k-green':  'bjj-blue'
+      },
+      stripeReset: true
     }
   }
 ];
+
+// Returns which track ('adult' | 'kids') a student is graded on, by age.
+function studentTrack(student, grading) {
+  const boundary = (grading && grading.ageBoundary) || 16;
+  const age = ageFromDob(student && student.dob);
+  return (age != null && age < boundary) ? 'kids' : 'adult';
+}
+// Track-aware level list + promotion rules for a grading system.
+function trackLevels(grading, track) {
+  return track === 'kids' ? (grading.kidsLevels || grading.levels) : grading.levels;
+}
+function trackRules(grading, track) {
+  return track === 'kids' ? (grading.kidsPromotionRules || {}) : (grading.promotionRules || {});
+}
 
 // ---------- Curriculum -------------------------------------------------------
 
@@ -749,7 +789,8 @@ const DB = {
   instructor:(id) => INSTRUCTORS.find(i => i.id === id),
   class:     (id) => CLASSES.find(c => c.id === id),
   enrollment:(studentId, sportId) => ENROLLMENTS.find(e => e.studentId === studentId && e.sportId === sportId),
-  level:     (gradingId, levelId) => DB.grading(gradingId)?.levels.find(l => l.id === levelId),
+  level:     (gradingId, levelId) => { const g = DB.grading(gradingId); if (!g) return undefined;
+               return (g.levels || []).find(l => l.id === levelId) || (g.kidsLevels || []).find(l => l.id === levelId); },
   itemsBySection: (sectionId) => CURRICULUM_ITEMS.filter(i => i.sectionId === sectionId).sort((a,b) => a.order - b.order),
   sectionsBySport: (sportId) => CURRICULUM_SECTIONS.filter(s => s.sportId === sportId).sort((a,b) => a.order - b.order)
 };

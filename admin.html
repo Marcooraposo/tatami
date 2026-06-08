@@ -6424,6 +6424,84 @@
     }
   }
 
+  // ---------- Add-sport wizard (modal) -------------------------------------
+  function openSportWizard() {
+    const existing = new Set(ACADEMY.sportConfigs.map(c => c.sportId));
+    const available = PRESET_SPORTS.filter(s => !existing.has(s.id));
+    if (!available.length) { showToast('All supported sports are already added.'); return; }
+    if (document.getElementById('sport-wizard')) return;
+    const sportOpts = available.map(s => `<option value="${s.id}">${s.icon} ${s.name}</option>`).join('');
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="sport-wizard" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:var(--sp-5)">
+        <div class="card" style="max-width:520px;width:100%">
+          <h3 class="card-title" style="margin-bottom:var(--sp-4)">${t({en:'Add a sport',pt:'Adicionar modalidade'})}</h3>
+          <div class="stack" style="gap:var(--sp-4)">
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Supported sport',pt:'Modalidade'})}</label>
+              <select id="sw-sport" class="input" style="width:100%" onchange="sportWizardSyncGrading()">${sportOpts}</select>
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Grading system',pt:'Sistema de graduação'})}</label>
+              <select id="sw-grading" class="input" style="width:100%"></select>
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Curriculum',pt:'Currículo'})}</label>
+              <select id="sw-curriculum" class="input" style="width:100%">
+                <option value="Master">${t({en:'Master curriculum',pt:'Currículo base'})}</option>
+                <option value="">${t({en:'Set up later',pt:'Configurar depois'})}</option>
+              </select>
+            </div>
+          </div>
+          <div class="row-between" style="margin-top:var(--sp-5)">
+            <button class="btn btn-secondary" onclick="document.getElementById('sport-wizard').remove()">${t({en:'Cancel',pt:'Cancelar'})}</button>
+            <button class="btn" onclick="saveSportWizard()">${t({en:'Add sport',pt:'Adicionar'})}</button>
+          </div>
+        </div>
+      </div>`);
+    sportWizardSyncGrading();
+  }
+  function sportWizardSyncGrading() {
+    const sportId = document.getElementById('sw-sport')?.value;
+    const sel = document.getElementById('sw-grading');
+    if (!sel) return;
+    const systems = GRADING_SYSTEMS.filter(g => g.sportId === sportId);
+    const belts = (DEFAULT_BELTS[sportId] || []).join(', ');
+    sel.innerHTML = systems.map(g => `<option value="${g.id}">${t(g.name)}</option>`).join('')
+      + `<option value="__default">${t({en:'Default belt system',pt:'Sistema de faixas padrão'})}${belts ? ' (' + belts + ')' : ''}</option>`;
+  }
+  function saveSportWizard() {
+    const sportId = document.getElementById('sw-sport').value;
+    const preset = PRESET_SPORTS.find(s => s.id === sportId);
+    let gradingId = document.getElementById('sw-grading').value;
+    const curriculum = document.getElementById('sw-curriculum').value;
+
+    // Synthesize a basic grading system from default belts if requested.
+    if (gradingId === '__default') {
+      const belts = (DEFAULT_BELTS[sportId] || []).filter(b => !/No formal/i.test(b));
+      gradingId = 'grading-' + sportId + '-default';
+      if (!DB.grading(gradingId)) {
+        GRADING_SYSTEMS.push({
+          id: gradingId, name: { en: (preset?.name || sportId) + ' Belts' }, sportId,
+          isDefault: true, academyId: null, type: belts.length ? 'belt-stripe' : 'none',
+          levels: belts.map((b, i) => ({ id: `${sportId}-l${i}`, name: { en: b }, order: i, color: '#cbd5e1', textColor: '#0f172a', maxStripes: 4 })),
+          promotionRules: {}
+        });
+      }
+    }
+    // Register the sport + academy config (in-memory demo).
+    if (!DB.sport(sportId)) SPORTS.push({ id: sportId, name: { en: preset?.name || sportId }, defaultGradingSystemId: gradingId });
+    else DB.sport(sportId).defaultGradingSystemId = gradingId;
+    if (!ACADEMY.sportIds.includes(sportId)) ACADEMY.sportIds.push(sportId);
+    ACADEMY.sportConfigs.push({ sportId, gradingSystemId: gradingId, curriculum: curriculum || '' });
+    persistData();
+    document.getElementById('sport-wizard')?.remove();
+    showToast('Sport added ✓');
+    renderApp();
+  }
+  window.openSportWizard = openSportWizard;
+  window.sportWizardSyncGrading = sportWizardSyncGrading;
+  window.saveSportWizard = saveSportWizard;
+
   function SettingsScreen() {
     const setup = getOrgSetup() || {};
     const org = setup.org || {};
@@ -6450,6 +6528,26 @@
               <input id="settings-website" class="input" style="width:100%" placeholder="https://" value="${org.website || ''}" />
             </div>
           </div>
+        </div>
+
+        <div class="card" style="margin-bottom:var(--sp-4)">
+          <div class="row-between" style="margin-bottom:var(--sp-3)">
+            <h3 class="card-title" style="margin:0">${t({en:'Sports',pt:'Modalidades'})}</h3>
+            <button class="btn" onclick="openSportWizard()">+ ${t({en:'Add sport',pt:'Adicionar modalidade'})}</button>
+          </div>
+          ${ACADEMY.sportConfigs.map(sc => {
+            const sp = DB.sport(sc.sportId);
+            const g = DB.grading(sc.gradingSystemId);
+            return `<div class="row" style="gap:var(--sp-3);padding:var(--sp-3) 0;border-top:1px solid var(--border)">
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:14px">${sp ? t(sp.name) : sc.sportId}</div>
+                <div class="muted" style="font-size:12px;margin-top:2px">
+                  ${t({en:'Grading',pt:'Graduação'})}: ${g ? t(g.name) : '—'} · ${t({en:'Curriculum',pt:'Currículo'})}: ${sc.curriculum || t({en:'Master',pt:'Base'})}
+                </div>
+              </div>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="gradingSportId='${sc.sportId}';gradingTab='system';go('grading')">${t({en:'View grading',pt:'Ver graduação'})} →</button>
+            </div>`;
+          }).join('')}
         </div>
 
         <div class="card" style="margin-bottom:var(--sp-4)">
@@ -7364,9 +7462,87 @@
 
   // ---------- Grading session screen ----------------------------------------
 
+  let gradingTab = 'session';   // 'session' | 'system'
+  let gradingSportId = null;    // null → first academy sport
+  function gradingActiveSportId() {
+    return gradingSportId || ACADEMY.sportConfigs[0]?.sportId || 'sport-bjj';
+  }
+  function gradingTabs(active) {
+    const sportSel = ACADEMY.sportConfigs.length > 1 ? `
+      <select class="input" style="width:auto;font-size:13px" onchange="gradingSportId=this.value;renderApp()">
+        ${ACADEMY.sportConfigs.map(sc => { const sp = DB.sport(sc.sportId);
+          return `<option value="${sc.sportId}" ${gradingActiveSportId()===sc.sportId?'selected':''}>${sp?t(sp.name):sc.sportId}</option>`; }).join('')}
+      </select>` : '';
+    return `<div class="row-between" style="margin-bottom:var(--sp-4)">
+      <div class="row" style="gap:var(--sp-2)">
+        <button class="btn ${active==='session'?'':'btn-secondary'}" style="font-size:13px" onclick="gradingTab='session';renderApp()">${t({en:'Session',pt:'Sessão'})}</button>
+        <button class="btn ${active==='system'?'':'btn-secondary'}" style="font-size:13px" onclick="gradingTab='system';renderApp()">${t({en:'Grading system',pt:'Sistema de graduação'})}</button>
+      </div>
+      ${sportSel}
+    </div>`;
+  }
+
+  function GradingSystemScreen() {
+    const sportId = gradingActiveSportId();
+    const sport = DB.sport(sportId);
+    const grading = DB.grading(sport?.defaultGradingSystemId || ACADEMY.sportConfigs.find(c => c.sportId === sportId)?.gradingSystemId);
+    if (!grading) return `${gradingTabs('system')}<div class="muted">No grading system configured for this sport.</div>`;
+
+    const beltRow = (l) => `
+      <div class="row" style="gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px">
+        <span style="width:34px;height:16px;border-radius:3px;background:${l.color};border:1px solid var(--border-strong);flex-shrink:0"></span>
+        <span style="flex:1;font-weight:600;font-size:13px">${t(l.name)}</span>
+        <span class="muted" style="font-size:12px">${l.maxStripes} ${t({en:'stripes max',pt:'graus máx'})}</span>
+      </div>`;
+    const ruleRows = (rules) => Object.keys(rules || {}).length
+      ? Object.entries(rules).map(([k, r]) => `
+          <div style="font-size:12px;padding:6px 0;border-top:1px solid var(--border)">
+            <div style="font-weight:600">${k.replace(/-to-/, ' → ').replace(/bjj-k-|bjj-/g, '')}</div>
+            <div class="muted">${t({en:'Min',pt:'Mín'})} ${r.minMonthsAtLevel} ${t({en:'months',pt:'meses'})} · ${r.minStripes} ${t({en:'stripes',pt:'graus'})} · ${r.minClassesAtLevel} ${t({en:'classes',pt:'aulas'})} · ${Math.round((r.minBasicsCoveragePct||0)*100)}% ${t({en:'basics coverage',pt:'cobertura base'})}</div>
+          </div>`).join('')
+      : `<div class="muted" style="font-size:12px;padding:6px 0">${t({en:'No rules defined — promote manually.',pt:'Sem regras — graduar manualmente.'})}</div>`;
+
+    const trackCard = (title, levels, rules) => `
+      <div class="card">
+        <h3 class="card-title" style="margin-bottom:var(--sp-3)">${title}</h3>
+        ${levels.map(beltRow).join('')}
+        <h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);margin:var(--sp-3) 0 0">${t({en:'Promotion rules',pt:'Regras de graduação'})}</h4>
+        ${ruleRows(rules)}
+      </div>`;
+
+    const hasKids = (grading.kidsLevels || []).length;
+    const adultName = (id) => (grading.levels.find(l => l.id === id) || {}).name;
+    const kidName = (id) => (grading.kidsLevels || []).find(l => l.id === id)?.name;
+    const transitionRows = grading.transition ? Object.entries(grading.transition.mapping || {}).map(([k, a]) =>
+      `<div class="row" style="gap:var(--sp-2);font-size:13px;padding:4px 0"><span>${kidName(k)?t(kidName(k)):k}</span><span class="muted">→</span><span style="font-weight:600">${adultName(a)?t(adultName(a)):a}</span></div>`
+    ).join('') : '';
+
+    return `
+      ${gradingTabs('system')}
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <div>
+          <h1 class="h1">${t(grading.name)}</h1>
+          <div class="muted" style="font-size:13px">${sport ? t(sport.name) : sportId} · ${grading.type}${hasKids ? ` · ${t({en:'age boundary',pt:'idade limite'})} ${grading.ageBoundary}` : ''}</div>
+        </div>
+        <button class="btn btn-secondary" onclick="go('promotion-rules')">${t({en:'Edit rules',pt:'Editar regras'})} →</button>
+      </div>
+      <div class="grid-2">
+        ${trackCard(t({en:'Adult track',pt:'Faixa adulto'}), grading.levels, grading.promotionRules)}
+        ${hasKids ? trackCard(t({en:'Kids track',pt:'Faixa infantil'}), grading.kidsLevels, grading.kidsPromotionRules) : ''}
+      </div>
+      ${hasKids && transitionRows ? `
+        <div class="card" style="margin-top:var(--sp-4)">
+          <h3 class="card-title" style="margin-bottom:var(--sp-2)">${t({en:'Kid → adult crossover',pt:'Transição infantil → adulto'})}</h3>
+          <div class="muted" style="font-size:12px;margin-bottom:var(--sp-2)">${t({en:`At age ${grading.ageBoundary}, a student's kids belt maps to an adult belt:`,pt:`Aos ${grading.ageBoundary} anos, a faixa infantil passa para uma faixa adulto:`})}</div>
+          ${transitionRows}
+        </div>` : ''}
+    `;
+  }
+
   function GradingScreen() {
-    const sportId = 'sport-bjj';
-    const grading = DB.grading(ACADEMY.sportConfigs[0]?.gradingSystemId);
+    if (gradingTab === 'system') return GradingSystemScreen();
+    const sportId = gradingActiveSportId();
+    const grading = DB.grading(DB.sport(sportId)?.defaultGradingSystemId || ACADEMY.sportConfigs[0]?.gradingSystemId);
 
     // Belt test requests — read from shared localStorage key (written by student.html)
     const beltTestRequests = (() => {
@@ -7523,6 +7699,7 @@
       </div>`;
 
     return `
+      ${gradingTabs('session')}
       <div class="row-between" style="margin-bottom:var(--sp-5)">
         <h1 class="h1">★ Grading Session</h1>
         <div style="display:flex;gap:var(--sp-2)">
