@@ -1619,6 +1619,8 @@
   function StudentReport(studentId) {
     const student = DB.student(studentId);
     if (!student) return `<div class="empty">Student not found</div>`;
+    if (_studentReportId !== studentId) studentTab = 'progress'; // reset tab per student
+    _studentReportId = studentId;
     const enrollment = DB.enrollment(student.id, 'sport-bjj');
     const currentLevel = enrollment ? DB.level(enrollment.gradingSystemId, enrollment.currentLevelId) : null;
     const maxStripes   = currentLevel?.maxStripes ?? 4;
@@ -1719,86 +1721,90 @@
         </div>
       </div>
 
-      ${AttendanceSparkline(studentId)}
-
-      ${BeltPromotionTimeline(studentId)}
-
-      ${CompetitionHistoryCard(studentId)}
-
-      ${AchievementBadgesCard(studentId)}
-
-      ${StudentActivityLog(studentId)}
-
-      <div class="grid-2">
-        <div class="card">
-          <h3 class="card-title">${t(UI.labels.coverageOverview)}</h3>
-          <div class="stack">
-            ${exposure.bySection.map(s => CoverageRow(s)).join('')}
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="card-title">${t(UI.labels.nextSteps)}</h3>
-          <div class="stack-tight">
-            ${nextSteps.map(ns => NextStepRow(ns)).join('') || `<div class="muted">—</div>`}
-          </div>
-        </div>
+      ${(() => { _studentReportId = studentId; return ''; })()}
+      <div class="row" style="gap:var(--sp-2);margin-bottom:var(--sp-4)">
+        <button class="btn ${studentTab==='progress'?'':'btn-secondary'}" onclick="setStudentTab('progress')">${t({en:'Progress',pt:'Progresso'})}</button>
+        <button class="btn ${studentTab==='details'?'':'btn-secondary'}" onclick="setStudentTab('details')">${t({en:'Details',pt:'Detalhes'})}</button>
       </div>
 
-      <div class="grid-2" style="margin-top:var(--sp-4)">
-        <div class="card">
-          <h3 class="card-title">${t(UI.labels.recentlyCovered)}</h3>
-          <div class="stack-tight">
-            ${recent.length ? recent.map(r => RecentRow(r)).join('') : `<div class="muted">—</div>`}
-          </div>
-        </div>
+      ${studentTab === 'progress' ? `
+        ${AttendanceSparkline(studentId)}
 
-        <div class="card">
-          <h3 class="card-title">${t(UI.labels.gaps)}</h3>
-          <div class="stack-tight">
-            ${GapsList(exposure)}
-          </div>
-        </div>
-      </div>
+        ${BeltPromotionTimeline(studentId)}
 
-      ${MasteryCard(studentId)}
-
-      ${HomeworkCard(studentId)}
-
-      ${WaiverCard(studentId)}
-
-      ${StudentDetailsCard(studentId)}
-
-      ${InjuryCard(studentId)}
-
-      ${StudentPaymentCard(studentId)}
-
-      ${BulkBookingCard(studentId)}
-
-      ${StudentNotesCard(studentId)}
-
-      <!-- Danger zone -->
-      <div class="card" style="margin-top:var(--sp-4);border-color:${student.inactive ? 'var(--border)' : '#fecaca'}">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3)">
-          <div>
-            <div style="font-size:13px;font-weight:700;color:${student.inactive ? 'var(--text-muted)' : 'var(--danger)'}">
-              ${student.inactive ? '🗄 Archived student' : '⚠ Archive student'}
-            </div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
-              ${student.inactive
-                ? 'This student is archived and hidden from all lists. Reactivate to include them again.'
-                : 'Hides this student from all lists and stats. Bookings and history are preserved.'}
+        <div class="grid-2">
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.coverageOverview)}</h3>
+            <div class="stack">
+              ${exposure.bySection.map(s => CoverageRow(s)).join('')}
             </div>
           </div>
-          <button class="btn ${student.inactive ? '' : 'btn-secondary'}"
-            style="white-space:nowrap;${student.inactive ? '' : 'border-color:#fca5a5;color:var(--danger)'}"
-            onclick="toggleStudentInactive('${studentId}')">
-            ${student.inactive ? '↩ Reactivate' : 'Archive student'}
-          </button>
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.nextSteps)}</h3>
+            <div class="stack-tight">
+              ${nextSteps.map(ns => NextStepRow(ns)).join('') || `<div class="muted">—</div>`}
+            </div>
+          </div>
         </div>
-      </div>
+
+        <div class="grid-2" style="margin-top:var(--sp-4)">
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.recentlyCovered)}</h3>
+            <div class="stack-tight">
+              ${recent.length ? recent.map(r => RecentRow(r)).join('') : `<div class="muted">—</div>`}
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.gaps)}</h3>
+            <div class="stack-tight">
+              ${GapsList(exposure)}
+            </div>
+          </div>
+        </div>
+
+        ${MasteryCard(studentId)}
+      ` : `
+        ${WaiverCard(studentId)}
+
+        ${StudentDetailsCard(studentId)}
+
+        ${InjuryCard(studentId)}
+
+        ${StudentPaymentCard(studentId)}
+
+        <!-- Danger zone -->
+        <div class="card" style="margin-top:var(--sp-4);border-color:${student.inactive ? 'var(--border)' : '#fecaca'}">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3)">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:${student.inactive ? 'var(--text-muted)' : 'var(--danger)'}">
+                ${student.inactive ? '🗄 Archived student' : '⚠ Archive student'}
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
+                ${student.inactive
+                  ? 'This student is archived and hidden from all lists. Reactivate to include them again.'
+                  : 'Hides this student from all lists and stats. Bookings and history are preserved.'}
+              </div>
+            </div>
+            <button class="btn ${student.inactive ? '' : 'btn-secondary'}"
+              style="white-space:nowrap;${student.inactive ? '' : 'border-color:#fca5a5;color:var(--danger)'}"
+              onclick="toggleStudentInactive('${studentId}')">
+              ${student.inactive ? '↩ Reactivate' : 'Archive student'}
+            </button>
+          </div>
+        </div>
+      `}
     `;
   }
+
+  // Student profile tabs (Progress / Details)
+  let studentTab = 'progress';
+  let _studentReportId = null;
+  function setStudentTab(tab) {
+    studentTab = tab;
+    const c = document.getElementById('content');
+    if (c && _studentReportId) c.innerHTML = StudentReport(_studentReportId);
+  }
+  window.setStudentTab = setStudentTab;
 
   function promoteStudent(studentId, sportId) {
     const enrollment = ENROLLMENTS.find(e => e.studentId === studentId && e.sportId === sportId);
