@@ -603,15 +603,6 @@ function studentResolveInjury(injId) {
   app.innerHTML = renderMe();
 }
 
-loadTheme();
-loadPersistedData();
-loadClassRatings();
-loadSessionNotes();
-loadMyNotes();
-loadHolds();
-loadPrivateLessons();
-loadStudentPackages();
-loadMyInjuries();
 window.addEventListener('hashchange', render);
 window.addEventListener('load', render);
 
@@ -3711,6 +3702,17 @@ function logout() {
   localStorage.removeItem('tatami_student_id');
   go('');
 }
+
+// ---- App init: run after all declarations are defined (avoids TDZ) ----
+loadTheme();
+loadPersistedData();
+loadClassRatings();
+loadSessionNotes();
+loadMyNotes();
+loadHolds();
+loadPrivateLessons();
+loadStudentPackages();
+loadMyInjuries();
 </script>
 </body>
 </html>
