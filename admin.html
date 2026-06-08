@@ -374,7 +374,13 @@
     const [section, ...params] = hash.split('/');
     return { section, params };
   }
-  function go(path) { location.hash = '#/' + path; }
+  // Track the route we're leaving so context-aware "back" links work
+  // (e.g. opening a student from the Competition squad returns to Competition).
+  let _navFrom = null;
+  function go(path) {
+    _navFrom = getRoute().section;
+    location.hash = '#/' + path;
+  }
   window.addEventListener('hashchange', renderApp);
 
   // ---------- Wizard navigation helpers -------------------------------------
@@ -779,7 +785,9 @@
   function Topbar(route) {
     let crumb = t(UI.nav[route.section] || UI.nav.dashboard);
     if (route.section === 'students' && route.params.length) {
-      crumb = `${t(UI.nav.students)} / <span class="muted">${DB.student(route.params[0])?.name || ''}</span>`;
+      const fromComp = (_studentBackFrom || '').startsWith('competition');
+      const parent = fromComp ? `<span style="cursor:pointer" onclick="go('${_studentBackFrom}')">Competition</span>` : t(UI.nav.students);
+      crumb = `${parent} / <span class="muted">${DB.student(route.params[0])?.name || ''}</span>`;
     } else if (route.section === 'classes' && route.params[0] === 'new') {
       crumb = `${t(UI.nav.classes)} / <span class="muted">New class</span>`;
     } else if (route.section === 'classes' && route.params.length) {
@@ -1619,8 +1627,14 @@
   function StudentReport(studentId) {
     const student = DB.student(studentId);
     if (!student) return `<div class="empty">Student not found</div>`;
-    if (_studentReportId !== studentId) studentTab = 'progress'; // reset tab per student
+    if (_studentReportId !== studentId) {
+      studentTab = 'progress';                 // reset tab per student
+      _studentBackFrom = _navFrom;             // remember where we came from
+    }
     _studentReportId = studentId;
+    const _fromComp = (_studentBackFrom || '').startsWith('competition');
+    const _backRoute = _fromComp ? _studentBackFrom : 'students';
+    const _backLabel = _fromComp ? t({ en: '← Back to competition', pt: '← Voltar à competição' }) : t(UI.labels.backToList);
     const enrollment = DB.enrollment(student.id, 'sport-bjj');
     const currentLevel = enrollment ? DB.level(enrollment.gradingSystemId, enrollment.currentLevelId) : null;
     const maxStripes   = currentLevel?.maxStripes ?? 4;
@@ -1631,7 +1645,7 @@
 
     return `
       <div style="margin-bottom:var(--sp-4)">
-        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('students')">${t(UI.labels.backToList)}</a>
+        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('${_backRoute}')">${_backLabel}</a>
       </div>
 
       ${PromotionBanner(promotion, studentId, 'sport-bjj')}
@@ -1799,6 +1813,7 @@
   // Student profile tabs (Progress / Details)
   let studentTab = 'progress';
   let _studentReportId = null;
+  let _studentBackFrom = null;
   function setStudentTab(tab) {
     studentTab = tab;
     const c = document.getElementById('content');
