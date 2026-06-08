@@ -535,6 +535,7 @@
       case 'curriculum':        content.innerHTML = CurriculumBuilder();     break;
       case 'curriculum-wizard': content.innerHTML = CurriculumWizard();      break;
       case 'curriculum-tech':   content.innerHTML = TechniquePage(route.params[0]); break;
+      case 'competition':       content.innerHTML = CompetitionScreen();      break;
       case 'promotion-rules':   content.innerHTML = PromotionRulesScreen(); break;
       case 'packages':          content.innerHTML = PackagesScreen();       break;
       case 'grading':           content.innerHTML = GradingScreen();        break;
@@ -685,6 +686,12 @@
         items: [
           { id: 'curriculum', label: 'Curriculum', icon: '☰' },
           { id: 'grading',    label: 'Grading',    icon: '★' },
+        ]
+      },
+      {
+        id: 'competition-group', label: 'Competition', icon: '🏅',
+        items: [
+          { id: 'competition', label: 'Competitions', icon: '🏅' },
         ]
       },
       {
@@ -4456,6 +4463,159 @@
   }
 
   // ---------- Student onboarding wizard ------------------------------------
+
+  // ---------- Competition macro module -------------------------------------
+  // Smoothcomp is the registration source (no public API), so we link/enrich/
+  // embed: paste a Smoothcomp URL, a serverless function pulls Open Graph meta
+  // to prefill, and we track the squad + results internally.
+
+  function competitionEvents() {
+    return EVENTS.filter(e => e.type === 'tournament')
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  }
+  function competitionSquad() {
+    return STUDENTS.filter(s => !s.inactive && studentTags(s).includes('competition'));
+  }
+
+  function CompetitionScreen() {
+    const today = new Date(CONFIG.today).toISOString().slice(0, 10);
+    const comps = competitionEvents();
+    const upcoming = comps.filter(e => e.date >= today);
+    const squad = competitionSquad();
+    const medals = COMPETITION_RESULTS.filter(r => ['gold','silver','bronze'].includes(r.medal));
+    const medalCount = { gold:0, silver:0, bronze:0 };
+    medals.forEach(r => { medalCount[r.medal] = (medalCount[r.medal]||0)+1; });
+
+    const eventCard = (e) => {
+      const reg = (e.registeredStudentIds || []).filter(id => DB.student(id));
+      const isSC = e.source === 'smoothcomp';
+      const past = e.date < today;
+      return `
+        <div class="card" style="margin-bottom:var(--sp-3);${past?'opacity:.75':''}">
+          <div class="row-between" style="align-items:flex-start;gap:var(--sp-3)">
+            <div style="flex:1;min-width:0">
+              <div class="row" style="gap:var(--sp-2);flex-wrap:wrap">
+                <h3 style="margin:0;font-size:15px;font-weight:600">${e.title}</h3>
+                ${isSC ? `<span class="cv2-pill" style="border-color:#16a34a;color:#16a34a">Smoothcomp</span>` : ''}
+                ${past ? `<span class="cv2-pill">Past</span>` : `<span class="cv2-pill c-Beginner">Upcoming</span>`}
+              </div>
+              <div class="muted" style="font-size:13px;margin-top:4px">
+                📅 ${new Date(e.date+'T00:00:00').toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})}
+                ${e.location ? ' · 📍 ' + e.location : ''}
+              </div>
+              <div class="muted" style="font-size:12px;margin-top:4px">${reg.length} from your squad registered</div>
+            </div>
+            <div class="stack" style="gap:6px;align-items:flex-end">
+              ${isSC && e.externalUrl ? `<a class="btn" href="${e.externalUrl}" target="_blank" rel="noopener" style="white-space:nowrap">Register on Smoothcomp ↗</a>` : ''}
+              <button class="btn btn-secondary" style="font-size:12px" onclick="go('events/${e.id}')">Details</button>
+            </div>
+          </div>
+          ${reg.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:var(--sp-3)">
+            ${reg.map(id => { const s = DB.student(id); return `<span class="cv2-pill">${s.initials} · ${s.name.split(' ')[0]}</span>`; }).join('')}
+          </div>` : ''}
+        </div>`;
+    };
+
+    const squadCards = squad.length ? squad.map(s => {
+      const enr = DB.enrollment(s.id, 'sport-bjj');
+      const belt = enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : '';
+      const wins = COMPETITION_RESULTS.filter(r => r.studentId === s.id && r.medal === 'gold').length;
+      return `<div class="card" style="padding:var(--sp-3) var(--sp-4)">
+        <div class="row" style="gap:var(--sp-3)">
+          <div class="avatar">${s.initials}</div>
+          <div style="flex:1">
+            <div style="font-weight:600">${s.name}</div>
+            <div class="row" style="gap:var(--sp-2);margin-top:2px">${belt}
+              <span class="muted" style="font-size:12px">${s.weightKg ? s.weightKg + 'kg' : ''}</span></div>
+          </div>
+          ${wins ? `<span class="cv2-pill" style="border-color:#f59e0b;color:#b45309">🥇 ${wins}</span>` : ''}
+        </div>
+      </div>`;
+    }).join('') : `<div class="muted" style="padding:var(--sp-4)">No squad members yet. Tag students with the <strong>Competition</strong> audience tag to add them.</div>`;
+
+    const resultRows = COMPETITION_RESULTS
+      .slice().sort((a,b) => (b.loggedAt||'').localeCompare(a.loggedAt||''))
+      .map(r => {
+        const s = DB.student(r.studentId); const ev = EVENTS.find(e => e.id === r.eventId);
+        const medalIcon = { gold:'🥇', silver:'🥈', bronze:'🥉' }[r.medal] || '—';
+        return `<tr>
+          <td style="padding:var(--sp-2) var(--sp-3)">${s ? s.name : r.studentId}</td>
+          <td style="padding:var(--sp-2) var(--sp-3)">${ev ? ev.title : r.eventId}</td>
+          <td style="padding:var(--sp-2) var(--sp-3)">${r.division || '—'}</td>
+          <td style="padding:var(--sp-2) var(--sp-3)">${r.placement || '—'}</td>
+          <td style="padding:var(--sp-2) var(--sp-3)">${medalIcon}</td>
+        </tr>`;
+      }).join('');
+
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <div>
+          <h1 class="h1">🏅 Competitions</h1>
+          <div class="muted" style="font-size:13px">Smoothcomp events, squad & results</div>
+        </div>
+        <div class="row" style="gap:var(--sp-2)">
+          <button class="btn" onclick="addSmoothcompEvent()">+ Add Smoothcomp event</button>
+        </div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-value">${upcoming.length}</div><div class="stat-label">Upcoming competitions</div></div>
+        <div class="stat-card"><div class="stat-value">${squad.length}</div><div class="stat-label">Squad members</div></div>
+        <div class="stat-card"><div class="stat-value">🥇 ${medalCount.gold} · 🥈 ${medalCount.silver} · 🥉 ${medalCount.bronze}</div><div class="stat-label">Medals logged</div></div>
+      </div>
+
+      <h3 class="h3" style="margin:var(--sp-5) 0 var(--sp-3)">Competition calendar</h3>
+      ${comps.length ? comps.map(eventCard).join('') : '<div class="muted">No competitions yet. Add one from Smoothcomp.</div>'}
+
+      <h3 class="h3" style="margin:var(--sp-5) 0 var(--sp-3)">Squad (${squad.length})</h3>
+      <div class="grid-3">${squadCards}</div>
+
+      <h3 class="h3" style="margin:var(--sp-5) 0 var(--sp-3)">Results</h3>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="cv2-tbl">
+          <thead><tr><th>Athlete</th><th>Event</th><th>Division</th><th>Placement</th><th>Medal</th></tr></thead>
+          <tbody>${resultRows || '<tr><td colspan="5" style="padding:var(--sp-4)" class="muted">No results logged yet.</td></tr>'}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  async function addSmoothcompEvent() {
+    const url = prompt('Paste the Smoothcomp event URL:');
+    if (!url) return;
+    showToast('Fetching event details…');
+    let data = { ok: false };
+    try {
+      const r = await fetch('/api/smoothcomp?url=' + encodeURIComponent(url));
+      data = await r.json();
+    } catch (e) { /* fall through to manual */ }
+
+    const title = (data.ok && data.title) ? data.title : (prompt('Couldn\'t auto-fetch. Event title:') || 'New Competition');
+    if (!title) return;
+    const dateStr = prompt('Event date (YYYY-MM-DD):', '') || new Date(CONFIG.today).toISOString().slice(0,10);
+    const evt = {
+      id: 'evt-sc-' + Date.now(),
+      title,
+      type: 'tournament',
+      date: dateStr,
+      time: '09:00',
+      durationMin: 480,
+      location: (data.ok && data.description) ? '' : '',
+      capacity: null,
+      notes: (data.ok && data.description) ? data.description.slice(0, 200) : 'Imported from Smoothcomp.',
+      registeredStudentIds: [],
+      source: data.source || 'smoothcomp',
+      externalUrl: data.externalUrl || url,
+      externalId: data.externalId || null,
+      image: (data.ok && data.image) || '',
+      createdAt: new Date().toISOString()
+    };
+    EVENTS.push(evt);
+    persistData();
+    showToast(data.ok ? 'Event imported ✓' : 'Event added (manual) ✓');
+    renderApp();
+  }
+  window.addSmoothcompEvent = addSmoothcompEvent;
 
   const MEMBERSHIP_PLANS_DEFAULT = [
     { id: 'plan-monthly',   label: 'Monthly',   price: '€80/mo',  desc: '2 classes per week, fundamentals access' },

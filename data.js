@@ -462,6 +462,23 @@ const GRADING_LOG = [];
 // Special events — tournaments, seminars, belt tests, open mats
 const EVENTS = [
   {
+    id: 'evt-sc-001',
+    title: 'AJP Lisbon International Open',
+    type: 'tournament',
+    date: '2026-07-19',
+    time: '09:00',
+    durationMin: 480,
+    location: 'Pavilhão Multiusos, Lisbon',
+    capacity: null,
+    notes: 'IBJJF/AJP ruleset. Registration & divisions managed on Smoothcomp.',
+    registeredStudentIds: ['s-2', 's-3', 's-13'],
+    source: 'smoothcomp',
+    externalUrl: 'https://smoothcomp.com/en/event/12345',
+    externalId: '12345',
+    image: '',
+    createdAt: '2026-05-22T10:00:00.000Z'
+  },
+  {
     id: 'evt-001',
     title: 'Summer Open Mat',
     type: 'open-mat',
