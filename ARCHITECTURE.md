@@ -110,6 +110,57 @@ Work required:
 - Migration: existing IBJJF system → `tracks.adult` + a new `tracks.kids`.
 - Depends on grading data moving off `data.js` onto Supabase.
 
+## Modular features (planned)
+Every "page" is an isolated, optional **module**. Beyond a fixed set of base
+modules, admins enable/disable everything else per academy.
+
+**Base modules (always on):** Schedule, Classes, Students, Curriculum, Grading,
+Settings.
+
+### Module registry (single source of truth)
+Today the sidebar and the router are two hardcoded lists kept in sync manually.
+Replace both with one registry:
+```js
+const MODULES = [
+  { id:'schedule', label:{en,pt}, icon, group:'Schedule', base:true,  render:Schedule },
+  { id:'students', label:{en,pt}, icon, group:'People',   base:true,  render:StudentsList },
+  { id:'grading',  …, base:true,  render:GradingScreen },
+  { id:'events',   …, base:false, render:EventsList, requires:[] },
+  { id:'billing',  …, base:false, render:BillingScreen, requires:['memberships'] },
+  // …every screen
+];
+```
+- **Sidebar** = enabled modules grouped by `group`.
+- **Router** = `MODULES[section].render` instead of the giant switch.
+- `base:true` modules can't be disabled.
+- Optional `requires:[...]` captures inter-module dependencies (UI prevents
+  disabling a needed dependency / warns).
+
+### Per-academy enabled set
+- `academy_features (academy_id, module_id, enabled)` (or jsonb on `academies`).
+- Helper `isModuleEnabled(id)` = `base || in academy's enabled set`.
+- Sidebar, router, dashboard shortcuts, and any embedded cross-module cards all
+  filter through it. Navigating to a disabled module → redirect to dashboard.
+- Cross-references must degrade gracefully: wrap every `go('x')`/embedded card for
+  an optional module in `isModuleEnabled('x')`.
+
+### Both apps
+Module toggles apply to **admin and student apps**. A disabled module (e.g.
+Events) disappears from the student app's nav/sections too. The student app reads
+the same `academy_features` set.
+
+### Admin UI
+A Settings → "Manage modules" grid: all non-base modules with on/off toggles +
+descriptions. Doubles as an onboarding step ("pick the features you need") and the
+basis for pricing tiers.
+
+### Build order
+- The registry + generated sidebar/router + a Settings toggle UI can be built now
+  against a local enabled-set (localStorage) — this also removes the current
+  "two lists in sync" fragility and turns the manual tab removals into toggles.
+- Move the enabled-set to `academy_features` in Supabase during the multi-tenant
+  phase; wire into onboarding; scope by `academy_id`; tie to pricing tiers.
+
 ## Known tech debt (see code review)
 - Split data layer: most screens use `data.js`, not Supabase; `DB_PERSIST` unused.
 - `admin.html` is a 14k-line monolith with heavy inline styles.
