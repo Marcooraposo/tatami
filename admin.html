@@ -3724,18 +3724,7 @@
         if (mods.error || techs.error || sports.error) throw (mods.error || techs.error || sports.error);
         CV2.modules = mods.data || [];
         CV2.techniques = techs.data || [];
-        CV2.sports = sports.data || [];
         CV2.configs = configs.data || [];
-        // Fallback: if the sports table is empty, derive sports from the
-        // techniques' sport_id (or default to BJJ) so the page still works.
-        if (!CV2.sports.length) {
-          const ids = [...new Set(CV2.techniques.map(t => t.sport_id).filter(Boolean))];
-          CV2.sports = (ids.length ? ids : ['sport-bjj']).map(id => ({
-            id, name: id === 'sport-bjj'
-              ? { en: 'Brazilian Jiu-Jitsu', pt: 'Jiu-Jitsu Brasileiro' } : { en: id }
-          }));
-        }
-        CV2.sportId = CV2.sportId || CV2.sports[0]?.id || null;
         CV2.loaded = true;
       } catch (e) {
         content.innerHTML = `<div class="cv2-empty">Couldn't load curriculum.<br>
@@ -3743,6 +3732,18 @@
         return;
       }
     }
+    // Build the sport list fresh each entry: union of the academy's own sports
+    // (in-memory, updated by the Add-sport wizard), sports that have techniques
+    // in Supabase, and the BJJ default. Keeps the selector in sync with the org.
+    const byId = {};
+    (typeof SPORTS !== 'undefined' ? SPORTS : []).forEach(s => { byId[s.id] = { id: s.id, name: s.name }; });
+    [...new Set(CV2.techniques.map(t => t.sport_id).filter(Boolean))].forEach(id => {
+      if (!byId[id]) byId[id] = { id, name: (DB.sport(id)?.name) || { en: id } };
+    });
+    if (!Object.keys(byId).length) byId['sport-bjj'] = { id: 'sport-bjj', name: { en: 'Brazilian Jiu-Jitsu', pt: 'Jiu-Jitsu Brasileiro' } };
+    CV2.sports = Object.values(byId);
+    if (!CV2.sportId || !byId[CV2.sportId]) CV2.sportId = CV2.sports[0]?.id || null;
+
     // Shell is recreated on every navigation, so always (re)populate + bind.
     buildCV2Filters();
     populateCV2Scope();
@@ -6195,11 +6196,11 @@
 
   let newClassState = {
     date: '', time: '19:00', durationMin: 60,
-    classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: []
+    classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [], sportId: ''
   };
 
   function collectNewClassForm() {
-    ['date','time','classType','instructorId'].forEach(key => {
+    ['date','time','classType','instructorId','sportId'].forEach(key => {
       const el = document.getElementById('nc-' + key);
       if (el) newClassState[key] = el.value;
     });
@@ -6212,16 +6213,16 @@
 
   function saveNewClass() {
     collectNewClassForm();
-    const { date, time, classType, instructorId, durationMin, capacity, audienceTags } = newClassState;
+    const { date, time, classType, instructorId, durationMin, capacity, audienceTags, sportId } = newClassState;
     if (!date) { alert('Please set a date.'); return; }
     if (!instructorId) { alert('Please select an instructor.'); return; }
     const startsAt = new Date(`${date}T${time}:00`).toISOString();
     const id = 'cls-' + Date.now();
     CLASSES.push({ id, startsAt, durationMin, classType, instructorId,
-      sportId: 'sport-bjj', capacity, audienceTags: audienceTags || [], plannedItemIds: [], status: 'scheduled' });
+      sportId: sportId || ACADEMY.sportConfigs[0]?.sportId || 'sport-bjj', capacity, audienceTags: audienceTags || [], plannedItemIds: [], status: 'scheduled' });
     persistData();
     newClassState = { date: '', time: '19:00', durationMin: 60,
-      classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [] };
+      classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [], sportId: '' };
     go('classes/' + id);
   }
 
@@ -6256,9 +6257,18 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
               <div>
+                <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Sport *</label>
+                <select id="nc-sportId" class="input" style="width:100%">
+                  ${ACADEMY.sportConfigs.map(sc => { const sp = DB.sport(sc.sportId);
+                    return `<option value="${sc.sportId}" ${newClassState.sportId === sc.sportId ? 'selected' : ''}>${sp ? t(sp.name) : sc.sportId}</option>`; }).join('')}
+                </select>
+              </div>
+              <div>
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Class type *</label>
                 <select id="nc-classType" class="input" style="width:100%">${typeOpts}</select>
               </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
               <div>
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Duration (min)</label>
                 <input id="nc-durationMin" type="number" class="input" style="width:100%"
@@ -7701,7 +7711,7 @@
     return `
       ${gradingTabs('session')}
       <div class="row-between" style="margin-bottom:var(--sp-5)">
-        <h1 class="h1">★ Grading Session</h1>
+        <h1 class="h1">★ ${t({en:'Grading Overview',pt:'Visão geral de graduação'})}</h1>
         <div style="display:flex;gap:var(--sp-2)">
           ${ready.length > 0 ? `<button class="btn" onclick="gradingSelectAll(${JSON.stringify(allIds)})">Select all</button>` : ''}
           <button class="btn btn-primary" ${noneSelected || selectedCount === 0 ? 'disabled' : ''}
@@ -8060,6 +8070,52 @@
 
   // ---------- Instructor workload -------------------------------------------
 
+  function openInstructorForm() {
+    if (document.getElementById('inst-form')) return;
+    const sportOpts = ACADEMY.sportConfigs.map(sc => { const sp = DB.sport(sc.sportId);
+      return `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;margin-right:var(--sp-3)">
+        <input type="checkbox" data-inst-sport value="${sc.sportId}" checked> ${sp ? t(sp.name) : sc.sportId}</label>`; }).join('');
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="inst-form" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:var(--sp-5)">
+        <div class="card" style="max-width:460px;width:100%">
+          <h3 class="card-title" style="margin-bottom:var(--sp-4)">${t({en:'Add instructor',pt:'Adicionar professor'})}</h3>
+          <div class="stack" style="gap:var(--sp-4)">
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Full name',pt:'Nome completo'})} *</label>
+              <input id="inst-name" class="input" style="width:100%" placeholder="e.g. Rui Almeida" />
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Pay rate (€/hour)',pt:'Valor/hora (€)'})}</label>
+              <input id="inst-rate" type="number" class="input" style="width:120px" value="25" min="0" />
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Sports',pt:'Modalidades'})}</label>
+              <div>${sportOpts}</div>
+            </div>
+          </div>
+          <div class="row-between" style="margin-top:var(--sp-5)">
+            <button class="btn btn-secondary" onclick="document.getElementById('inst-form').remove()">${t({en:'Cancel',pt:'Cancelar'})}</button>
+            <button class="btn" onclick="saveInstructor()">${t({en:'Add instructor',pt:'Adicionar'})}</button>
+          </div>
+        </div>
+      </div>`);
+    setTimeout(() => document.getElementById('inst-name')?.focus(), 0);
+  }
+  function saveInstructor() {
+    const name = (document.getElementById('inst-name').value || '').trim();
+    if (!name) { showToast('Enter a name.'); return; }
+    const rate = parseFloat(document.getElementById('inst-rate').value) || 0;
+    const sportIds = [...document.querySelectorAll('input[data-inst-sport]:checked')].map(c => c.value);
+    const initials = name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    INSTRUCTORS.push({ id: 'inst-' + Date.now(), name, initials, sportIds, payRate: rate });
+    persistData();
+    document.getElementById('inst-form')?.remove();
+    showToast('Instructor added ✓');
+    renderApp();
+  }
+  window.openInstructorForm = openInstructorForm;
+  window.saveInstructor = saveInstructor;
+
   function InstructorScreen() {
     const today      = new Date(CONFIG.today);
     const todayIso   = CONFIG.today.toISOString();
@@ -8180,6 +8236,7 @@
             <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.instructors')}</h1>
             <p class="muted">Workload and attendance summary per instructor.</p>
           </div>
+          <button class="btn" onclick="openInstructorForm()">+ ${t({en:'Add instructor',pt:'Adicionar professor'})}</button>
         </div>
         <div style="display:flex;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-6)">
           <div class="card" style="flex:1;min-width:120px;text-align:center">
