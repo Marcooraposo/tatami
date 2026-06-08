@@ -436,60 +436,6 @@ function loadSessionNotes() {
   try { SESSION_NOTES = JSON.parse(localStorage.getItem(SESSION_NOTES_KEY)) || {}; } catch { SESSION_NOTES = {}; }
 }
 
-// ─── Class ratings ────────────────────────────────────────────────────────────
-// Persisted as { [classId]: [{ studentId, stars, comment, ratedAt }] }
-const CLASS_RATINGS_KEY = 'tatami_class_ratings';
-let CLASS_RATINGS = {};
-
-function loadClassRatings() {
-  try { CLASS_RATINGS = JSON.parse(localStorage.getItem(CLASS_RATINGS_KEY)) || {}; } catch { CLASS_RATINGS = {}; }
-}
-function saveClassRatings() {
-  try { localStorage.setItem(CLASS_RATINGS_KEY, JSON.stringify(CLASS_RATINGS)); } catch {}
-}
-
-function rateClass(classId, stars) {
-  const comment = (document.getElementById('rating-comment-' + classId) || {}).value || '';
-  if (!CLASS_RATINGS[classId]) CLASS_RATINGS[classId] = [];
-  const existing = CLASS_RATINGS[classId].findIndex(r => r.studentId === currentStudentId);
-  const entry = { studentId: currentStudentId, stars, comment, ratedAt: new Date().toISOString() };
-  if (existing >= 0) CLASS_RATINGS[classId][existing] = entry;
-  else CLASS_RATINGS[classId].push(entry);
-  saveClassRatings();
-  const card = document.getElementById('rating-card-' + classId);
-  if (card) card.outerHTML = buildRatingCard(classId);
-}
-
-function buildRatingCard(classId) {
-  const ratings = CLASS_RATINGS[classId] || [];
-  const myRating = ratings.find(r => r.studentId === currentStudentId);
-  if (myRating) {
-    const filled = '★'.repeat(myRating.stars) + '☆'.repeat(5 - myRating.stars);
-    return `
-      <div id="rating-card-${classId}" class="card" style="margin-top:16px;padding:16px 20px">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:8px">Your rating</div>
-        <div style="font-size:24px;color:#f59e0b;letter-spacing:2px">${filled}</div>
-        ${myRating.comment ? `<div style="font-size:13px;color:var(--text-body);margin-top:6px">"${myRating.comment}"</div>` : ''}
-        <div style="font-size:11px;color:var(--text-faint);margin-top:6px">Rated ${(myRating.ratedAt || '').slice(0, 10)}</div>
-      </div>`;
-  }
-  return `
-    <div id="rating-card-${classId}" class="card" style="margin-top:16px;padding:16px 20px">
-      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);margin-bottom:10px">How was this class?</div>
-      <textarea id="rating-comment-${classId}"
-        style="width:100%;box-sizing:border-box;font-size:13px;font-family:inherit;border:1px solid var(--border);border-radius:8px;padding:8px 12px;background:var(--surface-alt);color:var(--text);resize:none;min-height:56px;outline:none;margin-bottom:10px"
-        placeholder="Any comments? (optional)"></textarea>
-      <div style="display:flex;gap:4px">
-        ${[1,2,3,4,5].map(n => `
-          <button onclick="rateClass('${classId}', ${n})"
-            style="font-size:32px;background:none;border:none;cursor:pointer;line-height:1;padding:0 2px;color:#f59e0b"
-            title="${n} star${n > 1 ? 's' : ''}">☆</button>
-        `).join('')}
-      </div>
-      <div style="font-size:11px;color:var(--text-faint);margin-top:6px">Tap a star to submit your rating</div>
-    </div>`;
-}
-
 // ─── Events ──────────────────────────────────────────────────────────────────
 function studentRegisterEvent(eventId) {
   const evt = EVENTS.find(e => e.id === eventId);
