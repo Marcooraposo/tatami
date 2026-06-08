@@ -375,13 +375,41 @@
     return { section, params };
   }
   // Track the route we're leaving so context-aware "back" links work
-  // (e.g. opening a student from the Competition squad returns to Competition).
+  // (e.g. opening a student from Families/Competition returns there).
   let _navFrom = null;
   function go(path) {
     _navFrom = getRoute().section;
     location.hash = '#/' + path;
   }
   window.addEventListener('hashchange', renderApp);
+
+  // Human-readable label for a route section (for back links / breadcrumbs).
+  const _SECTION_LABELS = {
+    dashboard:'Dashboard', schedule:'Schedule', classes:'Classes', students:'Students',
+    families:'Families', prospects:'Prospects', referrals:'Referrals', instructors:'Instructors',
+    memberships:'Memberships', discounts:'Discounts', billing:'Billing', curriculum:'Curriculum',
+    grading:'Grading', analytics:'Analytics', 'attendance-log':'Attendance Log', ratings:'Feedback',
+    goals:'Goals', announcements:'Announcements', events:'Events', 'private-lessons':'Private Lessons',
+    settings:'Settings', competition:'Competition', 'competition-calendar':'Competition',
+    'competition-squad':'Competition', 'competition-results':'Competition'
+  };
+  function sectionLabel(id) {
+    return _SECTION_LABELS[id] || String(id || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+  // Resolve a context-aware back target: the snapshotted origin, or a default.
+  // Returns { route, label } with a localized "Back to …" label.
+  function backTarget(origin, defaultRoute) {
+    const route = origin || defaultRoute;
+    const label = `← ${t({ en: 'Back to', pt: 'Voltar a' })} ${sectionLabel(route)}`;
+    return { route, label };
+  }
+  // Per-view origin snapshot: remembers where a detail page was opened from,
+  // surviving in-page re-renders. Re-snapshots when the viewed item changes.
+  let _lastViewKey = null, _viewOrigin = null;
+  function viewBack(viewKey, defaultRoute) {
+    if (viewKey !== _lastViewKey) { _viewOrigin = _navFrom; _lastViewKey = viewKey; }
+    return backTarget(_viewOrigin || defaultRoute, defaultRoute);
+  }
 
   // ---------- Wizard navigation helpers -------------------------------------
   function wizardNext() {
@@ -785,8 +813,10 @@
   function Topbar(route) {
     let crumb = t(UI.nav[route.section] || UI.nav.dashboard);
     if (route.section === 'students' && route.params.length) {
-      const fromComp = (_studentBackFrom || '').startsWith('competition');
-      const parent = fromComp ? `<span style="cursor:pointer" onclick="go('${_studentBackFrom}')">Competition</span>` : t(UI.nav.students);
+      const origin = _studentBackFrom || 'students';
+      const parent = origin === 'students'
+        ? t(UI.nav.students)
+        : `<span style="cursor:pointer" onclick="go('${origin}')">${sectionLabel(origin)}</span>`;
       crumb = `${parent} / <span class="muted">${DB.student(route.params[0])?.name || ''}</span>`;
     } else if (route.section === 'classes' && route.params[0] === 'new') {
       crumb = `${t(UI.nav.classes)} / <span class="muted">New class</span>`;
@@ -1632,9 +1662,10 @@
       _studentBackFrom = _navFrom;             // remember where we came from
     }
     _studentReportId = studentId;
-    const _fromComp = (_studentBackFrom || '').startsWith('competition');
-    const _backRoute = _fromComp ? _studentBackFrom : 'students';
-    const _backLabel = _fromComp ? t({ en: '← Back to competition', pt: '← Voltar à competição' }) : t(UI.labels.backToList);
+    const _backRoute = _studentBackFrom || 'students';
+    const _backLabel = _backRoute === 'students'
+      ? t(UI.labels.backToList)
+      : `← ${t({ en: 'Back to', pt: 'Voltar a' })} ${sectionLabel(_backRoute)}`;
     const enrollment = DB.enrollment(student.id, 'sport-bjj');
     const currentLevel = enrollment ? DB.level(enrollment.gradingSystemId, enrollment.currentLevelId) : null;
     const maxStripes   = currentLevel?.maxStripes ?? 4;
@@ -2891,6 +2922,7 @@
   function ClassDetail(classId) {
     const cls = DB.class(classId);
     if (!cls) return `<div class="empty">Class not found</div>`;
+    const _cb = viewBack('class:' + classId, 'classes');
     const inst = DB.instructor(cls.instructorId);
     const isCompleted = cls.status === 'completed';
     const bookings = BOOKINGS.filter(b => b.classId === cls.id && b.status === 'booked');
@@ -2914,7 +2946,7 @@
 
     return `
       <div style="margin-bottom:var(--sp-4)">
-        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('classes')">${t(UI.labels.backToClasses)}</a>
+        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('${_cb.route}')">${_cb.route === 'classes' ? t(UI.labels.backToClasses) : _cb.label}</a>
       </div>
 
       <div class="card" style="margin-bottom:var(--sp-4)">
@@ -7999,6 +8031,7 @@
   function InstructorDetail(instId) {
     const inst = INSTRUCTORS.find(i => i.id === instId);
     if (!inst) return `<div class="card"><p class="muted">Instructor not found.</p><a href="#/instructors">← Back</a></div>`;
+    const _ib = viewBack('inst:' + instId, 'instructors');
 
     const today      = new Date(CONFIG.today);
     const todayIso   = CONFIG.today.toISOString();
@@ -8130,7 +8163,7 @@
       <div style="max-width:900px;margin:0 auto">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div style="display:flex;gap:var(--sp-3);align-items:center">
-            <button class="btn btn-secondary" onclick="go('instructors')" style="font-size:13px">← Instructors</button>
+            <button class="btn btn-secondary" onclick="go('${_ib.route}')" style="font-size:13px">${_ib.label}</button>
             <div class="avatar" style="width:48px;height:48px;font-size:18px">${inst.initials}</div>
             <div>
               <h1 class="h1" style="margin:0">${inst.name}</h1>
@@ -9779,6 +9812,7 @@ ${CONFIG.academyName || 'The Team'}`;
   function EventDetail(evtId) {
     const evt = EVENTS.find(e => e.id === evtId);
     if (!evt) return `<div class="muted">Event not found.</div>`;
+    const _eb = viewBack('event:' + evtId, 'events');
 
     const et = _evtType(evt.type);
     const registered = evt.registeredStudentIds
@@ -9839,7 +9873,7 @@ ${CONFIG.academyName || 'The Team'}`;
     return `
       <div style="max-width:700px">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
-          <button class="btn" onclick="go('events')">← Events</button>
+          <button class="btn" onclick="go('${_eb.route}')">${_eb.label}</button>
           <button class="btn btn-sm" style="color:var(--danger)" onclick="deleteEvent('${evtId}')">Delete</button>
         </div>
 
