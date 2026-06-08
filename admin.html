@@ -374,8 +374,42 @@
     const [section, ...params] = hash.split('/');
     return { section, params };
   }
-  function go(path) { location.hash = '#/' + path; }
+  // Track the route we're leaving so context-aware "back" links work
+  // (e.g. opening a student from Families/Competition returns there).
+  let _navFrom = null;
+  function go(path) {
+    _navFrom = getRoute().section;
+    location.hash = '#/' + path;
+  }
   window.addEventListener('hashchange', renderApp);
+
+  // Human-readable label for a route section (for back links / breadcrumbs).
+  const _SECTION_LABELS = {
+    dashboard:'Dashboard', schedule:'Schedule', classes:'Classes', students:'Students',
+    families:'Families', prospects:'Prospects', referrals:'Referrals', instructors:'Instructors',
+    memberships:'Memberships', discounts:'Discounts', billing:'Billing', curriculum:'Curriculum',
+    grading:'Grading', analytics:'Analytics', 'attendance-log':'Attendance Log', ratings:'Feedback',
+    goals:'Goals', announcements:'Announcements', events:'Events', 'private-lessons':'Private Lessons',
+    settings:'Settings', competition:'Competition', 'competition-calendar':'Competition',
+    'competition-squad':'Competition', 'competition-results':'Competition'
+  };
+  function sectionLabel(id) {
+    return _SECTION_LABELS[id] || String(id || '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+  // Resolve a context-aware back target: the snapshotted origin, or a default.
+  // Returns { route, label } with a localized "Back to …" label.
+  function backTarget(origin, defaultRoute) {
+    const route = origin || defaultRoute;
+    const label = `← ${t({ en: 'Back to', pt: 'Voltar a' })} ${sectionLabel(route)}`;
+    return { route, label };
+  }
+  // Per-view origin snapshot: remembers where a detail page was opened from,
+  // surviving in-page re-renders. Re-snapshots when the viewed item changes.
+  let _lastViewKey = null, _viewOrigin = null;
+  function viewBack(viewKey, defaultRoute) {
+    if (viewKey !== _lastViewKey) { _viewOrigin = _navFrom; _lastViewKey = viewKey; }
+    return backTarget(_viewOrigin || defaultRoute, defaultRoute);
+  }
 
   // ---------- Wizard navigation helpers -------------------------------------
   function wizardNext() {
@@ -448,7 +482,7 @@
     mid:   { label: { en: 'Mid', pt: 'Intermédio' },
              tagline: { en: 'Core + finance', pt: 'Base + finanças' },
              desc: { en: 'Adds memberships, discounts, billing & analytics.', pt: 'Adiciona matrículas, descontos, faturação e análises.' },
-             ids: ['memberships','discounts','billing','analytics'] },
+             ids: ['memberships','discounts','billing','analytics','competition','competition-calendar','competition-squad','competition-results'] },
     full:  { label: { en: 'Full experience', pt: 'Experiência completa' },
              tagline: { en: 'Everything', pt: 'Tudo' },
              desc: { en: 'Every module: events, prospects, families, instructors, feedback & more.', pt: 'Todos os módulos: eventos, prospetos, famílias, professores, feedback e mais.' },
@@ -535,6 +569,10 @@
       case 'curriculum':        content.innerHTML = CurriculumBuilder();     break;
       case 'curriculum-wizard': content.innerHTML = CurriculumWizard();      break;
       case 'curriculum-tech':   content.innerHTML = TechniquePage(route.params[0]); break;
+      case 'competition':           content.innerHTML = CompetitionScreen();   break;
+      case 'competition-calendar':  content.innerHTML = CompetitionCalendar(); break;
+      case 'competition-squad':     content.innerHTML = CompetitionSquad();    break;
+      case 'competition-results':   content.innerHTML = CompetitionResults();  break;
       case 'promotion-rules':   content.innerHTML = PromotionRulesScreen(); break;
       case 'packages':          content.innerHTML = PackagesScreen();       break;
       case 'grading':           content.innerHTML = GradingScreen();        break;
@@ -688,6 +726,15 @@
         ]
       },
       {
+        id: 'competition-group', label: 'Competition', icon: '🏅',
+        items: [
+          { id: 'competition',          label: 'Overview',  icon: '🏅' },
+          { id: 'competition-calendar', label: 'Calendar',  icon: '📅' },
+          { id: 'competition-squad',    label: 'Squad',     icon: '🥋' },
+          { id: 'competition-results',  label: 'Results',   icon: '🏆' },
+        ]
+      },
+      {
         id: 'insights-group', label: 'Insights', icon: '📊',
         items: [
           { id: 'analytics',     label: 'Analytics',     icon: '📊' },
@@ -766,7 +813,11 @@
   function Topbar(route) {
     let crumb = t(UI.nav[route.section] || UI.nav.dashboard);
     if (route.section === 'students' && route.params.length) {
-      crumb = `${t(UI.nav.students)} / <span class="muted">${DB.student(route.params[0])?.name || ''}</span>`;
+      const origin = _studentBackFrom || 'students';
+      const parent = origin === 'students'
+        ? t(UI.nav.students)
+        : `<span style="cursor:pointer" onclick="go('${origin}')">${sectionLabel(origin)}</span>`;
+      crumb = `${parent} / <span class="muted">${DB.student(route.params[0])?.name || ''}</span>`;
     } else if (route.section === 'classes' && route.params[0] === 'new') {
       crumb = `${t(UI.nav.classes)} / <span class="muted">New class</span>`;
     } else if (route.section === 'classes' && route.params.length) {
@@ -1606,6 +1657,15 @@
   function StudentReport(studentId) {
     const student = DB.student(studentId);
     if (!student) return `<div class="empty">Student not found</div>`;
+    if (_studentReportId !== studentId) {
+      studentTab = 'progress';                 // reset tab per student
+      _studentBackFrom = _navFrom;             // remember where we came from
+    }
+    _studentReportId = studentId;
+    const _backRoute = _studentBackFrom || 'students';
+    const _backLabel = _backRoute === 'students'
+      ? t(UI.labels.backToList)
+      : `← ${t({ en: 'Back to', pt: 'Voltar a' })} ${sectionLabel(_backRoute)}`;
     const enrollment = DB.enrollment(student.id, 'sport-bjj');
     const currentLevel = enrollment ? DB.level(enrollment.gradingSystemId, enrollment.currentLevelId) : null;
     const maxStripes   = currentLevel?.maxStripes ?? 4;
@@ -1616,7 +1676,7 @@
 
     return `
       <div style="margin-bottom:var(--sp-4)">
-        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('students')">${t(UI.labels.backToList)}</a>
+        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('${_backRoute}')">${_backLabel}</a>
       </div>
 
       ${PromotionBanner(promotion, studentId, 'sport-bjj')}
@@ -1706,86 +1766,91 @@
         </div>
       </div>
 
-      ${AttendanceSparkline(studentId)}
-
-      ${BeltPromotionTimeline(studentId)}
-
-      ${CompetitionHistoryCard(studentId)}
-
-      ${AchievementBadgesCard(studentId)}
-
-      ${StudentActivityLog(studentId)}
-
-      <div class="grid-2">
-        <div class="card">
-          <h3 class="card-title">${t(UI.labels.coverageOverview)}</h3>
-          <div class="stack">
-            ${exposure.bySection.map(s => CoverageRow(s)).join('')}
-          </div>
-        </div>
-
-        <div class="card">
-          <h3 class="card-title">${t(UI.labels.nextSteps)}</h3>
-          <div class="stack-tight">
-            ${nextSteps.map(ns => NextStepRow(ns)).join('') || `<div class="muted">—</div>`}
-          </div>
-        </div>
+      ${(() => { _studentReportId = studentId; return ''; })()}
+      <div class="row" style="gap:var(--sp-2);margin-bottom:var(--sp-4)">
+        <button class="btn ${studentTab==='progress'?'':'btn-secondary'}" onclick="setStudentTab('progress')">${t({en:'Progress',pt:'Progresso'})}</button>
+        <button class="btn ${studentTab==='details'?'':'btn-secondary'}" onclick="setStudentTab('details')">${t({en:'Details',pt:'Detalhes'})}</button>
       </div>
 
-      <div class="grid-2" style="margin-top:var(--sp-4)">
-        <div class="card">
-          <h3 class="card-title">${t(UI.labels.recentlyCovered)}</h3>
-          <div class="stack-tight">
-            ${recent.length ? recent.map(r => RecentRow(r)).join('') : `<div class="muted">—</div>`}
-          </div>
-        </div>
+      ${studentTab === 'progress' ? `
+        ${AttendanceSparkline(studentId)}
 
-        <div class="card">
-          <h3 class="card-title">${t(UI.labels.gaps)}</h3>
-          <div class="stack-tight">
-            ${GapsList(exposure)}
-          </div>
-        </div>
-      </div>
+        ${BeltPromotionTimeline(studentId)}
 
-      ${MasteryCard(studentId)}
-
-      ${HomeworkCard(studentId)}
-
-      ${WaiverCard(studentId)}
-
-      ${StudentDetailsCard(studentId)}
-
-      ${InjuryCard(studentId)}
-
-      ${StudentPaymentCard(studentId)}
-
-      ${BulkBookingCard(studentId)}
-
-      ${StudentNotesCard(studentId)}
-
-      <!-- Danger zone -->
-      <div class="card" style="margin-top:var(--sp-4);border-color:${student.inactive ? 'var(--border)' : '#fecaca'}">
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3)">
-          <div>
-            <div style="font-size:13px;font-weight:700;color:${student.inactive ? 'var(--text-muted)' : 'var(--danger)'}">
-              ${student.inactive ? '🗄 Archived student' : '⚠ Archive student'}
-            </div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
-              ${student.inactive
-                ? 'This student is archived and hidden from all lists. Reactivate to include them again.'
-                : 'Hides this student from all lists and stats. Bookings and history are preserved.'}
+        <div class="grid-2">
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.coverageOverview)}</h3>
+            <div class="stack">
+              ${exposure.bySection.map(s => CoverageRow(s)).join('')}
             </div>
           </div>
-          <button class="btn ${student.inactive ? '' : 'btn-secondary'}"
-            style="white-space:nowrap;${student.inactive ? '' : 'border-color:#fca5a5;color:var(--danger)'}"
-            onclick="toggleStudentInactive('${studentId}')">
-            ${student.inactive ? '↩ Reactivate' : 'Archive student'}
-          </button>
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.nextSteps)}</h3>
+            <div class="stack-tight">
+              ${nextSteps.map(ns => NextStepRow(ns)).join('') || `<div class="muted">—</div>`}
+            </div>
+          </div>
         </div>
-      </div>
+
+        <div class="grid-2" style="margin-top:var(--sp-4)">
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.recentlyCovered)}</h3>
+            <div class="stack-tight">
+              ${recent.length ? recent.map(r => RecentRow(r)).join('') : `<div class="muted">—</div>`}
+            </div>
+          </div>
+          <div class="card">
+            <h3 class="card-title">${t(UI.labels.gaps)}</h3>
+            <div class="stack-tight">
+              ${GapsList(exposure)}
+            </div>
+          </div>
+        </div>
+
+        ${MasteryCard(studentId)}
+      ` : `
+        ${WaiverCard(studentId)}
+
+        ${StudentDetailsCard(studentId)}
+
+        ${InjuryCard(studentId)}
+
+        ${StudentPaymentCard(studentId)}
+
+        <!-- Danger zone -->
+        <div class="card" style="margin-top:var(--sp-4);border-color:${student.inactive ? 'var(--border)' : '#fecaca'}">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--sp-3)">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:${student.inactive ? 'var(--text-muted)' : 'var(--danger)'}">
+                ${student.inactive ? '🗄 Archived student' : '⚠ Archive student'}
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:3px">
+                ${student.inactive
+                  ? 'This student is archived and hidden from all lists. Reactivate to include them again.'
+                  : 'Hides this student from all lists and stats. Bookings and history are preserved.'}
+              </div>
+            </div>
+            <button class="btn ${student.inactive ? '' : 'btn-secondary'}"
+              style="white-space:nowrap;${student.inactive ? '' : 'border-color:#fca5a5;color:var(--danger)'}"
+              onclick="toggleStudentInactive('${studentId}')">
+              ${student.inactive ? '↩ Reactivate' : 'Archive student'}
+            </button>
+          </div>
+        </div>
+      `}
     `;
   }
+
+  // Student profile tabs (Progress / Details)
+  let studentTab = 'progress';
+  let _studentReportId = null;
+  let _studentBackFrom = null;
+  function setStudentTab(tab) {
+    studentTab = tab;
+    const c = document.getElementById('content');
+    if (c && _studentReportId) c.innerHTML = StudentReport(_studentReportId);
+  }
+  window.setStudentTab = setStudentTab;
 
   function promoteStudent(studentId, sportId) {
     const enrollment = ENROLLMENTS.find(e => e.studentId === studentId && e.sportId === sportId);
@@ -2857,6 +2922,7 @@
   function ClassDetail(classId) {
     const cls = DB.class(classId);
     if (!cls) return `<div class="empty">Class not found</div>`;
+    const _cb = viewBack('class:' + classId, 'classes');
     const inst = DB.instructor(cls.instructorId);
     const isCompleted = cls.status === 'completed';
     const bookings = BOOKINGS.filter(b => b.classId === cls.id && b.status === 'booked');
@@ -2880,7 +2946,7 @@
 
     return `
       <div style="margin-bottom:var(--sp-4)">
-        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('classes')">${t(UI.labels.backToClasses)}</a>
+        <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('${_cb.route}')">${_cb.route === 'classes' ? t(UI.labels.backToClasses) : _cb.label}</a>
       </div>
 
       <div class="card" style="margin-bottom:var(--sp-4)">
@@ -3658,18 +3724,7 @@
         if (mods.error || techs.error || sports.error) throw (mods.error || techs.error || sports.error);
         CV2.modules = mods.data || [];
         CV2.techniques = techs.data || [];
-        CV2.sports = sports.data || [];
         CV2.configs = configs.data || [];
-        // Fallback: if the sports table is empty, derive sports from the
-        // techniques' sport_id (or default to BJJ) so the page still works.
-        if (!CV2.sports.length) {
-          const ids = [...new Set(CV2.techniques.map(t => t.sport_id).filter(Boolean))];
-          CV2.sports = (ids.length ? ids : ['sport-bjj']).map(id => ({
-            id, name: id === 'sport-bjj'
-              ? { en: 'Brazilian Jiu-Jitsu', pt: 'Jiu-Jitsu Brasileiro' } : { en: id }
-          }));
-        }
-        CV2.sportId = CV2.sportId || CV2.sports[0]?.id || null;
         CV2.loaded = true;
       } catch (e) {
         content.innerHTML = `<div class="cv2-empty">Couldn't load curriculum.<br>
@@ -3677,6 +3732,18 @@
         return;
       }
     }
+    // Build the sport list fresh each entry: union of the academy's own sports
+    // (in-memory, updated by the Add-sport wizard), sports that have techniques
+    // in Supabase, and the BJJ default. Keeps the selector in sync with the org.
+    const byId = {};
+    (typeof SPORTS !== 'undefined' ? SPORTS : []).forEach(s => { byId[s.id] = { id: s.id, name: s.name }; });
+    [...new Set(CV2.techniques.map(t => t.sport_id).filter(Boolean))].forEach(id => {
+      if (!byId[id]) byId[id] = { id, name: (DB.sport(id)?.name) || { en: id } };
+    });
+    if (!Object.keys(byId).length) byId['sport-bjj'] = { id: 'sport-bjj', name: { en: 'Brazilian Jiu-Jitsu', pt: 'Jiu-Jitsu Brasileiro' } };
+    CV2.sports = Object.values(byId);
+    if (!CV2.sportId || !byId[CV2.sportId]) CV2.sportId = CV2.sports[0]?.id || null;
+
     // Shell is recreated on every navigation, so always (re)populate + bind.
     buildCV2Filters();
     populateCV2Scope();
@@ -4456,6 +4523,240 @@
   }
 
   // ---------- Student onboarding wizard ------------------------------------
+
+  // ---------- Competition macro module -------------------------------------
+  // Smoothcomp is the registration source (no public API), so we link/enrich/
+  // embed: paste a Smoothcomp URL, a serverless function pulls Open Graph meta
+  // to prefill, and we track the squad + results internally.
+
+  function competitionEvents() {
+    return EVENTS.filter(e => e.type === 'tournament')
+      .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+  }
+  function competitionSquad() {
+    return STUDENTS.filter(s => !s.inactive && studentTags(s).includes('competition'));
+  }
+
+  // --- Shared renderers ----------------------------------------------------
+  function compEventCard(e) {
+    const today = new Date(CONFIG.today).toISOString().slice(0, 10);
+    const reg = (e.registeredStudentIds || []).filter(id => DB.student(id));
+    const isSC = e.source === 'smoothcomp';
+    const past = e.date < today;
+    return `
+      <div class="card" style="margin-bottom:var(--sp-3);${past ? 'opacity:.75' : ''}">
+        <div class="row-between" style="align-items:flex-start;gap:var(--sp-3)">
+          <div style="flex:1;min-width:0">
+            <div class="row" style="gap:var(--sp-2);flex-wrap:wrap">
+              <h3 style="margin:0;font-size:15px;font-weight:600">${e.title}</h3>
+              ${isSC ? `<span class="cv2-pill" style="border-color:#16a34a;color:#16a34a">Smoothcomp</span>` : ''}
+              ${past ? `<span class="cv2-pill">Past</span>` : `<span class="cv2-pill c-Beginner">Upcoming</span>`}
+            </div>
+            <div class="muted" style="font-size:13px;margin-top:4px">
+              📅 ${new Date(e.date + 'T00:00:00').toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short', year:'numeric' })}
+              ${e.location ? ' · 📍 ' + e.location : ''}
+            </div>
+            <div class="muted" style="font-size:12px;margin-top:4px">${reg.length} from your squad registered</div>
+          </div>
+          <div class="stack" style="gap:6px;align-items:flex-end">
+            ${isSC && e.externalUrl ? `<a class="btn" href="${e.externalUrl}" target="_blank" rel="noopener" style="white-space:nowrap">Register on Smoothcomp ↗</a>` : ''}
+            <button class="btn btn-secondary" style="font-size:12px" onclick="go('events/${e.id}')">Details</button>
+          </div>
+        </div>
+        ${reg.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:var(--sp-3)">
+          ${reg.map(id => { const s = DB.student(id); return `<span class="cv2-pill">${s.initials} · ${s.name.split(' ')[0]}</span>`; }).join('')}
+        </div>` : ''}
+      </div>`;
+  }
+  function compSquadCard(s) {
+    const enr = DB.enrollment(s.id, 'sport-bjj');
+    const belt = enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : '';
+    const wins = COMPETITION_RESULTS.filter(r => r.studentId === s.id && r.medal === 'gold').length;
+    return `<div class="card" style="padding:var(--sp-3) var(--sp-4);cursor:pointer" onclick="go('students/${s.id}')">
+      <div class="row" style="gap:var(--sp-3)">
+        <div class="avatar">${s.initials}</div>
+        <div style="flex:1">
+          <div style="font-weight:600">${s.name}</div>
+          <div class="row" style="gap:var(--sp-2);margin-top:2px">${belt}
+            <span class="muted" style="font-size:12px">${s.weightKg ? s.weightKg + 'kg' : ''}</span></div>
+        </div>
+        ${wins ? `<span class="cv2-pill" style="border-color:#f59e0b;color:#b45309">🥇 ${wins}</span>` : ''}
+      </div>
+    </div>`;
+  }
+  function compResultRow(r) {
+    const s = DB.student(r.studentId); const ev = EVENTS.find(e => e.id === r.eventId);
+    const medalIcon = { gold:'🥇', silver:'🥈', bronze:'🥉' }[r.medal] || '—';
+    return `<tr>
+      <td style="padding:var(--sp-2) var(--sp-3)">${s ? s.name : r.studentId}</td>
+      <td style="padding:var(--sp-2) var(--sp-3)">${ev ? ev.title : r.eventId}</td>
+      <td style="padding:var(--sp-2) var(--sp-3)">${r.division || '—'}</td>
+      <td style="padding:var(--sp-2) var(--sp-3)">${r.placement || '—'}</td>
+      <td style="padding:var(--sp-2) var(--sp-3)">${medalIcon}</td>
+    </tr>`;
+  }
+  function compTabs(active) {
+    const tabs = [
+      ['competition', 'Overview'], ['competition-calendar', 'Calendar'],
+      ['competition-squad', 'Squad'], ['competition-results', 'Results']
+    ];
+    return `<div class="row" style="gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-5)">
+      ${tabs.map(([id, label]) => `<button class="btn ${active===id?'':'btn-secondary'}" style="font-size:13px" onclick="go('${id}')">${label}</button>`).join('')}
+    </div>`;
+  }
+
+  // --- Overview (dashboard) ------------------------------------------------
+  function CompetitionScreen() {
+    const today = new Date(CONFIG.today).toISOString().slice(0, 10);
+    const comps = competitionEvents();
+    const upcoming = comps.filter(e => e.date >= today);
+    const squad = competitionSquad();
+    const medalCount = { gold:0, silver:0, bronze:0 };
+    COMPETITION_RESULTS.forEach(r => { if (medalCount[r.medal] != null) medalCount[r.medal]++; });
+
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <div><h1 class="h1">🏅 Competitions</h1>
+          <div class="muted" style="font-size:13px">Smoothcomp events, squad & results</div></div>
+        <button class="btn" onclick="addSmoothcompEvent()">+ Add Smoothcomp event</button>
+      </div>
+      ${compTabs('competition')}
+      <div class="stat-row">
+        <div class="stat-card"><div class="stat-value">${upcoming.length}</div><div class="stat-label">Upcoming competitions</div></div>
+        <div class="stat-card"><div class="stat-value">${squad.length}</div><div class="stat-label">Squad members</div></div>
+        <div class="stat-card"><div class="stat-value">🥇 ${medalCount.gold} · 🥈 ${medalCount.silver} · 🥉 ${medalCount.bronze}</div><div class="stat-label">Medals logged</div></div>
+      </div>
+
+      <div class="row-between" style="margin:var(--sp-5) 0 var(--sp-3)"><h3 class="h3" style="margin:0">Next competitions</h3>
+        <a onclick="go('competition-calendar')" style="cursor:pointer;color:var(--accent);font-size:13px">View calendar →</a></div>
+      ${upcoming.length ? upcoming.slice(0,3).map(compEventCard).join('') : '<div class="muted">No upcoming competitions.</div>'}
+
+      <div class="row-between" style="margin:var(--sp-5) 0 var(--sp-3)"><h3 class="h3" style="margin:0">Squad (${squad.length})</h3>
+        <a onclick="go('competition-squad')" style="cursor:pointer;color:var(--accent);font-size:13px">View squad →</a></div>
+      <div class="grid-3">${squad.slice(0,6).map(compSquadCard).join('') || '<div class="muted">No squad members yet.</div>'}</div>
+    `;
+  }
+
+  // --- Calendar page -------------------------------------------------------
+  let compCalFilter = 'upcoming'; // 'upcoming' | 'past' | 'all'
+  function CompetitionCalendar() {
+    const today = new Date(CONFIG.today).toISOString().slice(0, 10);
+    let comps = competitionEvents();
+    if (compCalFilter === 'upcoming') comps = comps.filter(e => e.date >= today);
+    else if (compCalFilter === 'past') comps = comps.filter(e => e.date < today).reverse();
+    const seg = (id, label) => `<button class="btn ${compCalFilter===id?'':'btn-secondary'}" style="font-size:12px" onclick="compCalFilter='${id}';renderApp()">${label}</button>`;
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <h1 class="h1">🏅 Competition calendar</h1>
+        <button class="btn" onclick="addSmoothcompEvent()">+ Add Smoothcomp event</button>
+      </div>
+      ${compTabs('competition-calendar')}
+      <div class="row" style="gap:var(--sp-2);margin-bottom:var(--sp-4)">${seg('upcoming','Upcoming')}${seg('past','Past')}${seg('all','All')}</div>
+      ${comps.length ? comps.map(compEventCard).join('') : '<div class="muted">No competitions in this view.</div>'}
+    `;
+  }
+
+  // --- Squad page (searchable + scrollable) --------------------------------
+  function CompetitionSquad() {
+    const squad = competitionSquad();
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <h1 class="h1">🏅 Competition squad</h1>
+        <button class="btn btn-secondary" onclick="go('students')">Manage tags →</button>
+      </div>
+      ${compTabs('competition-squad')}
+      <input type="search" class="input" placeholder="Search squad…" style="max-width:320px;margin-bottom:var(--sp-4)"
+        oninput="document.querySelectorAll('#compSquad [data-sq]').forEach(c=>{c.style.display=c.dataset.sq.includes(this.value.toLowerCase())?'':'none'})" />
+      ${squad.length ? `<div id="compSquad" class="grid-3">
+        ${squad.map(s => `<div data-sq="${s.name.toLowerCase()}">${compSquadCard(s)}</div>`).join('')}
+      </div>` : `<div class="muted">No squad members yet. Tag students with the <strong>Competition</strong> audience tag to add them.</div>`}
+    `;
+  }
+
+  // --- Results page (with log-result form) ---------------------------------
+  function CompetitionResults() {
+    const rows = COMPETITION_RESULTS.slice().sort((a,b) => (b.loggedAt||'').localeCompare(a.loggedAt||''));
+    const squad = competitionSquad();
+    const comps = competitionEvents();
+    return `
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <h1 class="h1">🏅 Competition results</h1>
+      </div>
+      ${compTabs('competition-results')}
+      <div class="card" style="margin-bottom:var(--sp-4)">
+        <h3 class="card-title" style="margin-bottom:var(--sp-3)">Log a result</h3>
+        <div class="row" style="gap:var(--sp-2);flex-wrap:wrap;align-items:flex-end">
+          <select id="cr-student" class="input" style="width:auto">${squad.map(s => `<option value="${s.id}">${s.name}</option>`).join('') || '<option value="">No squad</option>'}</select>
+          <select id="cr-event" class="input" style="width:auto">${comps.map(e => `<option value="${e.id}">${e.title}</option>`).join('') || '<option value="">No events</option>'}</select>
+          <input id="cr-division" class="input" style="width:auto" placeholder="Division (e.g. Adult Blue -76kg)" />
+          <select id="cr-medal" class="input" style="width:auto">
+            <option value="none">No medal</option><option value="gold">🥇 Gold</option><option value="silver">🥈 Silver</option><option value="bronze">🥉 Bronze</option>
+          </select>
+          <input id="cr-placement" class="input" style="width:90px" placeholder="Place" />
+          <button class="btn" onclick="logCompResult()">+ Log result</button>
+        </div>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="cv2-tbl">
+          <thead><tr><th>Athlete</th><th>Event</th><th>Division</th><th>Placement</th><th>Medal</th></tr></thead>
+          <tbody>${rows.map(compResultRow).join('') || '<tr><td colspan="5" style="padding:var(--sp-4)" class="muted">No results logged yet.</td></tr>'}</tbody>
+        </table>
+      </div>
+    `;
+  }
+  function logCompResult() {
+    const studentId = document.getElementById('cr-student')?.value;
+    const eventId = document.getElementById('cr-event')?.value;
+    if (!studentId || !eventId) { showToast('Pick an athlete and event.'); return; }
+    const medal = document.getElementById('cr-medal').value;
+    COMPETITION_RESULTS.push({
+      id: 'cr-' + Date.now(), eventId, studentId,
+      division: document.getElementById('cr-division').value || '',
+      placement: document.getElementById('cr-placement').value || '',
+      medal, notes: '', loggedAt: new Date().toISOString()
+    });
+    persistData();
+    showToast('Result logged ✓');
+    renderApp();
+  }
+  window.logCompResult = logCompResult;
+
+  async function addSmoothcompEvent() {
+    const url = prompt('Paste the Smoothcomp event URL:');
+    if (!url) return;
+    showToast('Fetching event details…');
+    let data = { ok: false };
+    try {
+      const r = await fetch('/api/smoothcomp?url=' + encodeURIComponent(url));
+      data = await r.json();
+    } catch (e) { /* fall through to manual */ }
+
+    const title = (data.ok && data.title) ? data.title : (prompt('Couldn\'t auto-fetch. Event title:') || 'New Competition');
+    if (!title) return;
+    const dateStr = prompt('Event date (YYYY-MM-DD):', '') || new Date(CONFIG.today).toISOString().slice(0,10);
+    const evt = {
+      id: 'evt-sc-' + Date.now(),
+      title,
+      type: 'tournament',
+      date: dateStr,
+      time: '09:00',
+      durationMin: 480,
+      location: (data.ok && data.description) ? '' : '',
+      capacity: null,
+      notes: (data.ok && data.description) ? data.description.slice(0, 200) : 'Imported from Smoothcomp.',
+      registeredStudentIds: [],
+      source: data.source || 'smoothcomp',
+      externalUrl: data.externalUrl || url,
+      externalId: data.externalId || null,
+      image: (data.ok && data.image) || '',
+      createdAt: new Date().toISOString()
+    };
+    EVENTS.push(evt);
+    persistData();
+    showToast(data.ok ? 'Event imported ✓' : 'Event added (manual) ✓');
+    renderApp();
+  }
+  window.addSmoothcompEvent = addSmoothcompEvent;
 
   const MEMBERSHIP_PLANS_DEFAULT = [
     { id: 'plan-monthly',   label: 'Monthly',   price: '€80/mo',  desc: '2 classes per week, fundamentals access' },
@@ -5895,11 +6196,11 @@
 
   let newClassState = {
     date: '', time: '19:00', durationMin: 60,
-    classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: []
+    classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [], sportId: ''
   };
 
   function collectNewClassForm() {
-    ['date','time','classType','instructorId'].forEach(key => {
+    ['date','time','classType','instructorId','sportId'].forEach(key => {
       const el = document.getElementById('nc-' + key);
       if (el) newClassState[key] = el.value;
     });
@@ -5912,16 +6213,16 @@
 
   function saveNewClass() {
     collectNewClassForm();
-    const { date, time, classType, instructorId, durationMin, capacity, audienceTags } = newClassState;
+    const { date, time, classType, instructorId, durationMin, capacity, audienceTags, sportId } = newClassState;
     if (!date) { alert('Please set a date.'); return; }
     if (!instructorId) { alert('Please select an instructor.'); return; }
     const startsAt = new Date(`${date}T${time}:00`).toISOString();
     const id = 'cls-' + Date.now();
     CLASSES.push({ id, startsAt, durationMin, classType, instructorId,
-      sportId: 'sport-bjj', capacity, audienceTags: audienceTags || [], plannedItemIds: [], status: 'scheduled' });
+      sportId: sportId || ACADEMY.sportConfigs[0]?.sportId || 'sport-bjj', capacity, audienceTags: audienceTags || [], plannedItemIds: [], status: 'scheduled' });
     persistData();
     newClassState = { date: '', time: '19:00', durationMin: 60,
-      classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [] };
+      classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [], sportId: '' };
     go('classes/' + id);
   }
 
@@ -5956,9 +6257,18 @@
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
               <div>
+                <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Sport *</label>
+                <select id="nc-sportId" class="input" style="width:100%">
+                  ${ACADEMY.sportConfigs.map(sc => { const sp = DB.sport(sc.sportId);
+                    return `<option value="${sc.sportId}" ${newClassState.sportId === sc.sportId ? 'selected' : ''}>${sp ? t(sp.name) : sc.sportId}</option>`; }).join('')}
+                </select>
+              </div>
+              <div>
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Class type *</label>
                 <select id="nc-classType" class="input" style="width:100%">${typeOpts}</select>
               </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
               <div>
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Duration (min)</label>
                 <input id="nc-durationMin" type="number" class="input" style="width:100%"
@@ -6124,6 +6434,84 @@
     }
   }
 
+  // ---------- Add-sport wizard (modal) -------------------------------------
+  function openSportWizard() {
+    const existing = new Set(ACADEMY.sportConfigs.map(c => c.sportId));
+    const available = PRESET_SPORTS.filter(s => !existing.has(s.id));
+    if (!available.length) { showToast('All supported sports are already added.'); return; }
+    if (document.getElementById('sport-wizard')) return;
+    const sportOpts = available.map(s => `<option value="${s.id}">${s.icon} ${s.name}</option>`).join('');
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="sport-wizard" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:var(--sp-5)">
+        <div class="card" style="max-width:520px;width:100%">
+          <h3 class="card-title" style="margin-bottom:var(--sp-4)">${t({en:'Add a sport',pt:'Adicionar modalidade'})}</h3>
+          <div class="stack" style="gap:var(--sp-4)">
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Supported sport',pt:'Modalidade'})}</label>
+              <select id="sw-sport" class="input" style="width:100%" onchange="sportWizardSyncGrading()">${sportOpts}</select>
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Grading system',pt:'Sistema de graduação'})}</label>
+              <select id="sw-grading" class="input" style="width:100%"></select>
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Curriculum',pt:'Currículo'})}</label>
+              <select id="sw-curriculum" class="input" style="width:100%">
+                <option value="Master">${t({en:'Master curriculum',pt:'Currículo base'})}</option>
+                <option value="">${t({en:'Set up later',pt:'Configurar depois'})}</option>
+              </select>
+            </div>
+          </div>
+          <div class="row-between" style="margin-top:var(--sp-5)">
+            <button class="btn btn-secondary" onclick="document.getElementById('sport-wizard').remove()">${t({en:'Cancel',pt:'Cancelar'})}</button>
+            <button class="btn" onclick="saveSportWizard()">${t({en:'Add sport',pt:'Adicionar'})}</button>
+          </div>
+        </div>
+      </div>`);
+    sportWizardSyncGrading();
+  }
+  function sportWizardSyncGrading() {
+    const sportId = document.getElementById('sw-sport')?.value;
+    const sel = document.getElementById('sw-grading');
+    if (!sel) return;
+    const systems = GRADING_SYSTEMS.filter(g => g.sportId === sportId);
+    const belts = (DEFAULT_BELTS[sportId] || []).join(', ');
+    sel.innerHTML = systems.map(g => `<option value="${g.id}">${t(g.name)}</option>`).join('')
+      + `<option value="__default">${t({en:'Default belt system',pt:'Sistema de faixas padrão'})}${belts ? ' (' + belts + ')' : ''}</option>`;
+  }
+  function saveSportWizard() {
+    const sportId = document.getElementById('sw-sport').value;
+    const preset = PRESET_SPORTS.find(s => s.id === sportId);
+    let gradingId = document.getElementById('sw-grading').value;
+    const curriculum = document.getElementById('sw-curriculum').value;
+
+    // Synthesize a basic grading system from default belts if requested.
+    if (gradingId === '__default') {
+      const belts = (DEFAULT_BELTS[sportId] || []).filter(b => !/No formal/i.test(b));
+      gradingId = 'grading-' + sportId + '-default';
+      if (!DB.grading(gradingId)) {
+        GRADING_SYSTEMS.push({
+          id: gradingId, name: { en: (preset?.name || sportId) + ' Belts' }, sportId,
+          isDefault: true, academyId: null, type: belts.length ? 'belt-stripe' : 'none',
+          levels: belts.map((b, i) => ({ id: `${sportId}-l${i}`, name: { en: b }, order: i, color: '#cbd5e1', textColor: '#0f172a', maxStripes: 4 })),
+          promotionRules: {}
+        });
+      }
+    }
+    // Register the sport + academy config (in-memory demo).
+    if (!DB.sport(sportId)) SPORTS.push({ id: sportId, name: { en: preset?.name || sportId }, defaultGradingSystemId: gradingId });
+    else DB.sport(sportId).defaultGradingSystemId = gradingId;
+    if (!ACADEMY.sportIds.includes(sportId)) ACADEMY.sportIds.push(sportId);
+    ACADEMY.sportConfigs.push({ sportId, gradingSystemId: gradingId, curriculum: curriculum || '' });
+    persistData();
+    document.getElementById('sport-wizard')?.remove();
+    showToast('Sport added ✓');
+    renderApp();
+  }
+  window.openSportWizard = openSportWizard;
+  window.sportWizardSyncGrading = sportWizardSyncGrading;
+  window.saveSportWizard = saveSportWizard;
+
   function SettingsScreen() {
     const setup = getOrgSetup() || {};
     const org = setup.org || {};
@@ -6150,6 +6538,26 @@
               <input id="settings-website" class="input" style="width:100%" placeholder="https://" value="${org.website || ''}" />
             </div>
           </div>
+        </div>
+
+        <div class="card" style="margin-bottom:var(--sp-4)">
+          <div class="row-between" style="margin-bottom:var(--sp-3)">
+            <h3 class="card-title" style="margin:0">${t({en:'Sports',pt:'Modalidades'})}</h3>
+            <button class="btn" onclick="openSportWizard()">+ ${t({en:'Add sport',pt:'Adicionar modalidade'})}</button>
+          </div>
+          ${ACADEMY.sportConfigs.map(sc => {
+            const sp = DB.sport(sc.sportId);
+            const g = DB.grading(sc.gradingSystemId);
+            return `<div class="row" style="gap:var(--sp-3);padding:var(--sp-3) 0;border-top:1px solid var(--border)">
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:14px">${sp ? t(sp.name) : sc.sportId}</div>
+                <div class="muted" style="font-size:12px;margin-top:2px">
+                  ${t({en:'Grading',pt:'Graduação'})}: ${g ? t(g.name) : '—'} · ${t({en:'Curriculum',pt:'Currículo'})}: ${sc.curriculum || t({en:'Master',pt:'Base'})}
+                </div>
+              </div>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="gradingSportId='${sc.sportId}';gradingTab='system';go('grading')">${t({en:'View grading',pt:'Ver graduação'})} →</button>
+            </div>`;
+          }).join('')}
         </div>
 
         <div class="card" style="margin-bottom:var(--sp-4)">
@@ -7064,9 +7472,87 @@
 
   // ---------- Grading session screen ----------------------------------------
 
+  let gradingTab = 'session';   // 'session' | 'system'
+  let gradingSportId = null;    // null → first academy sport
+  function gradingActiveSportId() {
+    return gradingSportId || ACADEMY.sportConfigs[0]?.sportId || 'sport-bjj';
+  }
+  function gradingTabs(active) {
+    const sportSel = ACADEMY.sportConfigs.length > 1 ? `
+      <select class="input" style="width:auto;font-size:13px" onchange="gradingSportId=this.value;renderApp()">
+        ${ACADEMY.sportConfigs.map(sc => { const sp = DB.sport(sc.sportId);
+          return `<option value="${sc.sportId}" ${gradingActiveSportId()===sc.sportId?'selected':''}>${sp?t(sp.name):sc.sportId}</option>`; }).join('')}
+      </select>` : '';
+    return `<div class="row-between" style="margin-bottom:var(--sp-4)">
+      <div class="row" style="gap:var(--sp-2)">
+        <button class="btn ${active==='session'?'':'btn-secondary'}" style="font-size:13px" onclick="gradingTab='session';renderApp()">${t({en:'Session',pt:'Sessão'})}</button>
+        <button class="btn ${active==='system'?'':'btn-secondary'}" style="font-size:13px" onclick="gradingTab='system';renderApp()">${t({en:'Grading system',pt:'Sistema de graduação'})}</button>
+      </div>
+      ${sportSel}
+    </div>`;
+  }
+
+  function GradingSystemScreen() {
+    const sportId = gradingActiveSportId();
+    const sport = DB.sport(sportId);
+    const grading = DB.grading(sport?.defaultGradingSystemId || ACADEMY.sportConfigs.find(c => c.sportId === sportId)?.gradingSystemId);
+    if (!grading) return `${gradingTabs('system')}<div class="muted">No grading system configured for this sport.</div>`;
+
+    const beltRow = (l) => `
+      <div class="row" style="gap:var(--sp-3);padding:var(--sp-2) var(--sp-3);border:1px solid var(--border);border-radius:var(--r-sm);margin-bottom:6px">
+        <span style="width:34px;height:16px;border-radius:3px;background:${l.color};border:1px solid var(--border-strong);flex-shrink:0"></span>
+        <span style="flex:1;font-weight:600;font-size:13px">${t(l.name)}</span>
+        <span class="muted" style="font-size:12px">${l.maxStripes} ${t({en:'stripes max',pt:'graus máx'})}</span>
+      </div>`;
+    const ruleRows = (rules) => Object.keys(rules || {}).length
+      ? Object.entries(rules).map(([k, r]) => `
+          <div style="font-size:12px;padding:6px 0;border-top:1px solid var(--border)">
+            <div style="font-weight:600">${k.replace(/-to-/, ' → ').replace(/bjj-k-|bjj-/g, '')}</div>
+            <div class="muted">${t({en:'Min',pt:'Mín'})} ${r.minMonthsAtLevel} ${t({en:'months',pt:'meses'})} · ${r.minStripes} ${t({en:'stripes',pt:'graus'})} · ${r.minClassesAtLevel} ${t({en:'classes',pt:'aulas'})} · ${Math.round((r.minBasicsCoveragePct||0)*100)}% ${t({en:'basics coverage',pt:'cobertura base'})}</div>
+          </div>`).join('')
+      : `<div class="muted" style="font-size:12px;padding:6px 0">${t({en:'No rules defined — promote manually.',pt:'Sem regras — graduar manualmente.'})}</div>`;
+
+    const trackCard = (title, levels, rules) => `
+      <div class="card">
+        <h3 class="card-title" style="margin-bottom:var(--sp-3)">${title}</h3>
+        ${levels.map(beltRow).join('')}
+        <h4 style="font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-faint);margin:var(--sp-3) 0 0">${t({en:'Promotion rules',pt:'Regras de graduação'})}</h4>
+        ${ruleRows(rules)}
+      </div>`;
+
+    const hasKids = (grading.kidsLevels || []).length;
+    const adultName = (id) => (grading.levels.find(l => l.id === id) || {}).name;
+    const kidName = (id) => (grading.kidsLevels || []).find(l => l.id === id)?.name;
+    const transitionRows = grading.transition ? Object.entries(grading.transition.mapping || {}).map(([k, a]) =>
+      `<div class="row" style="gap:var(--sp-2);font-size:13px;padding:4px 0"><span>${kidName(k)?t(kidName(k)):k}</span><span class="muted">→</span><span style="font-weight:600">${adultName(a)?t(adultName(a)):a}</span></div>`
+    ).join('') : '';
+
+    return `
+      ${gradingTabs('system')}
+      <div class="row-between" style="margin-bottom:var(--sp-4)">
+        <div>
+          <h1 class="h1">${t(grading.name)}</h1>
+          <div class="muted" style="font-size:13px">${sport ? t(sport.name) : sportId} · ${grading.type}${hasKids ? ` · ${t({en:'age boundary',pt:'idade limite'})} ${grading.ageBoundary}` : ''}</div>
+        </div>
+        <button class="btn btn-secondary" onclick="go('promotion-rules')">${t({en:'Edit rules',pt:'Editar regras'})} →</button>
+      </div>
+      <div class="grid-2">
+        ${trackCard(t({en:'Adult track',pt:'Faixa adulto'}), grading.levels, grading.promotionRules)}
+        ${hasKids ? trackCard(t({en:'Kids track',pt:'Faixa infantil'}), grading.kidsLevels, grading.kidsPromotionRules) : ''}
+      </div>
+      ${hasKids && transitionRows ? `
+        <div class="card" style="margin-top:var(--sp-4)">
+          <h3 class="card-title" style="margin-bottom:var(--sp-2)">${t({en:'Kid → adult crossover',pt:'Transição infantil → adulto'})}</h3>
+          <div class="muted" style="font-size:12px;margin-bottom:var(--sp-2)">${t({en:`At age ${grading.ageBoundary}, a student's kids belt maps to an adult belt:`,pt:`Aos ${grading.ageBoundary} anos, a faixa infantil passa para uma faixa adulto:`})}</div>
+          ${transitionRows}
+        </div>` : ''}
+    `;
+  }
+
   function GradingScreen() {
-    const sportId = 'sport-bjj';
-    const grading = DB.grading(ACADEMY.sportConfigs[0]?.gradingSystemId);
+    if (gradingTab === 'system') return GradingSystemScreen();
+    const sportId = gradingActiveSportId();
+    const grading = DB.grading(DB.sport(sportId)?.defaultGradingSystemId || ACADEMY.sportConfigs[0]?.gradingSystemId);
 
     // Belt test requests — read from shared localStorage key (written by student.html)
     const beltTestRequests = (() => {
@@ -7223,8 +7709,9 @@
       </div>`;
 
     return `
+      ${gradingTabs('session')}
       <div class="row-between" style="margin-bottom:var(--sp-5)">
-        <h1 class="h1">★ Grading Session</h1>
+        <h1 class="h1">★ ${t({en:'Grading Overview',pt:'Visão geral de graduação'})}</h1>
         <div style="display:flex;gap:var(--sp-2)">
           ${ready.length > 0 ? `<button class="btn" onclick="gradingSelectAll(${JSON.stringify(allIds)})">Select all</button>` : ''}
           <button class="btn btn-primary" ${noneSelected || selectedCount === 0 ? 'disabled' : ''}
@@ -7583,6 +8070,52 @@
 
   // ---------- Instructor workload -------------------------------------------
 
+  function openInstructorForm() {
+    if (document.getElementById('inst-form')) return;
+    const sportOpts = ACADEMY.sportConfigs.map(sc => { const sp = DB.sport(sc.sportId);
+      return `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;margin-right:var(--sp-3)">
+        <input type="checkbox" data-inst-sport value="${sc.sportId}" checked> ${sp ? t(sp.name) : sc.sportId}</label>`; }).join('');
+    document.body.insertAdjacentHTML('beforeend', `
+      <div id="inst-form" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:var(--sp-5)">
+        <div class="card" style="max-width:460px;width:100%">
+          <h3 class="card-title" style="margin-bottom:var(--sp-4)">${t({en:'Add instructor',pt:'Adicionar professor'})}</h3>
+          <div class="stack" style="gap:var(--sp-4)">
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Full name',pt:'Nome completo'})} *</label>
+              <input id="inst-name" class="input" style="width:100%" placeholder="e.g. Rui Almeida" />
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Pay rate (€/hour)',pt:'Valor/hora (€)'})}</label>
+              <input id="inst-rate" type="number" class="input" style="width:120px" value="25" min="0" />
+            </div>
+            <div>
+              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Sports',pt:'Modalidades'})}</label>
+              <div>${sportOpts}</div>
+            </div>
+          </div>
+          <div class="row-between" style="margin-top:var(--sp-5)">
+            <button class="btn btn-secondary" onclick="document.getElementById('inst-form').remove()">${t({en:'Cancel',pt:'Cancelar'})}</button>
+            <button class="btn" onclick="saveInstructor()">${t({en:'Add instructor',pt:'Adicionar'})}</button>
+          </div>
+        </div>
+      </div>`);
+    setTimeout(() => document.getElementById('inst-name')?.focus(), 0);
+  }
+  function saveInstructor() {
+    const name = (document.getElementById('inst-name').value || '').trim();
+    if (!name) { showToast('Enter a name.'); return; }
+    const rate = parseFloat(document.getElementById('inst-rate').value) || 0;
+    const sportIds = [...document.querySelectorAll('input[data-inst-sport]:checked')].map(c => c.value);
+    const initials = name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    INSTRUCTORS.push({ id: 'inst-' + Date.now(), name, initials, sportIds, payRate: rate });
+    persistData();
+    document.getElementById('inst-form')?.remove();
+    showToast('Instructor added ✓');
+    renderApp();
+  }
+  window.openInstructorForm = openInstructorForm;
+  window.saveInstructor = saveInstructor;
+
   function InstructorScreen() {
     const today      = new Date(CONFIG.today);
     const todayIso   = CONFIG.today.toISOString();
@@ -7703,6 +8236,7 @@
             <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.instructors')}</h1>
             <p class="muted">Workload and attendance summary per instructor.</p>
           </div>
+          <button class="btn" onclick="openInstructorForm()">+ ${t({en:'Add instructor',pt:'Adicionar professor'})}</button>
         </div>
         <div style="display:flex;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-6)">
           <div class="card" style="flex:1;min-width:120px;text-align:center">
@@ -7731,6 +8265,7 @@
   function InstructorDetail(instId) {
     const inst = INSTRUCTORS.find(i => i.id === instId);
     if (!inst) return `<div class="card"><p class="muted">Instructor not found.</p><a href="#/instructors">← Back</a></div>`;
+    const _ib = viewBack('inst:' + instId, 'instructors');
 
     const today      = new Date(CONFIG.today);
     const todayIso   = CONFIG.today.toISOString();
@@ -7862,7 +8397,7 @@
       <div style="max-width:900px;margin:0 auto">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div style="display:flex;gap:var(--sp-3);align-items:center">
-            <button class="btn btn-secondary" onclick="go('instructors')" style="font-size:13px">← Instructors</button>
+            <button class="btn btn-secondary" onclick="go('${_ib.route}')" style="font-size:13px">${_ib.label}</button>
             <div class="avatar" style="width:48px;height:48px;font-size:18px">${inst.initials}</div>
             <div>
               <h1 class="h1" style="margin:0">${inst.name}</h1>
@@ -9511,6 +10046,7 @@ ${CONFIG.academyName || 'The Team'}`;
   function EventDetail(evtId) {
     const evt = EVENTS.find(e => e.id === evtId);
     if (!evt) return `<div class="muted">Event not found.</div>`;
+    const _eb = viewBack('event:' + evtId, 'events');
 
     const et = _evtType(evt.type);
     const registered = evt.registeredStudentIds
@@ -9556,7 +10092,7 @@ ${CONFIG.academyName || 'The Team'}`;
             const enr  = ENROLLMENTS.find(e => e.studentId === s.id);
             const belt = enr ? BeltChip(enr.currentLevelId, enr.sportId) : '';
             return `
-              <div style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) 0;border-bottom:1px solid var(--border)">
+              <div data-add-name="${s.name.toLowerCase()}" style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-2) 0;border-bottom:1px solid var(--border)">
                 <div style="width:32px;height:32px;background:var(--surface-alt);border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-weight:700;font-size:13px;flex-shrink:0">
                   ${s.name.charAt(0)}
                 </div>
@@ -9571,7 +10107,7 @@ ${CONFIG.academyName || 'The Team'}`;
     return `
       <div style="max-width:700px">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
-          <button class="btn" onclick="go('events')">← Events</button>
+          <button class="btn" onclick="go('${_eb.route}')">${_eb.label}</button>
           <button class="btn btn-sm" style="color:var(--danger)" onclick="deleteEvent('${evtId}')">Delete</button>
         </div>
 
@@ -9658,12 +10194,25 @@ ${CONFIG.academyName || 'The Team'}`;
         })() : ''}
 
         <div class="card">
-          <h3 class="card-title" style="margin-bottom:var(--sp-4)">Add students</h3>
-          ${addStudentRows}
+          <h3 class="card-title" style="margin-bottom:var(--sp-3)">Add students</h3>
+          ${isFull || notRegistered.length === 0 ? '' : `
+            <input type="search" class="input" placeholder="Search students…" style="width:100%;margin-bottom:var(--sp-2)"
+              oninput="filterAddStudents(this.value)" />`}
+          <div id="addStudentsList" style="max-height:340px;overflow-y:auto">
+            ${addStudentRows}
+          </div>
         </div>
       </div>
     `;
   }
+
+  function filterAddStudents(q) {
+    q = (q || '').toLowerCase().trim();
+    document.querySelectorAll('#addStudentsList [data-add-name]').forEach(row => {
+      row.style.display = row.dataset.addName.includes(q) ? '' : 'none';
+    });
+  }
+  window.filterAddStudents = filterAddStudents;
 
   function EventsList() {
     const today = new Date().toISOString().slice(0, 10);

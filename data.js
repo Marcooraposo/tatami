@@ -163,6 +163,157 @@ const STRINGS = {
   'screen.addStudent':    { en: 'Add new student', pt: 'Adicionar novo aluno' },
 };
 
+// =============================================================================
+// PT_DICT + localizeDOM — runtime translation of static UI strings.
+// Whenever PT is active, a post-render pass replaces exact-match English text
+// (and placeholder/title attrs) with Brazilian Portuguese. Only full-string
+// matches are translated, so student names / data are never touched.
+// To translate a stray English string: add it here.
+// =============================================================================
+const PT_DICT = {
+  // Nav / sections
+  'Dashboard':'Painel','Schedule':'Horário','Classes':'Aulas','Students':'Alunos','Families':'Famílias',
+  'Prospects':'Potenciais','Referrals':'Indicações','Instructors':'Professores','Memberships':'Matrículas',
+  'Discounts':'Descontos','Billing':'Faturação','Curriculum':'Currículo','Grading':'Graduação',
+  'Analytics':'Análises','Goals':'Objetivos','Announcements':'Avisos','Events':'Eventos',
+  'Private lessons':'Aulas particulares','Private Lessons':'Aulas particulares','Settings':'Definições',
+  'Competition':'Competição','Retention':'Retenção','Equipment':'Equipamento','Feedback':'Avaliações',
+  'Overview':'Visão geral','Calendar':'Calendário','Squad':'Equipa','Results':'Resultados',
+  // Common actions
+  'Save':'Guardar','Save changes':'Guardar alterações','Save code':'Guardar código','Save rules':'Guardar regras',
+  'Save slot':'Guardar horário','Cancel':'Cancelar','Edit':'Editar','Delete':'Eliminar','Add':'Adicionar',
+  'Remove':'Remover','Close':'Fechar','View':'Ver','Open':'Abrir','Select all':'Selecionar tudo',
+  'Clear all':'Limpar tudo','Clear selection':'Limpar seleção','Dismiss':'Dispensar','Undo':'Desfazer',
+  'Return':'Devolver','Revoke':'Revogar','Sign':'Assinar','More':'Mais','Show less':'Mostrar menos',
+  'Load more':'Carregar mais','Search':'Procurar','Cut':'Cortar','Pin to top':'Fixar no topo',
+  'Edit Profile':'Editar perfil','Log out':'Terminar sessão','Submit request':'Enviar pedido',
+  'Send request':'Enviar pedido','Submit rating':'Enviar avaliação','Create account':'Criar conta',
+  'Create event':'Criar evento','Create group':'Criar grupo','Add item':'Adicionar item','Add closure':'Adicionar feriado',
+  'Add expense':'Adicionar despesa','Add students':'Adicionar alunos','Mark paid':'Marcar como pago',
+  'Mark lost':'Marcar como perdido','Loan out':'Emprestar','Sell a package':'Vender pacote','Book lesson':'Reservar aula',
+  'Book students from the':'Reservar alunos de','Leave waitlist':'Sair da lista de espera',
+  // Statuses / labels
+  'Active':'Ativo','Archived':'Arquivado','Cancelled':'Cancelada','Completed':'Concluída','Scheduled':'Agendada',
+  'Pending':'Pendente','Present':'Presente','Attended':'Presente','Booked':'Reservada','Waitlisted':'Em espera',
+  'Walk-in':'Sem reserva','Checked in':'Check-in feito','Paid this month':'Pago este mês','Outstanding':'Em dívida',
+  'Overdue':'Atrasado','Due now':'A vencer','Due soon':'A vencer em breve','Expired':'Expirado','Expires':'Expira',
+  'No expiry':'Sem validade','Unlimited':'Ilimitado','Never':'Nunca','Today':'Hoje','Today!':'Hoje!','Tomorrow':'Amanhã',
+  'This week':'Esta semana','This month':'Este mês','Last 30 days':'Últimos 30 dias','Past':'Passados',
+  'Upcoming':'Próximos','On track':'No bom caminho','At risk':'Em risco','Lapsed':'Inativo','Flagged':'Sinalizado',
+  'High':'Alto','Low':'Baixo','Any':'Qualquer','All':'Todos','None.':'Nenhum.','None here':'Nenhum aqui',
+  'Not started':'Não iniciado','On hold':'Em pausa','Lost':'Perdido','Unknown':'Desconhecido','Other':'Outro',
+  'Optional':'Opcional','Pinned':'Fixado','Yet to train':'Ainda não treinou','Working towards':'A trabalhar para',
+  'Coach-verified':'Verificado pelo professor','Self-drilling':'Treino individual',
+  // Fields / headers
+  'Name':'Nome','Full name':'Nome completo','Your full name':'O seu nome completo','Email':'Email','Phone':'Telefone',
+  'Contact':'Contacto','Date':'Data','Date & time':'Data e hora','Date / Time':'Data / Hora','Time':'Hora',
+  'Start time':'Hora de início','Day':'Dia','Month':'Mês','Status':'Estado','Type':'Tipo','Category':'Categoria',
+  'Description':'Descrição','Notes':'Notas','Note':'Nota','Amount':'Valor','Price':'Preço','Code':'Código',
+  'Discount':'Desconto','Capacity':'Capacidade','Duration':'Duração','Duration (min)':'Duração (min)',
+  'Location':'Localização','Website':'Website','Membership':'Plano','Membership plan':'Plano de matrícula',
+  'Plan':'Plano','Plan name':'Nome do plano','Plans':'Planos','Belt':'Faixa','Stripes':'Graus','Instructor':'Professor',
+  'Athlete':'Atleta','Event':'Evento','Division':'Divisão','Medal':'Medalha','Place':'Lugar','Placement':'Classificação',
+  'Result':'Resultado','Source':'Origem','Sport':'Modalidade','Martial art':'Arte marcial','Label':'Etiqueta',
+  'Objective':'Objetivo','Subject':'Assunto','Message':'Mensagem','Recipients':'Destinatários','Send to':'Enviar para',
+  'Qty':'Qtd','Condition':'Estado','Validity':'Validade','Uses':'Utilizações','Member':'Membro','Group':'Grupo',
+  'Groups':'Grupos','Family':'Família','Referred by':'Indicado por','Weight (kg)':'Peso (kg)','Date of birth':'Data de nascimento',
+  'Gender':'Género','Emergency contact':'Contacto de emergência','Guardian email':'Email do encarregado',
+  'Membership Plans':'Planos de matrícula','Class type':'Tipo de aula','Audience':'Público',
+  // Cards / titles
+  'Academy details':'Detalhes da academia','Academy name':'Nome da academia','Gym rules':'Regras do ginásio',
+  'Student details':'Detalhes do aluno','Student documents':'Documentos do aluno','Student ratings':'Avaliações dos alunos',
+  'Session notes':'Notas da sessão','Recent comments':'Comentários recentes','Belt Promotion History':'Histórico de graduações',
+  'Belt / rank progression':'Progressão de faixa','Competition Results':'Resultados de competição',
+  'Attendance history':'Histórico de presenças','Attendance heatmap':'Mapa de presenças','Training History':'Histórico de treino',
+  'Curriculum Mastery':'Domínio do currículo','Overall mastery':'Domínio geral','Technique Progress':'Progresso técnico',
+  'Techniques Mastered':'Técnicas dominadas','Recurring schedule':'Horário recorrente','Weekly slots':'Horários semanais',
+  'Promotion candidates':'Candidatos a graduação','Promotion requirements':'Requisitos de graduação',
+  'Past sessions':'Sessões anteriores','Ready to promote':'Pronto a graduar','Test requests':'Pedidos de teste',
+  'Total promoted':'Total graduados','Log a result':'Registar resultado','Medals logged':'Medalhas registadas',
+  'Squad members':'Membros da equipa','Upcoming competitions':'Próximas competições','Next competitions':'Próximas competições',
+  'No upcoming competitions.':'Sem competições próximas.','No squad members yet.':'Ainda sem membros na equipa.',
+  'No results logged yet.':'Ainda sem resultados.','Discount Codes':'Códigos de desconto','Active codes':'Códigos ativos',
+  'Total uses':'Total de utilizações','Expiring soon':'A expirar em breve','Maxed out':'Esgotado',
+  'Class Packages':'Pacotes de aulas','Package types':'Tipos de pacote','Student purchases':'Compras dos alunos',
+  'Total members':'Total de membros','Est. MRR':'MRR est.','Renewals due':'Renovações pendentes',
+  'New family group':'Novo grupo familiar','Family MRR':'MRR familiar','Avg discount':'Desconto médio',
+  'Members':'Membros','Groups available':'Grupos disponíveis','Choose a membership':'Escolha um plano',
+  'Add new student':'Adicionar novo aluno','New class':'Nova aula','New Event':'Novo evento','New Private Lesson':'Nova aula particular',
+  'Guardian / parent details':'Detalhes do encarregado','Tell us about your academy':'Fale-nos da sua academia',
+  'Which martial arts do you teach?':'Que artes marciais ensina?','Org Setup':'Configuração',
+  // Stats
+  'Total students':'Total de alunos','Total classes':'Total de aulas','Total members':'Total de membros',
+  'Total goals':'Total de objetivos','Total ratings':'Total de avaliações','Total referrals':'Total de indicações',
+  'Total recipients':'Total de destinatários','Total logged':'Total registado','Classes attended':'Aulas presentes',
+  'Classes Attended':'Aulas presentes','Classes taught':'Aulas dadas','Classes this week':'Aulas esta semana',
+  'Classes this month':'Aulas este mês','Hours':'Horas','Hours total':'Horas totais','Hours this month':'Horas este mês',
+  'Hours / week':'Horas / semana','Months at Belt':'Meses na faixa','Months at Academy':'Meses na academia',
+  'Time at belt':'Tempo na faixa','Member since':'Membro desde','Joined':'Inscrito','New students':'Novos alunos',
+  'Revenue (MRR)':'Receita (MRR)','Net profit':'Lucro líquido','Expenses':'Despesas','Payroll':'Salários',
+  'Collected':'Cobrado','Expected':'Esperado','Avg rating':'Avaliação média','Avg fill':'Ocupação média',
+  'Avg fill rate':'Taxa de ocupação média','Fill rate by class type':'Ocupação por tipo de aula','Bookings':'Reservas',
+  'Check-ins':'Check-ins','Referral rate':'Taxa de indicação','Top referrer':'Maior indicador','MRR':'MRR',
+  'Total':'Total','Spots':'Vagas','Open spots':'Vagas livres','Selected':'Selecionado',
+  // Empty states
+  'No data yet.':'Ainda sem dados.','No classes yet.':'Ainda sem aulas.','No classes yet':'Ainda sem aulas',
+  'No notes yet.':'Ainda sem notas.','No events':'Sem eventos','No announcements':'Sem avisos',
+  'No injuries logged.':'Sem lesões registadas.','No ratings yet.':'Ainda sem avaliações.','No ratings yet':'Ainda sem avaliações',
+  'No students match your filters.':'Nenhum aluno corresponde aos filtros.','No prospects here.':'Sem potenciais aqui.',
+  'No instructors found.':'Nenhum professor encontrado.','No upcoming events. Create one above.':'Sem eventos próximos. Crie um acima.',
+  'No students registered yet.':'Ainda sem alunos inscritos.','No squad':'Sem equipa','No medal':'Sem medalha',
+  'No techniques.':'Sem técnicas.','No curriculum yet':'Ainda sem currículo','Check back soon.':'Volte em breve.',
+  'Coming soon.':'Em breve.','Student not found':'Aluno não encontrado','Class not found':'Aula não encontrada',
+  'Class not found.':'Aula não encontrada.','Event not found.':'Evento não encontrado.','Instructor not found.':'Professor não encontrado.',
+  'Technique not found.':'Técnica não encontrada.',
+  // Misc UI
+  'Progress':'Progresso','Details':'Detalhes','Docs':'Documentos','Demo configuration':'Configuração demo',
+  'Toggle dark / light mode':'Alternar modo claro/escuro','Search students…':'Procurar alunos…','Search squad…':'Procurar na equipa…',
+  'Search screens and students…':'Procurar ecrãs e alunos…','Optional comment…':'Comentário opcional…','Add a note…':'Adicionar nota…',
+  'Full name':'Nome completo','English':'Inglês','Português':'Português','Log injury':'Registar lesão','Log new injury':'Registar nova lesão',
+  'Injury log':'Registo de lesões','Documents and waivers':'Documentos e termos','Payment history':'Histórico de pagamentos',
+  'Member Card':'Cartão de membro','Progress Report':'Relatório de progresso','App link':'Link da app',
+  'Print Certificate':'Imprimir certificado','Run grading':'Executar graduação','Grading system':'Sistema de graduação',
+  'Add sport':'Adicionar modalidade','Sports':'Modalidades','View grading':'Ver graduação','Edit rules':'Editar regras',
+  'Adult track':'Faixa adulto','Kids track':'Faixa infantil','Promotion rules':'Regras de graduação',
+  // Uppercase table headers (literal in source)
+  'CATEGORY':'CATEGORIA','DATE':'DATA','DESCRIPTION':'DESCRIÇÃO','NOTE':'NOTA','NOTES (optional)':'NOTAS (opcional)',
+  'METHOD':'MÉTODO','OUTCOME':'RESULTADO','TECHNIQUE':'TÉCNICA','MEMBER CARD':'CARTÃO DE MEMBRO',
+  'START DATE':'DATA INÍCIO','END DATE':'DATA FIM','DUE DATE':'DATA LIMITE','REASON (optional)':'MOTIVO (opcional)',
+  'LOG CONTACT':'REGISTAR CONTACTO','Due date':'Data limite','Start time':'Hora de início',
+};
+function localizeDOM(root) {
+  if (typeof document === 'undefined' || CURRENT_LOCALE !== 'pt') return;
+  root = root || document.body; if (!root || !root.querySelectorAll) return;
+  const SKIP = { SCRIPT:1, STYLE:1, TEXTAREA:1, INPUT:1, SELECT:1 };
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(n){ return (n.parentNode && SKIP[n.parentNode.nodeName]) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT; }
+  });
+  const nodes = []; let n; while ((n = walker.nextNode())) nodes.push(n);
+  nodes.forEach(node => { const k = node.nodeValue.trim(); if (k && PT_DICT[k]) node.nodeValue = node.nodeValue.replace(k, PT_DICT[k]); });
+  root.querySelectorAll('[placeholder]').forEach(el => { const k = (el.getAttribute('placeholder')||'').trim(); if (PT_DICT[k]) el.setAttribute('placeholder', PT_DICT[k]); });
+  root.querySelectorAll('[title]').forEach(el => { const k = (el.getAttribute('title')||'').trim(); if (PT_DICT[k]) el.setAttribute('title', PT_DICT[k]); });
+}
+// Observe DOM swaps so every render (full or partial) gets localized.
+function initDOMLocalizer() {
+  if (typeof document === 'undefined' || document._ptObserver) return;
+  const target = document.getElementById('app') || document.body;
+  if (!target) return;
+  localizeDOM(target);
+  const obs = new MutationObserver(muts => {
+    if (CURRENT_LOCALE !== 'pt') return;
+    muts.forEach(m => m.addedNodes && m.addedNodes.forEach(node => {
+      if (node.nodeType === 1) localizeDOM(node);
+      else if (node.nodeType === 3) { const k = node.nodeValue.trim(); if (k && PT_DICT[k]) node.nodeValue = node.nodeValue.replace(k, PT_DICT[k]); }
+    }));
+  });
+  obs.observe(target, { childList: true, subtree: true });
+  document._ptObserver = obs;
+}
+if (typeof document !== 'undefined') {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initDOMLocalizer);
+  else initDOMLocalizer();
+}
+
 // tr: look up a catalog key for the current locale, with {var} interpolation.
 function tr(key, vars) {
   const entry = STRINGS[key];
@@ -279,7 +430,7 @@ const GRADING_SYSTEMS = [
       { id: 'bjj-brown',  name: { en: 'Brown',  pt: 'Castanha' }, order: 3, color: '#78350f', textColor: '#ffffff', maxStripes: 4 },
       { id: 'bjj-black',  name: { en: 'Black',  pt: 'Preta'    }, order: 4, color: '#0f172a', textColor: '#ffffff', maxStripes: 6 }
     ],
-    // Promotion rules keyed by "fromLevelId-to-toLevelId"
+    // Promotion rules keyed by "fromLevelId-to-toLevelId" (adult track)
     promotionRules: {
       'bjj-white-to-bjj-blue': {
         minMonthsAtLevel: 12,
@@ -287,9 +438,49 @@ const GRADING_SYSTEMS = [
         minBasicsCoveragePct: 0.80,
         minClassesAtLevel: 80
       }
+    },
+    // ---- Dual-track support (per ARCHITECTURE.md) --------------------------
+    // Below the age boundary a student is tracked on the kids belts; at/above
+    // it, on the adult belts (`levels`/`promotionRules` above).
+    ageBoundary: 16,
+    kidsLevels: [
+      { id: 'bjj-k-white',  name: { en: 'White',  pt: 'Branca'   }, order: 0, color: '#f8fafc', textColor: '#0f172a', maxStripes: 4 },
+      { id: 'bjj-k-grey',   name: { en: 'Grey',   pt: 'Cinzenta' }, order: 1, color: '#9ca3af', textColor: '#0f172a', maxStripes: 4 },
+      { id: 'bjj-k-yellow', name: { en: 'Yellow', pt: 'Amarela'  }, order: 2, color: '#facc15', textColor: '#0f172a', maxStripes: 4 },
+      { id: 'bjj-k-orange', name: { en: 'Orange', pt: 'Laranja'  }, order: 3, color: '#f97316', textColor: '#ffffff', maxStripes: 4 },
+      { id: 'bjj-k-green',  name: { en: 'Green',  pt: 'Verde'    }, order: 4, color: '#16a34a', textColor: '#ffffff', maxStripes: 4 }
+    ],
+    kidsPromotionRules: {
+      'bjj-k-white-to-bjj-k-grey':   { minMonthsAtLevel: 6, minStripes: 4, minBasicsCoveragePct: 0.50, minClassesAtLevel: 30 },
+      'bjj-k-grey-to-bjj-k-yellow':  { minMonthsAtLevel: 9, minStripes: 4, minBasicsCoveragePct: 0.60, minClassesAtLevel: 50 }
+    },
+    // Kid → adult crossover applied at ageBoundary (maps kids belt → adult belt).
+    transition: {
+      mapping: {
+        'bjj-k-white':  'bjj-white',
+        'bjj-k-grey':   'bjj-white',
+        'bjj-k-yellow': 'bjj-white',
+        'bjj-k-orange': 'bjj-blue',
+        'bjj-k-green':  'bjj-blue'
+      },
+      stripeReset: true
     }
   }
 ];
+
+// Returns which track ('adult' | 'kids') a student is graded on, by age.
+function studentTrack(student, grading) {
+  const boundary = (grading && grading.ageBoundary) || 16;
+  const age = ageFromDob(student && student.dob);
+  return (age != null && age < boundary) ? 'kids' : 'adult';
+}
+// Track-aware level list + promotion rules for a grading system.
+function trackLevels(grading, track) {
+  return track === 'kids' ? (grading.kidsLevels || grading.levels) : grading.levels;
+}
+function trackRules(grading, track) {
+  return track === 'kids' ? (grading.kidsPromotionRules || {}) : (grading.promotionRules || {});
+}
 
 // ---------- Curriculum -------------------------------------------------------
 
@@ -461,6 +652,23 @@ const GRADING_LOG = [];
 
 // Special events — tournaments, seminars, belt tests, open mats
 const EVENTS = [
+  {
+    id: 'evt-sc-001',
+    title: 'AJP Lisbon International Open',
+    type: 'tournament',
+    date: '2026-07-19',
+    time: '09:00',
+    durationMin: 480,
+    location: 'Pavilhão Multiusos, Lisbon',
+    capacity: null,
+    notes: 'IBJJF/AJP ruleset. Registration & divisions managed on Smoothcomp.',
+    registeredStudentIds: ['s-2', 's-3', 's-13'],
+    source: 'smoothcomp',
+    externalUrl: 'https://smoothcomp.com/en/event/12345',
+    externalId: '12345',
+    image: '',
+    createdAt: '2026-05-22T10:00:00.000Z'
+  },
   {
     id: 'evt-001',
     title: 'Summer Open Mat',
@@ -732,7 +940,8 @@ const DB = {
   instructor:(id) => INSTRUCTORS.find(i => i.id === id),
   class:     (id) => CLASSES.find(c => c.id === id),
   enrollment:(studentId, sportId) => ENROLLMENTS.find(e => e.studentId === studentId && e.sportId === sportId),
-  level:     (gradingId, levelId) => DB.grading(gradingId)?.levels.find(l => l.id === levelId),
+  level:     (gradingId, levelId) => { const g = DB.grading(gradingId); if (!g) return undefined;
+               return (g.levels || []).find(l => l.id === levelId) || (g.kidsLevels || []).find(l => l.id === levelId); },
   itemsBySection: (sectionId) => CURRICULUM_ITEMS.filter(i => i.sectionId === sectionId).sort((a,b) => a.order - b.order),
   sectionsBySport: (sportId) => CURRICULUM_SECTIONS.filter(s => s.sportId === sportId).sort((a,b) => a.order - b.order)
 };
