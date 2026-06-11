@@ -3,11 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tatami — Sign in</title>
+  <title>Tatami — App</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
     body { display: grid; place-items: center; min-height: 100vh; padding: var(--sp-5); }
-    .card { max-width: 400px; width: 100%; background: var(--surface); border: 1px solid var(--border);
+    .card { max-width: 420px; width: 100%; background: var(--surface); border: 1px solid var(--border);
       border-radius: var(--r-lg); padding: var(--sp-6); box-shadow: var(--shadow-md); }
     .brand { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-5); }
     .brand-mark { width: 36px; height: 36px; border-radius: var(--r-md); background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 700; }
@@ -16,36 +16,140 @@
     input { width: 100%; }
     .btn-full { width: 100%; justify-content: center; margin-top: var(--sp-3); }
     .or { text-align: center; color: var(--text-faint); font-size: 12px; margin: var(--sp-4) 0; }
-    .note { margin-top: var(--sp-5); padding: var(--sp-3); border-radius: var(--r-md); background: var(--warn-bg);
-      color: var(--warn); font-size: 12px; line-height: 1.5; }
+    .msg { margin-top: var(--sp-4); padding: var(--sp-3); border-radius: var(--r-md); font-size: 13px; line-height: 1.5; }
+    .msg.ok { background: var(--success-bg); color: var(--success); }
+    .msg.err { background: var(--danger-bg); color: var(--danger); }
     .back { display: inline-block; margin-top: var(--sp-4); font-size: 13px; color: var(--text-muted); text-decoration: none; }
+    .acad { display:flex; align-items:center; justify-content:space-between; gap: var(--sp-3);
+      border:1px solid var(--border); border-radius: var(--r-md); padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-2); }
+    .muted { color: var(--text-muted); font-size: 13px; }
+    .row-between { display:flex; align-items:center; justify-content:space-between; gap: var(--sp-3); }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="brand"><div class="brand-mark">T</div><h1>Sign in to Tatami</h1></div>
-
-    <label for="email">Email</label>
-    <input id="email" class="input" type="email" placeholder="you@academy.com" />
-    <button class="btn btn-full" onclick="magicLink()">Send magic link</button>
-
-    <div class="or">or</div>
-    <button class="btn btn-secondary btn-full" onclick="google()">Continue with Google</button>
-
-    <div class="note">
-      🔧 Authentication is being wired up. Buttons are placeholders for now —
-      magic-link and Google sign-in go live with the multi-tenant release.
-    </div>
-
-    <a class="back" href="/">← Back</a>
+  <div class="card" id="root">
+    <div class="brand"><div class="brand-mark">T</div><h1>Tatami</h1></div>
+    <div class="muted">Loading…</div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
   <script>
-    function magicLink() {
-      const email = document.getElementById('email').value.trim();
-      alert(email ? `Magic link to ${email} — coming soon.` : 'Enter your email first.');
+  const $ = (id) => document.getElementById(id);
+  const root = $('root');
+  const brand = `<div class="brand"><div class="brand-mark">T</div><h1>Tatami</h1></div>`;
+
+  function showMsg(kind, text) {
+    const el = $('msg'); if (el) { el.className = 'msg ' + kind; el.textContent = text; }
+  }
+
+  // ---- Auth actions -------------------------------------------------------
+  async function magicLink() {
+    const email = ($('email').value || '').trim();
+    if (!email) { showMsg('err', 'Enter your email first.'); return; }
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/app' } });
+    showMsg(error ? 'err' : 'ok', error ? error.message : `Magic link sent to ${email}. Check your inbox.`);
+  }
+  async function google() {
+    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/app' } });
+    if (error) showMsg('err', error.message);
+  }
+  async function signOut() { await sb.auth.signOut(); render(); }
+
+  async function createAcademy() {
+    const name = ($('acadName').value || '').trim();
+    if (!name) { showMsg('err', 'Enter an academy name.'); return; }
+    const { data, error } = await sb.rpc('create_academy', { p_name: name });
+    if (error) { showMsg('err', error.message); return; }
+    render();
+  }
+
+  // ---- Views --------------------------------------------------------------
+  function signInView() {
+    root.innerHTML = `
+      ${brand}
+      <h1 style="font-size:18px;margin-bottom:var(--sp-4)">Sign in to your academy</h1>
+      <label for="email">Email</label>
+      <input id="email" class="input" type="email" placeholder="you@academy.com" />
+      <button class="btn btn-full" id="b-magic">Send magic link</button>
+      <div class="or">or</div>
+      <button class="btn btn-secondary btn-full" id="b-google">Continue with Google</button>
+      <div id="msg"></div>
+      <a class="back" href="/">← Back</a>`;
+    $('b-magic').onclick = magicLink;
+    $('b-google').onclick = google;
+    $('email').addEventListener('keydown', e => { if (e.key === 'Enter') magicLink(); });
+  }
+
+  function createAcademyView(email) {
+    root.innerHTML = `
+      ${brand}
+      <h1 style="font-size:18px;margin-bottom:var(--sp-2)">Create your academy</h1>
+      <p class="muted" style="margin-bottom:var(--sp-4)">Signed in as ${email}. Let's set up your academy.</p>
+      <label for="acadName">Academy name</label>
+      <input id="acadName" class="input" placeholder="e.g. Iron Roots Academy" />
+      <button class="btn btn-full" id="b-create">Create academy</button>
+      <div id="msg"></div>
+      <div class="row-between" style="margin-top:var(--sp-4)">
+        <a class="back" style="margin:0" href="/">← Home</a>
+        <a class="back" style="margin:0;cursor:pointer" id="b-out">Sign out</a>
+      </div>`;
+    $('b-create').onclick = createAcademy;
+    $('b-out').onclick = signOut;
+    $('acadName').addEventListener('keydown', e => { if (e.key === 'Enter') createAcademy(); });
+  }
+
+  function academiesView(email, rows) {
+    root.innerHTML = `
+      ${brand}
+      <h1 style="font-size:18px;margin-bottom:var(--sp-2)">Your academies</h1>
+      <p class="muted" style="margin-bottom:var(--sp-4)">Signed in as ${email}.</p>
+      ${rows.map(r => `
+        <div class="acad">
+          <div>
+            <div style="font-weight:600">${(r.academies && r.academies.name) || r.academy_id}</div>
+            <div class="muted" style="font-size:12px">${r.role}</div>
+          </div>
+          <button class="btn" data-open="${r.academy_id}">Open</button>
+        </div>`).join('')}
+      <button class="btn btn-secondary btn-full" id="b-new" style="margin-top:var(--sp-3)">+ Create another academy</button>
+      <div id="msg"></div>
+      <div class="row-between" style="margin-top:var(--sp-4)">
+        <a class="back" style="margin:0" href="/">← Home</a>
+        <a class="back" style="margin:0;cursor:pointer" id="b-out">Sign out</a>
+      </div>`;
+    root.querySelectorAll('[data-open]').forEach(b => b.onclick = () => openAcademy(b.dataset.open));
+    $('b-new').onclick = () => createAcademyView(email);
+    $('b-out').onclick = signOut;
+  }
+
+  function openAcademy(academyId) {
+    // The tenant app screens are built in the next phase. For now, remember the
+    // selected academy and route to the (still demo-backed) admin app.
+    try { localStorage.setItem('tatami_active_academy', academyId); } catch {}
+    location.href = '/admin';
+  }
+
+  // ---- Router -------------------------------------------------------------
+  async function render() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { signInView(); return; }
+    const email = session.user.email || session.user.user_metadata?.email || 'your account';
+    const { data: rows, error } = await sb.from('academy_members')
+      .select('academy_id, role, academies(name)');
+    if (error) {
+      root.innerHTML = `${brand}<div class="msg err">${error.message}</div>
+        <div class="muted" style="margin-top:var(--sp-3)">Have the tenancy migrations (008–009) been run and Auth enabled?</div>
+        <a class="back" style="cursor:pointer" id="b-out">Sign out</a>`;
+      $('b-out').onclick = signOut;
+      return;
     }
-    function google() { alert('Google sign-in — coming soon.'); }
+    if (!rows || !rows.length) createAcademyView(email);
+    else academiesView(email, rows);
+  }
+
+  sb.auth.onAuthStateChange(() => render());
+  render();
   </script>
 </body>
 </html>
