@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tatami — Sign in</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { display: grid; place-items: center; min-height: 100vh; padding: var(--sp-5); }
+    .card { max-width: 400px; width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: var(--sp-6); box-shadow: var(--shadow-md); }
+    .brand { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-5); }
+    .brand-mark { width: 36px; height: 36px; border-radius: var(--r-md); background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 700; }
+    h1 { font-size: 18px; margin: 0; }
+    label { display: block; font-weight: 600; font-size: 13px; margin: 0 0 var(--sp-2); }
+    input { width: 100%; }
+    .btn-full { width: 100%; justify-content: center; margin-top: var(--sp-3); }
+    .or { text-align: center; color: var(--text-faint); font-size: 12px; margin: var(--sp-4) 0; }
+    .note { margin-top: var(--sp-5); padding: var(--sp-3); border-radius: var(--r-md); background: var(--warn-bg);
+      color: var(--warn); font-size: 12px; line-height: 1.5; }
+    .back { display: inline-block; margin-top: var(--sp-4); font-size: 13px; color: var(--text-muted); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="brand"><div class="brand-mark">T</div><h1>Sign in to Tatami</h1></div>
+
+    <label for="email">Email</label>
+    <input id="email" class="input" type="email" placeholder="you@academy.com" />
+    <button class="btn btn-full" onclick="magicLink()">Send magic link</button>
+
+    <div class="or">or</div>
+    <button class="btn btn-secondary btn-full" onclick="google()">Continue with Google</button>
+
+    <div class="note">
+      🔧 Authentication is being wired up. Buttons are placeholders for now —
+      magic-link and Google sign-in go live with the multi-tenant release.
+    </div>
+
+    <a class="back" href="/">← Back</a>
+  </div>
+
+  <script>
+    function magicLink() {
+      const email = document.getElementById('email').value.trim();
+      alert(email ? `Magic link to ${email} — coming soon.` : 'Enter your email first.');
+    }
+    function google() { alert('Google sign-in — coming soon.'); }
+  </script>
+</body>
+</html>

@@ -21,8 +21,19 @@ and protected.
 - **Students get their own app:** students authenticate and log into the student
   app (`student.html`) to see their own data. So `auth.users` maps to **both**
   staff and students, distinguished by role.
-- **Not building tenancy now:** continue improving the single-tenant app first;
-  tackle multi-tenancy as a dedicated phase later.
+- **Auth:** Supabase Auth via **email magic link + Google OAuth**.
+- **Tenancy build approach:** isolated foundation first — DB schema + auth +
+  academy-context layer kept separate; the demo (data.js) stays untouched, and
+  screens migrate to Supabase in a later phase.
+
+### Tenancy progress
+- ✅ **Migration 008 (foundation):** `profiles`, `academy_members`, `academy_id`
+  on all operational tables, `auth_is_member()` helper, and tenant-scoped RLS
+  replacing allow_all on operational + academies/academy_sports tables.
+  Reference/curriculum tables left public-read for the demo (cutover later).
+- ⏭ Next: enable Supabase Auth (magic link + Google); login page + session +
+  current-academy context; onboarding academy-creation RPC (inserts the owner
+  membership via SECURITY DEFINER); then screen-by-screen data cutover.
 
 ### Tenancy model
 - Shared-schema multi-tenancy on one Supabase project.
