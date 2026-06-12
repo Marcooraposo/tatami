@@ -4,6 +4,17 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tatami — Academy Management</title>
+  <script>
+    // Safety net: if an auth provider lands the token on the root (e.g. the
+    // Supabase Site URL points here), forward it to /app where the session
+    // is captured. Covers both hash (#access_token) and query (?code=) flows.
+    (function () {
+      var h = location.hash || '', q = location.search || '';
+      if (h.indexOf('access_token=') > -1 || h.indexOf('error=') > -1 || /[?&]code=/.test(q)) {
+        location.replace('/app' + q + h);
+      }
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css" />
   <style>
     body { display: grid; place-items: center; min-height: 100vh; padding: var(--sp-5); }
