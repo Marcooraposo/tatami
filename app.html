@@ -57,7 +57,7 @@
     const { email, password } = creds();
     if (!email || !password) { showMsg('err', 'Enter an email and password.'); return; }
     if (password.length < 6) { showMsg('err', 'Password must be at least 6 characters.'); return; }
-    const { data, error } = await sb.auth.signUp({ email, password });
+    const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + '/app' } });
     if (error) { showMsg('err', error.message); return; }
     if (data.session) { render(); }                 // email confirmation disabled → logged in
     else showMsg('ok', 'Account created. Check your email to confirm, then sign in.');
