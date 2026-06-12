@@ -44,15 +44,23 @@
   }
 
   // ---- Auth actions -------------------------------------------------------
-  async function magicLink() {
-    const email = ($('email').value || '').trim();
-    if (!email) { showMsg('err', 'Enter your email first.'); return; }
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + '/app' } });
-    showMsg(error ? 'err' : 'ok', error ? error.message : `Magic link sent to ${email}. Check your inbox.`);
+  function creds() {
+    return { email: ($('email').value || '').trim(), password: ($('password').value || '') };
   }
-  async function google() {
-    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/app' } });
-    if (error) showMsg('err', error.message);
+  async function signIn() {
+    const { email, password } = creds();
+    if (!email || !password) { showMsg('err', 'Enter your email and password.'); return; }
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) showMsg('err', error.message); // success → onAuthStateChange re-renders
+  }
+  async function signUp() {
+    const { email, password } = creds();
+    if (!email || !password) { showMsg('err', 'Enter an email and password.'); return; }
+    if (password.length < 6) { showMsg('err', 'Password must be at least 6 characters.'); return; }
+    const { data, error } = await sb.auth.signUp({ email, password });
+    if (error) { showMsg('err', error.message); return; }
+    if (data.session) { render(); }                 // email confirmation disabled → logged in
+    else showMsg('ok', 'Account created. Check your email to confirm, then sign in.');
   }
   async function signOut() { await sb.auth.signOut(); render(); }
 
@@ -70,15 +78,16 @@
       ${brand}
       <h1 style="font-size:18px;margin-bottom:var(--sp-4)">Sign in to your academy</h1>
       <label for="email">Email</label>
-      <input id="email" class="input" type="email" placeholder="you@academy.com" />
-      <button class="btn btn-full" id="b-magic">Send magic link</button>
-      <div class="or">or</div>
-      <button class="btn btn-secondary btn-full" id="b-google">Continue with Google</button>
+      <input id="email" class="input" type="email" placeholder="you@academy.com" style="margin-bottom:var(--sp-3)" />
+      <label for="password">Password</label>
+      <input id="password" class="input" type="password" placeholder="••••••••" />
+      <button class="btn btn-full" id="b-signin">Sign in</button>
+      <button class="btn btn-secondary btn-full" id="b-signup">Create account</button>
       <div id="msg"></div>
       <a class="back" href="/">← Back</a>`;
-    $('b-magic').onclick = magicLink;
-    $('b-google').onclick = google;
-    $('email').addEventListener('keydown', e => { if (e.key === 'Enter') magicLink(); });
+    $('b-signin').onclick = signIn;
+    $('b-signup').onclick = signUp;
+    $('password').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
   }
 
   function createAcademyView(email) {
