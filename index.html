@@ -1,70 +1,661 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tatami — Academy Management</title>
-  <script>
-    // Safety net: if an auth provider lands the token on the root (e.g. the
-    // Supabase Site URL points here), forward it to /app where the session
-    // is captured. Covers both hash (#access_token) and query (?code=) flows.
-    (function () {
-      var h = location.hash || '', q = location.search || '';
-      if (h.indexOf('access_token=') > -1 || h.indexOf('error=') > -1 || /[?&]code=/.test(q)) {
-        location.replace('/app' + q + h);
-      }
-    })();
-  </script>
-  <link rel="stylesheet" href="styles.css" />
-  <style>
-    body { display: grid; place-items: center; min-height: 100vh; padding: var(--sp-5); }
-    .wrap { max-width: 760px; width: 100%; text-align: center; }
-    .brand { display: inline-flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
-    .brand-mark { width: 44px; height: 44px; border-radius: var(--r-md); background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 20px; }
-    h1 { font-size: 28px; margin: 0; }
-    .tagline { color: var(--text-muted); margin: var(--sp-2) 0 var(--sp-6); font-size: 15px; }
-    .cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
-    @media (max-width: 620px){ .cards { grid-template-columns: 1fr; } }
-    .choice { text-align: left; cursor: pointer; text-decoration: none; color: inherit; display: flex; flex-direction: column;
-      border: 1.5px solid var(--border); border-radius: var(--r-lg); padding: var(--sp-5); background: var(--surface);
-      box-shadow: var(--shadow-sm); transition: border-color .15s, transform .1s; }
-    .choice:hover { border-color: var(--accent); transform: translateY(-2px); }
-    .choice .ico { font-size: 28px; margin-bottom: var(--sp-3); }
-    .choice h2 { font-size: 18px; margin: 0 0 var(--sp-2); }
-    .choice p { color: var(--text-muted); font-size: 13px; margin: 0 0 var(--sp-4); line-height: 1.5; }
-    .choice .go { margin-top: auto; font-weight: 600; color: var(--accent); font-size: 14px; }
-    .pill { align-self: flex-start; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
-      background: var(--surface-alt); color: var(--text-muted); margin-bottom: var(--sp-3); }
-    .foot { margin-top: var(--sp-6); font-size: 12px; color: var(--text-faint); }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script>
+  // Safety net: if an auth provider lands the token on the root (e.g. the
+  // Supabase Site URL points here), forward it to /app where the session
+  // is captured. Covers both hash (#access_token) and query (?code=) flows.
+  (function () {
+    var h = location.hash || '', q = location.search || '';
+    if (h.indexOf('access_token=') > -1 || h.indexOf('error=') > -1 || /[?&]code=/.test(q)) {
+      location.replace('/app' + q + h);
+    }
+  })();
+</script>
+<title>openmat.me — Turn your academy's data into student progress</title>
+<meta name="description" content="openmat.me connects curriculum, student data, and class history to deliver real insight on student progress — so academies maximise progression and retention. Built for jiu-jitsu. Modular by design. Join the waitlist." />
+<meta property="og:title" content="openmat.me — The operating system for your academy" />
+<meta property="og:description" content="Curriculum × student data × class history → insight that drives progress and retention. Modular, and built for the mat." />
+<meta property="og:type" content="website" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --black:#0a0a0a;
+    --ink:#141414;
+    --text:#1a1a1a;
+    --muted:#6b6b6b;
+    --faint:#9a9a9a;
+    --line:#e6e6e6;
+    --line-2:#d6d6d6;
+    --bg:#ffffff;
+    --bg-alt:#f4f4f4;
+    --radius:14px;
+    --maxw:1100px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,.display{font-family:'Space Grotesk','Inter',sans-serif;letter-spacing:-.025em;line-height:1.07;color:var(--black)}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px}
+  .eyebrow{font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:var(--faint)}
+
+  /* Buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;border-radius:10px;padding:14px 22px;cursor:pointer;border:1px solid var(--black);font-size:15px;transition:transform .12s ease,background .18s ease,color .18s ease}
+  .btn-primary{background:var(--black);color:#fff}
+  .btn-primary:hover{transform:translateY(-1px);background:#000}
+  .btn-ghost{background:transparent;color:var(--black);padding:10px 16px;font-size:14px;border-color:var(--line-2)}
+  .btn-ghost:hover{border-color:var(--black)}
+
+  /* Header */
+  header{position:sticky;top:0;z-index:40;background:rgba(255,255,255,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .nav{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:9px;font-family:'Space Grotesk';font-weight:700;font-size:19px;color:var(--black)}
+  .brand span{color:var(--faint);font-weight:500}
+  .logo-mark{width:24px;height:24px;border-radius:6px;background:var(--black);position:relative;flex:none}
+  .logo-mark::after{content:"";position:absolute;left:5px;right:5px;top:7px;height:2.5px;border-radius:2px;background:#fff}
+  .logo-mark::before{content:"";position:absolute;left:5px;right:5px;top:12px;height:2.5px;border-radius:2px;background:#fff;opacity:.55}
+  .lang{appearance:none;background:transparent;border:1px solid var(--line-2);color:var(--black);font-family:inherit;font-size:13px;font-weight:600;border-radius:8px;padding:8px 28px 8px 12px;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%230a0a0a' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 9px center}
+  .lang:focus{outline:none;border-color:var(--black)}
+
+  /* Hero */
+  .hero{padding:80px 0 64px;border-bottom:1px solid var(--line)}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center}
+  .hero h1{font-size:clamp(34px,5vw,56px);font-weight:700;margin:18px 0 18px}
+  .lede{font-size:clamp(16px,2vw,19px);color:var(--muted);max-width:540px;margin-bottom:28px}
+
+  /* Form */
+  .signup{display:flex;flex-direction:column;gap:10px;max-width:480px}
+  .signup .row{display:flex;gap:10px}
+  .signup input,.signup select{flex:1;background:#fff;border:1px solid var(--line-2);color:var(--text);border-radius:10px;padding:14px 16px;font-size:15px;font-family:inherit}
+  .signup input::placeholder{color:var(--faint)}
+  .signup input:focus,.signup select:focus{outline:none;border-color:var(--black)}
+  .signup select{color:var(--muted)}
+  .signup .btn-primary{white-space:nowrap}
+  .form-note{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:8px}
+  .form-note .dot{width:6px;height:6px;border-radius:50%;background:var(--black);flex:none}
+  .success{display:none;background:var(--bg-alt);border:1px solid var(--line-2);color:var(--text);padding:16px 18px;border-radius:10px;font-size:15px}
+  .success.show{display:block;animation:pop .3s ease}
+  @keyframes pop{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .count{margin-top:14px;font-size:13px;color:var(--muted)}
+  .count b{color:var(--black)}
+
+  /* Hero mock */
+  .mock{background:#fff;border:1px solid var(--line-2);border-radius:14px;padding:14px;box-shadow:0 24px 50px rgba(0,0,0,.10)}
+  .mock-bar{display:flex;gap:6px;padding:2px 4px 12px}
+  .mock-bar i{width:9px;height:9px;border-radius:50%;background:#dcdcdc}
+  .mock-head{display:flex;align-items:center;justify-content:space-between;padding:0 4px 12px;border-bottom:1px solid var(--line)}
+  .mock-head .t{font-family:'Space Grotesk';font-weight:600;font-size:13.5px;color:var(--black)}
+  .pill{font-size:10.5px;color:var(--muted);border:1px solid var(--line-2);padding:3px 9px;border-radius:999px}
+  .mock-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0 10px}
+  .stat{background:var(--bg-alt);border:1px solid var(--line);border-radius:9px;padding:10px}
+  .stat .n{font-family:'Space Grotesk';font-weight:700;font-size:17px;color:var(--black)}
+  .stat .l{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .roster{border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .student{display:flex;align-items:center;gap:10px;padding:9px 11px;border-bottom:1px solid var(--line);font-size:12.5px}
+  .student:last-child{border-bottom:none}
+  .ava{width:22px;height:22px;border-radius:50%;background:#dcdcdc;flex:none}
+  .student .nm{flex:1;color:var(--text)}
+  .belt-tag{font-size:9.5px;font-weight:700;padding:2px 8px;border-radius:4px;border:1px solid var(--line-2);color:var(--black);background:#fff}
+  .bar-mini{height:5px;width:60px;background:var(--line);border-radius:3px;overflow:hidden}
+  .bar-mini i{display:block;height:100%;background:var(--black)}
+
+  /* Sections */
+  section.block{padding:88px 0}
+  .center{text-align:center;max-width:720px;margin:0 auto 52px}
+  .center h2{font-size:clamp(27px,3.6vw,40px);font-weight:700;margin:14px 0 16px}
+  .center p{color:var(--muted);font-size:17px}
+  .alt{background:var(--bg-alt);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+
+  /* INSIGHT ENGINE (flagship) */
+  .engine{display:grid;grid-template-columns:1fr;gap:30px}
+  .inputs{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .input-card{background:#fff;border:1px solid var(--line-2);border-radius:12px;padding:22px;text-align:center}
+  .input-card .ic{width:40px;height:40px;border-radius:10px;border:1px solid var(--line-2);display:grid;place-items:center;margin:0 auto 12px;font-size:18px}
+  .input-card h4{font-family:'Space Grotesk';font-size:16px;color:var(--black);margin-bottom:6px}
+  .input-card p{font-size:13.5px;color:var(--muted)}
+  .arrow{display:flex;align-items:center;justify-content:center;gap:14px;color:var(--faint);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase}
+  .arrow .ln{height:1px;flex:1;max-width:120px;background:var(--line-2)}
+  .outcomes{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+  .outcome{background:var(--black);color:#fff;border-radius:12px;padding:24px}
+  .outcome h4{font-family:'Space Grotesk';font-size:17px;color:#fff;margin-bottom:8px}
+  .outcome p{font-size:14px;color:#bdbdbd}
+  .retention{margin-top:26px;text-align:center;font-size:18px;color:var(--black);font-weight:600}
+  .retention b{border-bottom:2px solid var(--black)}
+
+  /* Capabilities */
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:26px}
+  .card .ic{width:40px;height:40px;border-radius:10px;border:1px solid var(--line-2);display:grid;place-items:center;margin-bottom:16px;font-size:18px}
+  .card h3{font-size:18px;margin-bottom:8px}
+  .card p{color:var(--muted);font-size:15px}
+
+  /* Module grid */
+  .mgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+  .mtile{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;transition:border-color .15s ease,transform .15s ease}
+  .mtile:hover{border-color:var(--black);transform:translateY(-2px)}
+  .mtop{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .mtile .ic{width:36px;height:36px;border:1px solid var(--line-2);border-radius:9px;display:grid;place-items:center}
+  .mtile .ic svg{width:19px;height:19px;stroke:var(--black);stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .mtile h4{font-family:'Space Grotesk';font-size:14.5px;color:var(--black);margin-bottom:5px}
+  .mtile p{font-size:12.5px;color:var(--muted);line-height:1.45}
+  .mtag{font-size:9.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 7px;border-radius:5px;border:1px solid var(--line-2);color:var(--muted)}
+  .mtag.live{background:var(--black);color:#fff;border-color:var(--black)}
+  .mlegend{display:flex;gap:18px;justify-content:center;margin-top:28px;font-size:12.5px;color:var(--muted)}
+  .mlegend span{display:inline-flex;align-items:center;gap:7px}
+  .swatch{width:12px;height:12px;border-radius:4px;border:1px solid var(--line-2)}
+  .swatch.k{background:var(--black);border-color:var(--black)}
+
+  /* Modular */
+  .mod-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+  .mod-grid h2{font-size:clamp(26px,3.4vw,38px);margin-bottom:16px}
+  .mod-grid .lede2{color:var(--muted);font-size:17px;margin-bottom:8px}
+  .modules{display:flex;flex-direction:column;gap:10px}
+  .module{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line-2);border-radius:11px;padding:14px 16px}
+  .module .tog{width:38px;height:22px;border-radius:999px;background:var(--black);position:relative;flex:none}
+  .module .tog::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;right:3px}
+  .module.off .tog{background:var(--line-2)}
+  .module.off .tog::after{right:auto;left:3px}
+  .module .mname{font-weight:600;color:var(--black);font-size:14.5px}
+  .module .mdesc{font-size:12.5px;color:var(--muted)}
+  .module.off .mname,.module.off .mdesc{color:var(--faint)}
+
+  /* Closing CTA */
+  .cta{text-align:center}
+  .cta h2{font-size:clamp(28px,4vw,44px);margin-bottom:14px}
+  .cta p{color:var(--muted);margin-bottom:28px;font-size:17px}
+  .cta .signup{margin:0 auto}
+
+  /* Footer */
+  footer{border-top:1px solid var(--line);padding:38px 0;color:var(--muted);font-size:14px}
+  .foot{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap}
+  .foot .vision b{color:var(--black);font-weight:600}
+  .foot-links{display:flex;gap:20px}
+
+  @media(max-width:900px){
+    .hero-grid{grid-template-columns:1fr;gap:40px}
+    .mock{order:2}
+    .cards{grid-template-columns:1fr}
+    .mgrid{grid-template-columns:repeat(2,1fr)}
+    .inputs,.outcomes{grid-template-columns:1fr}
+    .mod-grid{grid-template-columns:1fr;gap:30px}
+  }
+  @media(max-width:560px){
+    .hero{padding:52px 0 44px}
+    .mgrid{grid-template-columns:1fr}
+    .signup .row{flex-direction:column}
+    .foot{flex-direction:column;text-align:center}
+    .nav .btn-ghost{display:none}
+  }
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="brand">
-      <div class="brand-mark">T</div>
-      <h1>Tatami</h1>
+
+<header>
+  <div class="wrap nav">
+    <div class="brand"><span class="logo-mark"></span>openmat<span>.me</span></div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="#join" class="btn btn-ghost" data-i18n="nav_waitlist">Join the waitlist</a>
+      <select class="lang" id="lang" aria-label="Language">
+        <option value="en">EN</option>
+        <option value="pt">PT</option>
+        <option value="es">ES</option>
+        <option value="fr">FR</option>
+      </select>
     </div>
-    <div class="tagline">Academy management for martial arts schools.</div>
-
-    <div class="cards">
-      <a class="choice" href="/admin">
-        <span class="pill">No login</span>
-        <div class="ico">🥋</div>
-        <h2>Explore the demo</h2>
-        <p>A fully-populated academy showcasing every feature — students, schedule, curriculum, grading, competition and more. Nothing you do is saved.</p>
-        <span class="go">Open the demo →</span>
-      </a>
-
-      <a class="choice" href="/app">
-        <span class="pill">Sign in</span>
-        <div class="ico">🏛️</div>
-        <h2>Open your academy</h2>
-        <p>Sign in to manage your own academy with private, secure data. New here? Create your academy in a couple of minutes.</p>
-        <span class="go">Continue to the app →</span>
-      </a>
-    </div>
-
-    <div class="foot">© Tatami</div>
   </div>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow" data-i18n="hero_eyebrow">Built for jiu-jitsu academies</div>
+      <h1 data-i18n="hero_h1">Turn your academy's data into student progress.</h1>
+      <p class="lede" data-i18n="hero_lede">openmat.me connects your curriculum, student data, and class history into one place — so you can see how every student is progressing, run better classes, and keep people coming back.</p>
+
+      <div class="signup">
+        <a href="https://tally.so/r/68VYBY" class="btn btn-primary" style="align-self:flex-start" data-i18n="nav_waitlist">Join the waitlist</a>
+        <div class="form-note"><span class="dot"></span> <span data-i18n="form_note">No spam. One email when we launch.</span></div>
+      </div>
+    </div>
+
+    <!-- Mock dashboard: progress-focused -->
+    <div class="mock" aria-hidden="true">
+      <div class="mock-bar"><i></i><i></i><i></i></div>
+      <div class="mock-head"><div class="t">Riverside BJJ — Student progress</div><div class="pill">This month</div></div>
+      <div class="mock-stats">
+        <div class="stat"><div class="n">187</div><div class="l">Active</div></div>
+        <div class="stat"><div class="n">+12%</div><div class="l">Retention</div></div>
+        <div class="stat"><div class="n">6</div><div class="l">Ready to promote</div></div>
+      </div>
+      <div class="roster">
+        <div class="student"><span class="ava"></span><span class="nm">Ana Costa</span><span class="belt-tag">Purple</span><span class="bar-mini"><i style="width:82%"></i></span></div>
+        <div class="student"><span class="ava"></span><span class="nm">Marco Silva</span><span class="belt-tag">Blue</span><span class="bar-mini"><i style="width:64%"></i></span></div>
+        <div class="student"><span class="ava"></span><span class="nm">Jordan Lee</span><span class="belt-tag">White</span><span class="bar-mini"><i style="width:38%"></i></span></div>
+        <div class="student"><span class="ava"></span><span class="nm">Priya N.</span><span class="belt-tag">Brown</span><span class="bar-mini"><i style="width:91%"></i></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- INSIGHT ENGINE (flagship) -->
+<section class="block alt">
+  <div class="wrap">
+    <div class="center">
+      <div class="eyebrow" data-i18n="engine_eyebrow">The engine</div>
+      <h2 data-i18n="engine_h2">Three things you already have, finally working together</h2>
+      <p data-i18n="engine_p">Your curriculum, your student records, and your class history are usually scattered across notebooks, spreadsheets, and memory. openmat.me joins them — and turns them into insight you can act on.</p>
+    </div>
+
+    <div class="engine">
+      <div class="inputs">
+        <div class="input-card"><div class="ic">📘</div><h4 data-i18n="in_curr_h">Curriculum</h4><p data-i18n="in_curr_p">Techniques, syllabus, and the path from white to black belt.</p></div>
+        <div class="input-card"><div class="ic">👤</div><h4 data-i18n="in_stud_h">Student data</h4><p data-i18n="in_stud_p">Belts, stripes, goals, injuries, and history for every member.</p></div>
+        <div class="input-card"><div class="ic">📅</div><h4 data-i18n="in_class_h">Class history</h4><p data-i18n="in_class_p">Who trained what, when — attendance and what was covered.</p></div>
+      </div>
+
+      <div class="arrow"><span class="ln"></span> <span data-i18n="delivers">delivers</span> <span class="ln"></span></div>
+
+      <div class="outcomes">
+        <div class="outcome"><h4 data-i18n="out1_h">Progress insight</h4><p data-i18n="out1_p">See exactly where each student stands, what they've covered, and who's ready to be promoted — objectively, not from memory.</p></div>
+        <div class="outcome"><h4 data-i18n="out2_h">Smarter class management</h4><p data-i18n="out2_p">openmat.me sees what your room has and hasn't covered — and who's been away — then flags gaps and suggests where to take the next class.</p></div>
+        <div class="outcome"><h4 data-i18n="out3_h">Objective tailoring</h4><p data-i18n="out3_p">Give each student a clear next step suited to their level — so progress feels personal, not one-size-fits-all.</p></div>
+      </div>
+
+      <div class="retention" data-i18n-html="retention">The result: students who feel they're improving stay engaged, stay motivated, and <b>keep coming back</b> — driving retention across the board.</div>
+    </div>
+  </div>
+</section>
+
+<!-- MODULES GRID -->
+<section class="block">
+  <div class="wrap">
+    <div class="center">
+      <div class="eyebrow" data-i18n="mod_eyebrow">Modular by design</div>
+      <h2 data-i18n="mod_h2">One platform. Every module your academy needs.</h2>
+      <p data-i18n="mod_p">Switch on what you need today, add the rest as you grow. Each module works on its own and gets smarter when combined.</p>
+    </div>
+    <div class="mgrid">
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></div></div>
+        <h4 data-i18n="m1_h">Dashboard &amp; insights</h4>
+        <p data-i18n="m1_p">MRR, attendance trends and academy health at a glance.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div></div>
+        <h4 data-i18n="m2_h">Student management</h4>
+        <p data-i18n="m2_p">Profiles, enrollments, history and per-student reports.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M5 4h12a2 2 0 0 1 2 2v14H7a2 2 0 0 1-2-2z"/><path d="M5 4v14"/></svg></div></div>
+        <h4 data-i18n="m3_h">Curriculum builder</h4>
+        <p data-i18n="m3_p">Your syllabus and techniques, with coverage tracking.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="9" r="5"/><path d="M9 13l-2 8 5-3 5 3-2-8"/></svg></div></div>
+        <h4 data-i18n="m4_h">Belt &amp; promotions</h4>
+        <p data-i18n="m4_p">Set your own belt and progression rules, or follow traditional IBJJF.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 9h18M8 3v4M16 3v4"/></svg></div></div>
+        <h4 data-i18n="m5_h">Class scheduling</h4>
+        <p data-i18n="m5_p">Recurring templates, schedule, bookings and waitlists.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+        <h4 data-i18n="m6_h">Attendance &amp; check-in</h4>
+        <p data-i18n="m6_p">Track who trained what, with full attendance history.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h4M7 14h7"/></svg></div></div>
+        <h4 data-i18n="m7_h">Memberships</h4>
+        <p data-i18n="m7_p">Recurring plans and enrollments in one place.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></svg></div></div>
+        <h4 data-i18n="m8_h">Billing &amp; payments</h4>
+        <p data-i18n="m8_p">Invoices and payment tracking without the spreadsheet.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 8l-9-5-9 5 9 5 9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg></div></div>
+        <h4 data-i18n="m9_h">Packages &amp; discounts</h4>
+        <p data-i18n="m9_p">Class packs and discount codes when you need them.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 4v4h-4"/></svg></div></div>
+        <h4 data-i18n="m10_h">Renewals</h4>
+        <p data-i18n="m10_p">See who's due and never miss a renewal again.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></div></div>
+        <h4 data-i18n="m11_h">Retention &amp; churn</h4>
+        <p data-i18n="m11_p">Risk bands, flags and a contact log to win students back.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="18" rx="1.5"/><rect x="3" y="9" width="18" height="6" rx="1.5"/></svg></div></div>
+        <h4 data-i18n="m12_h">Injury tracking</h4>
+        <p data-i18n="m12_p">Log injuries, training holds and student self-reports.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg></div></div>
+        <h4 data-i18n="m13_h">Weekly objectives</h4>
+        <p data-i18n="m13_p">Set and apply tailored training goals per student.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/></svg></div></div>
+        <h4 data-i18n="m14_h">Student mobile app</h4>
+        <p data-i18n="m14_p">Booking, check-in, progress and profile for members.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M9 17h6M10 21h4M12 14v3"/></svg></div></div>
+        <h4 data-i18n="m15_h">Competition (Smoothcomp)</h4>
+        <p data-i18n="m15_p">Registrations and results alongside your roster.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="7" r="3"/><path d="M5 21c0-4 3-6 7-6s7 2 7 6"/><path d="M9 11h6"/></svg></div></div>
+        <h4 data-i18n="m16_h">Settings &amp; roles</h4>
+        <p data-i18n="m16_p">Configure your academy, plans and team access.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><circle cx="8" cy="9" r="3"/><circle cx="17" cy="10" r="2.5"/><path d="M2 20c0-3 2.5-5 6-5s6 2 6 5M14 20c0-2 2-3.5 4-3.5s4 1.5 4 3.5"/></svg></div></div>
+        <h4 data-i18n="m17_h">Family &amp; kids accounts</h4>
+        <p data-i18n="m17_p">Guardian logins and linked accounts for junior programs.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M21 12a8 8 0 0 1-11 7L4 21l2-6a8 8 0 1 1 15-3z"/></svg></div></div>
+        <h4 data-i18n="m18_h">Messaging &amp; alerts</h4>
+        <p data-i18n="m18_p">Reach students and parents where they actually are.</p>
+      </div>
+
+      <div class="mtile">
+        <div class="mtop"><div class="ic"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div></div>
+        <h4 data-i18n="m19_h">Reports &amp; exports</h4>
+        <p data-i18n="m19_p">Export your data and build the reports you need.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- CLOSING CTA -->
+<section class="block cta" id="join">
+  <div class="wrap">
+    <div class="eyebrow" data-i18n="cta_eyebrow">Early access</div>
+    <h2 data-i18n="cta_h2">Be first on the mat</h2>
+    <p data-i18n="cta_p">We're onboarding a small group of academies first. Get your spot.</p>
+    <div class="signup" style="align-items:center">
+      <a href="https://tally.so/r/68VYBY" class="btn btn-primary" data-i18n="nav_waitlist">Join the waitlist</a>
+      <div class="form-note"><span class="dot"></span> <span data-i18n="form_note">No spam. One email when we launch.</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <div class="brand"><span class="logo-mark"></span>openmat<span>.me</span></div>
+    <div class="vision" data-i18n-html="foot_vision">Built for <b>jiu-jitsu first</b> — modular, and expanding to other martial arts.</div>
+    <div class="foot-links">
+      <a href="#" data-i18n="foot_privacy">Privacy</a>
+      <a href="mailto:hello@openmat.me" data-i18n="foot_contact">Contact</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ---- i18n: location-aware (auto-detects browser locale), with manual switcher ----
+  var I18N = {
+    en: {
+      meta_title: "openmat.me — Turn your academy's data into student progress",
+      meta_desc: "openmat.me connects curriculum, student data, and class history to deliver real insight on student progress — so academies maximise progression and retention.",
+      nav_signin: "Sign in",
+      nav_waitlist: "Join the waitlist",
+      hero_eyebrow: "Built for jiu-jitsu academies",
+      hero_h1: "Turn your academy's data into student progress.",
+      hero_lede: "openmat.me connects your curriculum, student data, and class history into one place — so you can see how every student is progressing, run better classes, and keep people coming back.",
+      form_note: "No spam. One email when we launch.",
+      engine_eyebrow: "The engine",
+      engine_h2: "Three things you already have, finally working together",
+      engine_p: "Your curriculum, your student records, and your class history are usually scattered across notebooks, spreadsheets, and memory. openmat.me joins them — and turns them into insight you can act on.",
+      in_curr_h: "Curriculum", in_curr_p: "Techniques, syllabus, and the path from white to black belt.",
+      in_stud_h: "Student data", in_stud_p: "Belts, stripes, goals, injuries, and history for every member.",
+      in_class_h: "Class history", in_class_p: "Who trained what, when — attendance and what was covered.",
+      delivers: "delivers",
+      out1_h: "Progress insight", out1_p: "See exactly where each student stands, what they've covered, and who's ready to be promoted — objectively, not from memory.",
+      out2_h: "Smarter class management", out2_p: "openmat.me sees what your room has and hasn't covered — and who's been away — then flags gaps and suggests where to take the next class.",
+      out3_h: "Objective tailoring", out3_p: "Give each student a clear next step suited to their level — so progress feels personal, not one-size-fits-all.",
+      retention: "The result: students who feel they're improving stay engaged, stay motivated, and <b>keep coming back</b> — driving retention across the board.",
+      mod_eyebrow: "Modular by design",
+      mod_h2: "One platform. Every module your academy needs.",
+      mod_p: "Switch on what you need today, add the rest as you grow. Each module works on its own and gets smarter when combined.",
+      m1_h: "Dashboard & insights", m1_p: "MRR, attendance trends and academy health at a glance.",
+      m2_h: "Student management", m2_p: "Profiles, enrollments, history and per-student reports.",
+      m3_h: "Curriculum builder", m3_p: "Your syllabus and techniques, with coverage tracking.",
+      m4_h: "Belt & promotions", m4_p: "Set your own belt and progression rules, or follow traditional IBJJF.",
+      m5_h: "Class scheduling", m5_p: "Recurring templates, schedule, bookings and waitlists.",
+      m6_h: "Attendance & check-in", m6_p: "Track who trained what, with full attendance history.",
+      m7_h: "Memberships", m7_p: "Recurring plans and enrollments in one place.",
+      m8_h: "Billing & payments", m8_p: "Invoices and payment tracking without the spreadsheet.",
+      m9_h: "Packages & discounts", m9_p: "Class packs and discount codes when you need them.",
+      m10_h: "Renewals", m10_p: "See who's due and never miss a renewal again.",
+      m11_h: "Retention & churn", m11_p: "Risk bands, flags and a contact log to win students back.",
+      m12_h: "Injury tracking", m12_p: "Log injuries, training holds and student self-reports.",
+      m13_h: "Weekly objectives", m13_p: "Set and apply tailored training goals per student.",
+      m14_h: "Student mobile app", m14_p: "Booking, check-in, progress and profile for members.",
+      m15_h: "Competition (Smoothcomp)", m15_p: "Registrations and results alongside your roster.",
+      m16_h: "Settings & roles", m16_p: "Configure your academy, plans and team access.",
+      m17_h: "Family & kids accounts", m17_p: "Guardian logins and linked accounts for junior programs.",
+      m18_h: "Messaging & alerts", m18_p: "Reach students and parents where they actually are.",
+      m19_h: "Reports & exports", m19_p: "Export your data and build the reports you need.",
+      cta_eyebrow: "Early access",
+      cta_h2: "Be first on the mat",
+      cta_p: "We're onboarding a small group of academies first. Get your spot.",
+      foot_vision: "Built for <b>jiu-jitsu first</b> — modular, and expanding to other martial arts.",
+      foot_privacy: "Privacy", foot_contact: "Contact"
+    },
+    pt: {
+      meta_title: "openmat.me — Transforme os dados da sua academia em progresso dos alunos",
+      meta_desc: "A openmat.me reúne currículo, dados dos alunos e histórico de aulas para gerar insights reais sobre o progresso — ajudando academias a aumentar a evolução e a retenção.",
+      nav_signin: "Entrar",
+      nav_waitlist: "Entrar na lista",
+      hero_eyebrow: "Feito para academias de jiu-jitsu",
+      hero_h1: "Transforme os dados da sua academia em progresso dos alunos.",
+      hero_lede: "A openmat.me reúne o seu currículo, os dados dos alunos e o histórico de aulas num só lugar — para que veja como cada aluno está a evoluir, dê aulas melhores e mantenha as pessoas a voltar.",
+      form_note: "Sem spam. Um e-mail quando lançarmos.",
+      engine_eyebrow: "O motor",
+      engine_h2: "Três coisas que você já tem, finalmente trabalhando juntas",
+      engine_p: "O seu currículo, os registos dos alunos e o histórico de aulas costumam estar espalhados em cadernos, planilhas e na memória. A openmat.me junta tudo — e transforma em insights sobre os quais você pode agir.",
+      in_curr_h: "Currículo", in_curr_p: "Técnicas, programa e o caminho da faixa branca à preta.",
+      in_stud_h: "Dados dos alunos", in_stud_p: "Faixas, graus, objetivos, lesões e histórico de cada membro.",
+      in_class_h: "Histórico de aulas", in_class_p: "Quem treinou o quê e quando — presença e conteúdo abordado.",
+      delivers: "gera",
+      out1_h: "Insight de progresso", out1_p: "Veja exatamente onde cada aluno está, o que já cobriu e quem está pronto para ser promovido — com objetividade, não de memória.",
+      out2_h: "Gestão de aulas mais inteligente", out2_p: "A openmat.me sabe o que a turma já cobriu e o que falta — e quem andou ausente — depois sinaliza lacunas e sugere o rumo da próxima aula.",
+      out3_h: "Personalização objetiva", out3_p: "Dê a cada aluno um próximo passo claro e adequado ao seu nível — para que o progresso seja pessoal, e não igual para todos.",
+      retention: "O resultado: alunos que sentem que estão a melhorar permanecem engajados, motivados e <b>continuam a voltar</b> — impulsionando a retenção em toda a academia.",
+      mod_eyebrow: "Modular por concepção",
+      mod_h2: "Uma plataforma. Todos os módulos que a sua academia precisa.",
+      mod_p: "Ative o que precisa hoje e acrescente o resto conforme cresce. Cada módulo funciona por conta própria e fica mais inteligente quando combinado.",
+      m1_h: "Painel & insights", m1_p: "MRR, tendências de presença e a saúde da academia num relance.",
+      m2_h: "Gestão de alunos", m2_p: "Perfis, matrículas, histórico e relatórios por aluno.",
+      m3_h: "Construtor de currículo", m3_p: "O seu programa e técnicas, com acompanhamento de cobertura.",
+      m4_h: "Faixas & promoções", m4_p: "Defina as suas regras de faixa e progressão, ou siga a IBJJF tradicional.",
+      m5_h: "Agendamento de aulas", m5_p: "Modelos recorrentes, agenda, reservas e listas de espera.",
+      m6_h: "Presença & check-in", m6_p: "Registe quem treinou o quê, com histórico de presença completo.",
+      m7_h: "Mensalidades", m7_p: "Planos recorrentes e matrículas num só lugar.",
+      m8_h: "Cobrança & pagamentos", m8_p: "Faturas e controlo de pagamentos sem planilha.",
+      m9_h: "Pacotes & descontos", m9_p: "Pacotes de aulas e códigos de desconto quando precisar.",
+      m10_h: "Renovações", m10_p: "Veja quem está a vencer e nunca perca uma renovação.",
+      m11_h: "Retenção & evasão", m11_p: "Faixas de risco, alertas e um registo de contactos para reconquistar alunos.",
+      m12_h: "Controlo de lesões", m12_p: "Registe lesões, restrições de treino e relatos dos alunos.",
+      m13_h: "Objetivos semanais", m13_p: "Defina e aplique metas de treino personalizadas por aluno.",
+      m14_h: "App para alunos", m14_p: "Reservas, check-in, progresso e perfil para os membros.",
+      m15_h: "Competição (Smoothcomp)", m15_p: "Inscrições e resultados ao lado do seu plantel.",
+      m16_h: "Configurações & funções", m16_p: "Configure a sua academia, planos e acesso da equipa.",
+      m17_h: "Contas de família & crianças", m17_p: "Acessos de responsáveis e contas vinculadas para programas infantis.",
+      m18_h: "Mensagens & alertas", m18_p: "Fale com alunos e pais onde eles realmente estão.",
+      m19_h: "Relatórios & exportações", m19_p: "Exporte os seus dados e crie os relatórios que precisa.",
+      cta_eyebrow: "Acesso antecipado",
+      cta_h2: "Seja o primeiro no tatame",
+      cta_p: "Estamos a integrar um pequeno grupo de academias primeiro. Garanta o seu lugar.",
+      foot_vision: "Feito <b>primeiro para o jiu-jitsu</b> — modular, e expandindo para outras artes marciais.",
+      foot_privacy: "Privacidade", foot_contact: "Contacto"
+    },
+    es: {
+      meta_title: "openmat.me — Convierte los datos de tu academia en progreso de los alumnos",
+      meta_desc: "openmat.me conecta el currículo, los datos de los alumnos y el historial de clases para ofrecer información real sobre el progreso — ayudando a las academias a maximizar la progresión y la retención.",
+      nav_signin: "Iniciar sesión",
+      nav_waitlist: "Unirse a la lista",
+      hero_eyebrow: "Hecho para academias de jiu-jitsu",
+      hero_h1: "Convierte los datos de tu academia en progreso de los alumnos.",
+      hero_lede: "openmat.me reúne tu currículo, los datos de los alumnos y el historial de clases en un solo lugar — para que veas cómo progresa cada alumno, des mejores clases y mantengas a la gente volviendo.",
+      form_note: "Sin spam. Un correo cuando lancemos.",
+      engine_eyebrow: "El motor",
+      engine_h2: "Tres cosas que ya tienes, por fin trabajando juntas",
+      engine_p: "Tu currículo, los registros de tus alumnos y el historial de clases suelen estar dispersos en cuadernos, hojas de cálculo y en la memoria. openmat.me los une — y los convierte en información sobre la que puedes actuar.",
+      in_curr_h: "Currículo", in_curr_p: "Técnicas, programa y el camino del cinturón blanco al negro.",
+      in_stud_h: "Datos de alumnos", in_stud_p: "Cinturones, grados, objetivos, lesiones e historial de cada miembro.",
+      in_class_h: "Historial de clases", in_class_p: "Quién entrenó qué y cuándo — asistencia y contenido cubierto.",
+      delivers: "genera",
+      out1_h: "Información de progreso", out1_p: "Mira exactamente dónde está cada alumno, qué ha cubierto y quién está listo para promocionar — con objetividad, no de memoria.",
+      out2_h: "Gestión de clases más inteligente", out2_p: "openmat.me sabe qué ha cubierto tu grupo y qué falta — y quién ha estado ausente — luego marca los vacíos y sugiere hacia dónde llevar la próxima clase.",
+      out3_h: "Personalización objetiva", out3_p: "Dale a cada alumno un siguiente paso claro y adecuado a su nivel — para que el progreso sea personal, no igual para todos.",
+      retention: "El resultado: los alumnos que sienten que mejoran siguen comprometidos, motivados y <b>siguen volviendo</b> — impulsando la retención en toda la academia.",
+      mod_eyebrow: "Modular por diseño",
+      mod_h2: "Una plataforma. Todos los módulos que tu academia necesita.",
+      mod_p: "Activa lo que necesitas hoy y añade el resto a medida que creces. Cada módulo funciona por sí solo y se vuelve más inteligente al combinarse.",
+      m1_h: "Panel & análisis", m1_p: "MRR, tendencias de asistencia y la salud de la academia de un vistazo.",
+      m2_h: "Gestión de alumnos", m2_p: "Perfiles, inscripciones, historial e informes por alumno.",
+      m3_h: "Constructor de currículo", m3_p: "Tu programa y técnicas, con seguimiento de cobertura.",
+      m4_h: "Cinturones & promociones", m4_p: "Define tus reglas de cinturón y progresión, o sigue la IBJJF tradicional.",
+      m5_h: "Programación de clases", m5_p: "Plantillas recurrentes, horario, reservas y listas de espera.",
+      m6_h: "Asistencia & check-in", m6_p: "Registra quién entrenó qué, con historial de asistencia completo.",
+      m7_h: "Membresías", m7_p: "Planes recurrentes e inscripciones en un solo lugar.",
+      m8_h: "Facturación & pagos", m8_p: "Facturas y seguimiento de pagos sin hojas de cálculo.",
+      m9_h: "Paquetes & descuentos", m9_p: "Bonos de clases y códigos de descuento cuando los necesites.",
+      m10_h: "Renovaciones", m10_p: "Mira quién vence y nunca pierdas una renovación.",
+      m11_h: "Retención & abandono", m11_p: "Bandas de riesgo, alertas y un registro de contactos para recuperar alumnos.",
+      m12_h: "Seguimiento de lesiones", m12_p: "Registra lesiones, pausas de entrenamiento y reportes de los alumnos.",
+      m13_h: "Objetivos semanales", m13_p: "Define y aplica metas de entrenamiento personalizadas por alumno.",
+      m14_h: "App para alumnos", m14_p: "Reservas, check-in, progreso y perfil para los miembros.",
+      m15_h: "Competición (Smoothcomp)", m15_p: "Inscripciones y resultados junto a tu plantel.",
+      m16_h: "Ajustes & roles", m16_p: "Configura tu academia, planes y acceso del equipo.",
+      m17_h: "Cuentas de familia & niños", m17_p: "Accesos de tutores y cuentas vinculadas para programas infantiles.",
+      m18_h: "Mensajes & alertas", m18_p: "Llega a alumnos y padres donde realmente están.",
+      m19_h: "Informes & exportaciones", m19_p: "Exporta tus datos y crea los informes que necesitas.",
+      cta_eyebrow: "Acceso anticipado",
+      cta_h2: "Sé el primero en el tatami",
+      cta_p: "Estamos incorporando primero a un pequeño grupo de academias. Reserva tu lugar.",
+      foot_vision: "Hecho <b>primero para el jiu-jitsu</b> — modular, y expandiéndose a otras artes marciales.",
+      foot_privacy: "Privacidad", foot_contact: "Contacto"
+    },
+    fr: {
+      meta_title: "openmat.me — Transformez les données de votre académie en progrès des élèves",
+      meta_desc: "openmat.me relie le programme, les données des élèves et l'historique des cours pour fournir de vraies informations sur la progression — afin que les académies maximisent l'évolution et la fidélisation.",
+      nav_signin: "Se connecter",
+      nav_waitlist: "Rejoindre la liste",
+      hero_eyebrow: "Conçu pour les académies de jiu-jitsu",
+      hero_h1: "Transformez les données de votre académie en progrès des élèves.",
+      hero_lede: "openmat.me réunit votre programme, les données des élèves et l'historique des cours au même endroit — pour voir comment chaque élève progresse, donner de meilleurs cours et fidéliser vos membres.",
+      form_note: "Pas de spam. Un seul e-mail au lancement.",
+      engine_eyebrow: "Le moteur",
+      engine_h2: "Trois choses que vous avez déjà, enfin réunies",
+      engine_p: "Votre programme, vos fiches élèves et l'historique des cours sont souvent éparpillés entre carnets, tableurs et mémoire. openmat.me les relie — et les transforme en informations exploitables.",
+      in_curr_h: "Programme", in_curr_p: "Techniques, syllabus et le parcours de la ceinture blanche à la noire.",
+      in_stud_h: "Données des élèves", in_stud_p: "Ceintures, barrettes, objectifs, blessures et historique de chaque membre.",
+      in_class_h: "Historique des cours", in_class_p: "Qui a travaillé quoi et quand — présence et contenu abordé.",
+      delivers: "produit",
+      out1_h: "Vision de la progression", out1_p: "Voyez exactement où en est chaque élève, ce qu'il a couvert et qui est prêt à passer de grade — objectivement, pas de mémoire.",
+      out2_h: "Gestion des cours optimisée", out2_p: "openmat.me sait ce que votre groupe a couvert ou non — et qui a été absent — puis signale les lacunes et suggère l'orientation du prochain cours.",
+      out3_h: "Personnalisation objective", out3_p: "Donnez à chaque élève une étape suivante claire et adaptée à son niveau — pour une progression personnelle, pas uniforme.",
+      retention: "Le résultat : les élèves qui sentent qu'ils progressent restent engagés, motivés et <b>reviennent</b> — ce qui améliore la fidélisation dans toute l'académie.",
+      mod_eyebrow: "Modulaire par conception",
+      mod_h2: "Une plateforme. Tous les modules dont votre académie a besoin.",
+      mod_p: "Activez ce dont vous avez besoin aujourd'hui, ajoutez le reste à mesure que vous grandissez. Chaque module fonctionne seul et devient plus intelligent une fois combiné.",
+      m1_h: "Tableau de bord & analyses", m1_p: "MRR, tendances de présence et santé de l'académie en un coup d'œil.",
+      m2_h: "Gestion des élèves", m2_p: "Profils, inscriptions, historique et rapports par élève.",
+      m3_h: "Créateur de programme", m3_p: "Votre syllabus et vos techniques, avec suivi de la couverture.",
+      m4_h: "Ceintures & promotions", m4_p: "Définissez vos règles de ceinture et de progression, ou suivez l'IBJJF traditionnelle.",
+      m5_h: "Planification des cours", m5_p: "Modèles récurrents, planning, réservations et listes d'attente.",
+      m6_h: "Présence & check-in", m6_p: "Suivez qui a travaillé quoi, avec un historique de présence complet.",
+      m7_h: "Abonnements", m7_p: "Formules récurrentes et inscriptions au même endroit.",
+      m8_h: "Facturation & paiements", m8_p: "Factures et suivi des paiements sans tableur.",
+      m9_h: "Forfaits & remises", m9_p: "Carnets de cours et codes de réduction quand vous en avez besoin.",
+      m10_h: "Renouvellements", m10_p: "Voyez qui arrive à échéance et ne manquez plus un renouvellement.",
+      m11_h: "Fidélisation & attrition", m11_p: "Niveaux de risque, alertes et journal de contacts pour récupérer les élèves.",
+      m12_h: "Suivi des blessures", m12_p: "Enregistrez blessures, pauses d'entraînement et signalements des élèves.",
+      m13_h: "Objectifs hebdomadaires", m13_p: "Définissez et appliquez des objectifs d'entraînement personnalisés par élève.",
+      m14_h: "App mobile élève", m14_p: "Réservation, check-in, progression et profil pour les membres.",
+      m15_h: "Compétition (Smoothcomp)", m15_p: "Inscriptions et résultats aux côtés de votre effectif.",
+      m16_h: "Paramètres & rôles", m16_p: "Configurez votre académie, vos formules et les accès de l'équipe.",
+      m17_h: "Comptes famille & enfants", m17_p: "Accès des responsables et comptes liés pour les programmes jeunes.",
+      m18_h: "Messages & alertes", m18_p: "Joignez élèves et parents là où ils sont vraiment.",
+      m19_h: "Rapports & exports", m19_p: "Exportez vos données et créez les rapports dont vous avez besoin.",
+      cta_eyebrow: "Accès anticipé",
+      cta_h2: "Soyez le premier sur le tatami",
+      cta_p: "Nous intégrons d'abord un petit groupe d'académies. Réservez votre place.",
+      foot_vision: "Conçu <b>d'abord pour le jiu-jitsu</b> — modulaire, et en expansion vers d'autres arts martiaux.",
+      foot_privacy: "Confidentialité", foot_contact: "Contact"
+    }
+  };
+
+  function applyLang(lang){
+    var dict = I18N[lang] || I18N.en;
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(function(el){
+      var v = dict[el.getAttribute('data-i18n')];
+      if(v != null) el.textContent = v;
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(function(el){
+      var v = dict[el.getAttribute('data-i18n-html')];
+      if(v != null) el.innerHTML = v;
+    });
+    if(dict.meta_title) document.title = dict.meta_title;
+    var md = document.querySelector('meta[name="description"]');
+    if(md && dict.meta_desc) md.setAttribute('content', dict.meta_desc);
+    try{ localStorage.setItem('omLang', lang); }catch(e){}
+    var sel = document.getElementById('lang');
+    if(sel) sel.value = lang;
+  }
+
+  (function(){
+    var supported = ['en','pt','es','fr'];
+    var saved;
+    try{ saved = localStorage.getItem('omLang'); }catch(e){}
+    var langs = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || 'en'];
+    var detected = 'en';
+    for(var i=0;i<langs.length;i++){
+      var code = (langs[i]||'').slice(0,2).toLowerCase();
+      if(supported.indexOf(code) > -1){ detected = code; break; }
+    }
+    var lang = (saved && supported.indexOf(saved) > -1) ? saved : detected;
+    applyLang(lang);
+    var sel = document.getElementById('lang');
+    if(sel) sel.addEventListener('change', function(){ applyLang(this.value); });
+  })();
+</script>
+
 </body>
 </html>
