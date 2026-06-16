@@ -12,8 +12,8 @@
 // =============================================================================
 
 export const config = {
-  // Run on everything except Vercel internals and static assets that don't need gating.
-  matcher: ['/((?!_next/|favicon.ico|robots.txt).*)'],
+  // Gate only the demo. The marketing landing page and everything else stay public.
+  matcher: ['/demo', '/admin', '/admin.html'],
 };
 
 export default function middleware(request) {
