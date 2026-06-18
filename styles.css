@@ -4,25 +4,44 @@
    ========================================================================== */
 
 :root {
-  /* Color */
-  --bg:          #f7f7f8;
-  --surface:    #ffffff;
-  --surface-alt: #f1f3f5;
-  --border:     #e4e6ea;
-  --border-strong: #cfd2d8;
-  --text:       #0f172a;
-  --text-muted: #5b6472;
-  --text-faint: #8a92a1;
-  --primary:    #1f2937;
-  --primary-hover: #374151;
-  --accent:     #2563eb;
-  --accent-hover: #1d4ed8;
-  --success:    #16a34a;
-  --success-bg: #ecfdf5;
-  --warn:       #b45309;
-  --warn-bg:    #fef3c7;
-  --danger:     #b91c1c;
-  --danger-bg:  #fee2e2;
+  /* Color — openmat.me design system (monochrome ink accent, no blue) */
+  --black:         #0a0a0a;
+  --ink:           #14171c;
+  --ink-soft:      #2b2f38;
+  --bg:            #f6f7f8;
+  --surface:       #ffffff;
+  --surface-alt:   #f1f3f5;
+  --border:        #e6e8ec;
+  --border-strong: #d4d7dd;
+  --text:          #14171c;
+  --text-muted:    #5b6472;
+  --text-faint:    #9aa0ab;
+  --text-on-dark:  #ffffff;
+  --accent:        #1a1a1a;
+  --accent-hover:  #000000;
+  --accent-bg:     #f1f3f5;
+  --success:       #16a34a;
+  --success-bg:    #ecfdf5;
+  --warn:          #b45309;
+  --warn-bg:       #fef3c7;
+  --danger:        #b91c1c;
+  --danger-bg:     #fee2e2;
+
+  /* Back-compat aliases (existing component CSS references these) */
+  --primary:       var(--ink);
+  --primary-hover: var(--ink-soft);
+
+  /* Belt grading colors (signature palette) */
+  --belt-white-c:  #f8fafc; --belt-white-t:  #0f172a;
+  --belt-blue-c:   #1e40af; --belt-blue-t:   #ffffff;
+  --belt-purple-c: #6b21a8; --belt-purple-t: #ffffff;
+  --belt-brown-c:  #78350f; --belt-brown-t:  #ffffff;
+  --belt-black-c:  #0f172a; --belt-black-t:  #ffffff;
+  --belt-grey-c:   #9ca3af; --belt-grey-t:   #0f172a;
+  --belt-yellow-c: #facc15; --belt-yellow-t: #0f172a;
+  --belt-orange-c: #f97316; --belt-orange-t: #ffffff;
+  --belt-green-c:  #16a34a; --belt-green-t:  #ffffff;
+  --stripe:        #c0a26a; --stripe-on-dark: #e8d6ad;
 
   /* Spacing */
   --sp-1: 4px;
@@ -32,48 +51,74 @@
   --sp-5: 24px;
   --sp-6: 32px;
   --sp-7: 48px;
+  --sp-8: 64px;
 
   /* Radius */
-  --r-sm: 6px;
+  --r-xs: 6px;
+  --r-sm: 8px;
   --r-md: 10px;
   --r-lg: 14px;
   --r-xl: 20px;
+  --r-full: 999px;
 
   /* Type */
-  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Ubuntu, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font:         -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-sans:    var(--font);
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono:    ui-monospace, SFMono-Regular, Menlo, "Cascadia Code", monospace;
+  --fs-display: clamp(34px, 5vw, 56px);
+  --fs-h1: 28px; --fs-h2: 20px; --fs-h3: 16px;
+  --fs-body: 15px; --fs-sm: 14px; --fs-xs: 13px; --fs-2xs: 11px;
+  --fw-regular: 400; --fw-medium: 500; --fw-semibold: 600; --fw-bold: 700;
+  --lh-tight: 1.08; --lh-snug: 1.3; --lh-body: 1.55;
+  --ls-display: -0.025em; --ls-tight: -0.01em; --ls-eyebrow: 0.14em;
 
   /* Shadow */
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
-  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-sm:   0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 1px rgba(15, 23, 42, 0.03);
+  --shadow-card: 0 2px 8px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md:   0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --shadow-lg:   0 12px 28px rgba(15, 23, 42, 0.10), 0 2px 6px rgba(15, 23, 42, 0.05);
+  --shadow-hero: 0 24px 50px rgba(0, 0, 0, 0.10);
+  --ring: 0 0 0 3px rgba(10, 10, 10, 0.18);
 
   /* Layout */
   --sidebar-w: 240px;
   --topbar-h: 56px;
+  --mobile-w: 430px;
+  --nav-h: 64px;
+  --container: 1100px;
 }
 
 /* ── Dark mode ────────────────────────────────────────────────────── */
 [data-theme="dark"] {
-  --bg:           #0f1117;
-  --surface:      #1a1d27;
-  --surface-alt:  #21252f;
-  --border:       #2d3141;
-  --border-strong:#3d4255;
-  --text:         #e8eaf0;
-  --text-muted:   #8b90a0;
-  --text-faint:   #555c70;
-  --primary:      #3b4263;
-  --primary-hover:#4a5278;
-  --accent:       #4f80f0;
-  --accent-hover: #3b6de0;
-  --success:      #22c55e;
-  --success-bg:   #0c2218;
-  --warn:         #d97706;
-  --warn-bg:      #1f1308;
-  --danger:       #ef4444;
-  --danger-bg:    #200c0c;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --black:         #f4f5f8;
+  --ink:           #3b4263;
+  --ink-soft:      #4a5278;
+  --bg:            #0f1117;
+  --surface:       #1a1d27;
+  --surface-alt:   #21252f;
+  --border:        #2d3141;
+  --border-strong: #3d4255;
+  --text:          #e8eaf0;
+  --text-muted:    #8b90a0;
+  --text-faint:    #555c70;
+  --text-on-dark:  #ffffff;
+  --accent:        #e8eaf0;
+  --accent-hover:  #ffffff;
+  --accent-bg:     #21252f;
+  --success:       #22c55e;
+  --success-bg:    #0c2218;
+  --warn:          #d97706;
+  --warn-bg:       #1f1308;
+  --danger:        #ef4444;
+  --danger-bg:     #200c0c;
+  --shadow-sm:   0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-md:   0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg:   0 12px 28px rgba(0, 0, 0, 0.5);
+  --shadow-hero: 0 24px 50px rgba(0, 0, 0, 0.55);
+  --ring: 0 0 0 3px rgba(244, 245, 248, 0.35);
+  --stripe: var(--stripe-on-dark);
   color-scheme: dark;
 }
 

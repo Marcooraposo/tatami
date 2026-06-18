@@ -1,0 +1,31 @@
+/* =============================================================================
+   belts.css — Brazilian Jiu-Jitsu grading colors (the domain's signature).
+   Values mirror the production grading data (IBJJF adult + kids tracks).
+   Each belt has a fill (`-c`) and the text color that sits on it (`-t`).
+   Stripe tape color is shared across belts.
+   ========================================================================== */
+
+:root {
+  /* ---- Adult track ---------------------------------------------------- */
+  --belt-white-c:   #f8fafc;  --belt-white-t:  #0f172a;
+  --belt-blue-c:    #1e40af;  --belt-blue-t:   #ffffff;
+  --belt-purple-c:  #6b21a8;  --belt-purple-t: #ffffff;
+  --belt-brown-c:   #78350f;  --belt-brown-t:  #ffffff;
+  --belt-black-c:   #0f172a;  --belt-black-t:  #ffffff;
+
+  /* ---- Kids track ----------------------------------------------------- */
+  --belt-grey-c:    #9ca3af;  --belt-grey-t:   #0f172a;
+  --belt-yellow-c:  #facc15;  --belt-yellow-t: #0f172a;
+  --belt-orange-c:  #f97316;  --belt-orange-t: #ffffff;
+  --belt-green-c:   #16a34a;  --belt-green-t:  #ffffff;
+
+  /* ---- Stripes (tape on the belt tip) -------------------------------- */
+  --stripe:         #c0a26a;  /* gold/tan tape                            */
+  --stripe-on-dark: #e8d6ad;
+
+  /* ---- Difficulty / level pills (curriculum) ------------------------- */
+  --lvl-beginner:     var(--success);
+  --lvl-intermediate: var(--accent);
+  --lvl-advanced:     var(--warn);
+  --lvl-expert:       var(--danger);
+}

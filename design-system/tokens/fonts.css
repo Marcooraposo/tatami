@@ -1,0 +1,6 @@
+/* -----------------------------------------------------------------------------
+   Fonts — Apple system font (SF Pro) via the native system stack.
+   SF Pro is proprietary and cannot be served on the web, so we rely on the
+   OS-installed font: it renders as SF Pro on Apple devices and falls back to
+   the platform default (Segoe UI / Roboto) elsewhere. No web font to load.
+   -------------------------------------------------------------------------- */

@@ -1,0 +1,35 @@
+/* =============================================================================
+   base.css — minimal, opt-in base styles.
+   Only resets + element defaults. All component styling lives in components.
+   ========================================================================== */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  font-family: var(--font-display);
+  letter-spacing: var(--ls-tight);
+  line-height: var(--lh-tight);
+  color: var(--black);
+  margin: 0;
+}
+
+a { color: var(--link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Tabular numbers for any data display */
+.tnum { font-variant-numeric: tabular-nums; }
+
+::selection { background: var(--accent-bg); color: var(--accent-hover); }

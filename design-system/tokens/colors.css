@@ -1,0 +1,88 @@
+/* =============================================================================
+   colors.css — openmat.me color system
+   A near-neutral, slate-leaning palette. A monochrome ink accent.
+   Primary actions are ink (near-black); ink is also reserved for interactive
+   emphasis, links, and progress. Belt colors live in belts.css.
+   ========================================================================== */
+
+:root {
+  /* ---- Brand ink ------------------------------------------------------ */
+  --black:          #0a0a0a;   /* display headlines, logo mark            */
+  --ink:            #14171c;   /* primary action surfaces (buttons)       */
+  --ink-soft:       #2b2f38;   /* hover on ink, secondary dark            */
+
+  /* ---- Text ----------------------------------------------------------- */
+  --text:           #14171c;   /* body + headings                         */
+  --text-muted:     #5b6472;   /* secondary text, labels                  */
+  --text-faint:     #9aa0ab;   /* captions, placeholders, meta            */
+  --text-on-dark:   #ffffff;   /* text on ink / accent surfaces           */
+
+  /* ---- Surfaces ------------------------------------------------------- */
+  --bg:             #f6f7f8;   /* app canvas                              */
+  --surface:        #ffffff;   /* cards, sheets, inputs                   */
+  --surface-alt:    #f1f3f5;   /* subtle fills, hovers, track             */
+  --border:         #e6e8ec;   /* hairlines, card borders                 */
+  --border-strong:  #d4d7dd;   /* input borders, dividers with weight     */
+
+  /* ---- Accent (ink) --------------------------------------------------- */
+  --accent:         #1a1a1a;   /* links, active nav, progress, focus      */
+  --accent-hover:   #000000;
+  --accent-bg:      #f1f3f5;   /* tinted accent background                */
+
+  /* ---- Semantic ------------------------------------------------------- */
+  --success:        #16a34a;
+  --success-bg:     #ecfdf5;
+  --warn:           #b45309;
+  --warn-bg:        #fef3c7;
+  --danger:         #b91c1c;
+  --danger-bg:      #fee2e2;
+  --info:           #1a1a1a;
+  --info-bg:        #f1f3f5;
+
+  /* ---- Semantic aliases (use these in product code) ------------------ */
+  --text-primary:        var(--text);
+  --text-secondary:      var(--text-muted);
+  --surface-card:        var(--surface);
+  --surface-canvas:      var(--bg);
+  --action-primary:      var(--ink);
+  --action-primary-hover:var(--ink-soft);
+  --action-accent:       var(--accent);
+  --focus-ring:          var(--accent);
+  --link:                var(--accent);
+}
+
+/* -----------------------------------------------------------------------------
+   Dark mode — apply [data-theme="dark"] on <html> or any container.
+   Both the admin and student apps ship this theme.
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --black:          #f4f5f8;
+  --ink:            #3b4263;   /* dark-mode primary action                */
+  --ink-soft:       #4a5278;
+
+  --text:           #e8eaf0;
+  --text-muted:     #8b90a0;
+  --text-faint:     #555c70;
+  --text-on-dark:   #ffffff;
+
+  --bg:             #0f1117;
+  --surface:        #1a1d27;
+  --surface-alt:    #21252f;
+  --border:         #2d3141;
+  --border-strong:  #3d4255;
+
+  --accent:         #e8eaf0;
+  --accent-hover:   #ffffff;
+  --accent-bg:      #21252f;
+
+  --success:        #22c55e;
+  --success-bg:     #0c2218;
+  --warn:           #d97706;
+  --warn-bg:        #1f1308;
+  --danger:         #ef4444;
+  --danger-bg:      #200c0c;
+  --info:           #e8eaf0;
+  --info-bg:        #21252f;
+
+  color-scheme: dark;
+}

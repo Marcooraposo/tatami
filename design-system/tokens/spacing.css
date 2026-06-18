@@ -1,0 +1,30 @@
+/* =============================================================================
+   spacing.css — 4px base scale, radii, layout constants.
+   ========================================================================== */
+
+:root {
+  /* ---- Spacing (4px base) -------------------------------------------- */
+  --sp-1:  4px;
+  --sp-2:  8px;
+  --sp-3:  12px;
+  --sp-4:  16px;
+  --sp-5:  24px;
+  --sp-6:  32px;
+  --sp-7:  48px;
+  --sp-8:  64px;
+
+  /* ---- Radius -------------------------------------------------------- */
+  --r-xs:   6px;
+  --r-sm:   8px;
+  --r-md:   10px;
+  --r-lg:   14px;
+  --r-xl:   20px;
+  --r-full: 999px;
+
+  /* ---- Layout constants ---------------------------------------------- */
+  --sidebar-w:  240px;   /* admin web app                                 */
+  --topbar-h:   56px;    /* admin web app                                 */
+  --mobile-w:   430px;   /* student app frame                             */
+  --nav-h:      64px;    /* student app bottom nav                        */
+  --container:  1100px;  /* marketing site                                */
+}
