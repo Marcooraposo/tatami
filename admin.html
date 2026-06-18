@@ -10,9 +10,27 @@
   <div id="app" class="app"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <script src="supabase-client.js"></script>
   <script src="data.js"></script>
   <script>
+  // ---- Sidebar nav icons: Lucide line icons (design system) ---------------
+  const NAV_LUCIDE = {
+    dashboard: 'layout-dashboard', settings: 'settings',
+    'schedule-group': 'calendar', schedule: 'calendar-days', classes: 'clock', events: 'trophy',
+    'people-group': 'users', students: 'users', families: 'users-round', instructors: 'user',
+    'finance-group': 'credit-card', memberships: 'badge-check', discounts: 'percent', billing: 'credit-card',
+    'programme-group': 'graduation-cap', curriculum: 'book-open', grading: 'award',
+    'competition-group': 'medal', competition: 'medal', 'competition-calendar': 'calendar',
+    'competition-squad': 'swords', 'competition-results': 'trophy',
+    'insights-group': 'bar-chart-3', analytics: 'bar-chart-3', 'attendance-log': 'check-square',
+    ratings: 'star', goals: 'target',
+    'comms-group': 'megaphone', announcements: 'megaphone',
+  };
+  function navIcon(id) {
+    const name = NAV_LUCIDE[id] || 'circle';
+    return `<i data-lucide="${name}"></i>`;
+  }
   // =============================================================================
   // admin.html — Web management prototype
   // Single-page app with hash-based routing.
@@ -613,6 +631,7 @@
       default:           content.innerHTML = Dashboard();  break;
     }
     autoPaginate(content);
+    if (window.lucide) lucide.createIcons();
     // First-load demo configuration picker (demo deployment only).
     // Show the configuration picker once per browser session on the demo,
     // even if a preset was chosen on a previous visit.
@@ -687,6 +706,7 @@
     const aside = document.querySelector('aside.sidebar');
     const route = getRoute();
     if (aside) aside.outerHTML = Sidebar(route.section);
+    if (window.lucide) lucide.createIcons();
   }
 
   function Sidebar(active) {
@@ -764,7 +784,7 @@
       return `
         <div class="nav-group">
           <div class="nav-group-header ${hasActive && !isOpen ? 'has-active' : ''}" onclick="toggleNavGroup('${g.id}')">
-            <span class="nav-icon" style="font-size:13px">${g.icon}</span>
+            <span class="nav-icon">${navIcon(g.id)}</span>
             <span style="flex:1">${g.label}</span>
             <span style="font-size:10px;opacity:0.5;transition:transform .2s;${isOpen ? 'transform:rotate(90deg)' : ''}">›</span>
           </div>
@@ -772,7 +792,7 @@
             <div class="nav-group-items">
               ${g.items.map(i => `
                 <div class="nav-item nav-item-child ${active === i.id ? 'active' : ''}" onclick="go('${i.id}')">
-                  <span class="nav-icon">${i.icon}</span>
+                  <span class="nav-icon">${navIcon(i.id)}</span>
                   <span>${i.label}</span>
                 </div>
               `).join('')}
@@ -785,21 +805,18 @@
     return `
       <aside class="sidebar">
         <div class="brand">
-          <div class="brand-mark"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="openmat.me" style="width:22px;height:22px"><path d="M18 4 H8 a4 4 0 0 0-4 4 v8 a4 4 0 0 0 4 4 h8 a4 4 0 0 0 4-4 V10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path></svg></div>
-          <div>
-            <div class="brand-name">${t(UI.appName)}</div>
-            <div class="brand-sub">${t(UI.tagline)}</div>
-          </div>
+          <div class="brand-mark"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="openmat.me" style="width:24px;height:24px"><path d="M18 4 H8 a4 4 0 0 0-4 4 v8 a4 4 0 0 0 4 4 h8 a4 4 0 0 0 4-4 V10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path></svg></div>
+          <div class="brand-wordmark">openmat<span class="brand-tld">.me</span></div>
         </div>
         <nav class="nav">
           <div class="nav-item ${active === 'dashboard' ? 'active' : ''}" onclick="go('dashboard')">
-            <span class="nav-icon">◆</span>
+            <span class="nav-icon">${navIcon('dashboard')}</span>
             <span>Dashboard</span>
           </div>
           ${visibleGroups.map(renderGroup).join('')}
           <div style="height:1px;background:var(--border);margin:var(--sp-2) 0"></div>
           <div class="nav-item ${active === 'settings' ? 'active' : ''}" onclick="go('settings')">
-            <span class="nav-icon">⚙</span>
+            <span class="nav-icon">${navIcon('settings')}</span>
             <span>Settings</span>
           </div>
         </nav>

@@ -150,10 +150,11 @@ body {
   padding: 0 var(--sp-3) var(--sp-5);
 }
 .sidebar .brand-mark {
-  width: 32px; height: 32px; border-radius: var(--r-md);
-  background: var(--primary); color: white;
-  display: grid; place-items: center; font-weight: 700;
+  width: 28px; height: 28px;
+  color: var(--black);
+  display: grid; place-items: center;
 }
+.sidebar .brand-mark svg { width: 24px; height: 24px; }
 .sidebar .brand-name { font-weight: 600; font-size: 15px; }
 .sidebar .brand-sub  { font-size: 11px; color: var(--text-faint); margin-top: 1px; }
 
@@ -170,6 +171,15 @@ body {
 .nav-item:hover { background: var(--surface-alt); color: var(--text); }
 .nav-item.active { background: var(--primary); color: white; }
 .nav-item .nav-icon { width: 18px; opacity: 0.9; display: inline-grid; place-items: center; }
+
+/* Lucide line icons in the sidebar nav */
+.nav-icon svg { width: 18px; height: 18px; stroke-width: 1.75; }
+.nav-item.active .nav-icon svg { opacity: 1; }
+
+/* openmat.me wordmark lockup (sidebar brand) */
+.brand-wordmark { font-family: var(--font-display); font-weight: var(--fw-bold, 700);
+  font-size: 18px; letter-spacing: var(--ls-tight, -0.01em); color: var(--black); }
+.brand-wordmark .brand-tld { color: var(--text-faint); font-weight: var(--fw-medium, 500); }
 
 /* Grouped nav */
 .nav-group { display: flex; flex-direction: column; }
