@@ -3,15 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tatami — App</title>
+  <title>openmat.me — App</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
     body { display: grid; place-items: center; min-height: 100vh; padding: var(--sp-5); }
     .card { max-width: 420px; width: 100%; background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r-lg); padding: var(--sp-6); box-shadow: var(--shadow-md); }
+      border-radius: var(--r-lg); padding: var(--sp-6); box-shadow: var(--shadow-card); }
     .brand { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-5); }
-    .brand-mark { width: 36px; height: 36px; border-radius: var(--r-md); background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 700; }
-    h1 { font-size: 18px; margin: 0; }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; }
+    .brand-mark svg { width: 28px; height: 28px; }
+    .brand-mark svg path { stroke: var(--black); }
+    .wordmark { font-family: var(--font-display); font-weight: var(--fw-bold); font-size: 18px; letter-spacing: var(--ls-tight); color: var(--black); }
+    .wordmark .tld { color: var(--text-faint); font-weight: var(--fw-medium); }
+    h1 { font-family: var(--font-display); letter-spacing: var(--ls-tight); font-size: 18px; margin: 0; }
     label { display: block; font-weight: 600; font-size: 13px; margin: 0 0 var(--sp-2); }
     input { width: 100%; }
     .btn-full { width: 100%; justify-content: center; margin-top: var(--sp-3); }
@@ -28,7 +32,7 @@
 </head>
 <body>
   <div class="card" id="root">
-    <div class="brand"><div class="brand-mark">T</div><h1>Tatami</h1></div>
+    <div class="brand"><div class="brand-mark"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="openmat.me"><path d="M18 4 H8 a4 4 0 0 0-4 4 v8 a4 4 0 0 0 4 4 h8 a4 4 0 0 0 4-4 V10" fill="none" stroke-width="2.6" stroke-linecap="round"></path></svg></div><span class="wordmark">openmat<span class="tld">.me</span></span></div>
     <div class="muted">Loading…</div>
   </div>
 
@@ -37,7 +41,7 @@
   <script>
   const $ = (id) => document.getElementById(id);
   const root = $('root');
-  const brand = `<div class="brand"><div class="brand-mark">T</div><h1>Tatami</h1></div>`;
+  const brand = `<div class="brand"><div class="brand-mark"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="openmat.me"><path d="M18 4 H8 a4 4 0 0 0-4 4 v8 a4 4 0 0 0 4 4 h8 a4 4 0 0 0 4-4 V10" fill="none" stroke-width="2.6" stroke-linecap="round"></path></svg></div><span class="wordmark">openmat<span class="tld">.me</span></span></div>`;
 
   function showMsg(kind, text) {
     const el = $('msg'); if (el) { el.className = 'msg ' + kind; el.textContent = text; }

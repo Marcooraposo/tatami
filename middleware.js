@@ -38,7 +38,7 @@ export default function middleware(request) {
   return new Response('Authentication required', {
     status: 401,
     headers: {
-      'WWW-Authenticate': 'Basic realm="Tatami Demo", charset="UTF-8"',
+      'WWW-Authenticate': 'Basic realm="openmat.me Demo", charset="UTF-8"',
       'Content-Type': 'text/plain',
     },
   });

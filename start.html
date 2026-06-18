@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tatami — Academy Management</title>
+  <title>openmat.me — Academy Management</title>
   <script>
     // Safety net: if an auth provider lands the token on the root (e.g. the
     // Supabase Site URL points here), forward it to /app where the session
@@ -20,8 +20,10 @@
     body { display: grid; place-items: center; min-height: 100vh; padding: var(--sp-5); }
     .wrap { max-width: 760px; width: 100%; text-align: center; }
     .brand { display: inline-flex; align-items: center; gap: var(--sp-3); margin-bottom: var(--sp-3); }
-    .brand-mark { width: 44px; height: 44px; border-radius: var(--r-md); background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 20px; }
-    h1 { font-size: 28px; margin: 0; }
+    .brand-mark { width: 44px; height: 44px; display: grid; place-items: center; }
+    .brand-mark svg { width: 36px; height: 36px; }
+    .brand-mark svg path { stroke: var(--black, #0a0a0a); }
+    h1 { font-family: var(--font-display); letter-spacing: var(--ls-tight); font-size: 28px; margin: 0; }
     .tagline { color: var(--text-muted); margin: var(--sp-2) 0 var(--sp-6); font-size: 15px; }
     .cards { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-4); }
     @media (max-width: 620px){ .cards { grid-template-columns: 1fr; } }
@@ -41,8 +43,8 @@
 <body>
   <div class="wrap">
     <div class="brand">
-      <div class="brand-mark">T</div>
-      <h1>Tatami</h1>
+      <div class="brand-mark"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="openmat.me"><path d="M18 4 H8 a4 4 0 0 0-4 4 v8 a4 4 0 0 0 4 4 h8 a4 4 0 0 0 4-4 V10" fill="none" stroke-width="2.6" stroke-linecap="round"></path></svg></div>
+      <h1>openmat.me</h1>
     </div>
     <div class="tagline">Academy management for martial arts schools.</div>
 
@@ -64,7 +66,7 @@
       </a>
     </div>
 
-    <div class="foot">© Tatami</div>
+    <div class="foot">© openmat.me</div>
   </div>
 </body>
 </html>

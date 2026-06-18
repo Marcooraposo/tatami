@@ -330,7 +330,7 @@ function tr(key, vars) {
 
 // UI chrome strings (not part of the data model — just for the prototype UI)
 const UI = {
-  appName: { en: 'Tatami', pt: 'Tatami' },
+  appName: { en: 'openmat.me', pt: 'openmat.me' },
   tagline: { en: 'Academy Management', pt: 'Gestão de Academia' },
   nav: {
     dashboard:  { en: 'Dashboard',  pt: 'Painel' },
