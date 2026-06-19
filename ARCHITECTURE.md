@@ -1,5 +1,67 @@
 # Tatami — Architecture & Roadmap
 
+## MVP & public-beta plan (source of truth)
+
+**Goal:** a real, multi-tenant product an academy can sign up for and run daily,
+with modularity as a first-class, visible feature. Build approach = **Option A**
+(reuse the existing admin screens in "tenant mode", swapping each screen's data
+source from `data.js` to academy-scoped Supabase). The demo stays working
+throughout.
+
+### Release strategy: two staged betas
+1. **Admin beta** (first) — owner-side product is real for a few friendly academies.
+2. **Student beta** (after) — turn on the **Tier 2** student app (writes: booking,
+   check-in, event sign-up, belt-test) for those same academies.
+
+### Modularity model
+Small mandatory **core** + optional modules toggled per academy via
+`academy_features`. The module **framework** is built for real (registry,
+Settings "Manage modules", nav/route gating, `requires[]` deps). The modules it
+toggles are a **mix**:
+- **Real in MVP** (data fully cut over): Students, Schedule/Classes+Attendance,
+  Grading, Curriculum, Events.
+- **"Coming soon" placeholders** (registered + nice empty state, no data yet):
+  Competition, Billing, Memberships, Analytics, Families, Announcements.
+Onboarding shows available vs coming-soon modules (roadmap-as-marketing).
+
+### MVP scope — admin
+- **Core (mandatory):** Account/Auth, Academy + Settings (incl. module manager),
+  People/Students.
+- **Real optional modules:** Schedule/Classes + Attendance, Grading, Curriculum,
+  Events.
+- **Onboarding:** create academy → pick modules → guided first student.
+
+### MVP scope — student app (Tier 2, second beta)
+- **Identity:** invite-based login; link `auth.users` ↔ `students` (`students.user_id`).
+- **In:** view schedule, belt/progress, curriculum progress, announcements, events;
+  **book/cancel classes** (eligibility + capacity), **check in**, **register for
+  events**, **request belt test**, edit basic profile. Module-aware (shows only the
+  academy's enabled modules).
+- **Out (fast-follow):** payments, messaging, push/email notifications,
+  private-lesson requests, auto waitlist promotion.
+- **RLS:** add a `student` role policy — read own record + academy public data;
+  write only own bookings/check-ins/registrations/requests.
+
+### Phased path
+- **P1 — Tenant shell + Students:** session→active-academy context; tenant-vs-demo
+  flag; cut Students (list/create/edit) to Supabase; empty-state onboarding.
+- **P2 — Daily-ops:** cut Schedule/Classes + Attendance, then Grading, then
+  Curriculum (per-academy config on auth), then Events.
+- **P3 — Modularity framework:** `academy_features` + Settings manage-modules +
+  nav gating + coming-soon placeholders + onboarding module picker.
+- **P4 — Admin-beta hardening:** prod tenancy migrations + tenant RLS (allow
+  authed writes); email confirmation ON + real email provider (Resend/SMTP) +
+  password reset; terms page; error logging; backups; isolation smoke-test.
+  → **Ship admin beta.**
+- **P5 — Student app:** student identity/invite + student-role RLS; cut
+  `student.html` to Supabase (read views first, then writes). → **Ship student beta.**
+
+### Honest notes
+- ~80% of effort is the P1–P2 data cutover. Student writes (P5) come last — they
+  need the admin schedule/classes to exist first.
+- Adoption risk: student value only realizes if academies actually invite members —
+  make the invite UX frictionless.
+
 ## Current state (today)
 A single, fully-populated academy ("Iron Roots Academy") rendered by `admin.html`
 with mock data from `data.js`. This is the **demo/sandbox** — it showcases every
