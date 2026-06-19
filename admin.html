@@ -13,6 +13,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="supabase-client.js"></script>
   <script src="data.js"></script>
+  <script src="tenant.js"></script>
   <script>
   // ---- Sidebar nav icons: Lucide line icons (design system) ---------------
   const NAV_LUCIDE = {
@@ -510,6 +511,10 @@
   function effectivePreset() { return getDemoPreset() || 'full'; }
   function setDemoPreset(p) { try { localStorage.setItem('tatami_demo_preset', p); } catch {} removeDemoPicker(); go('dashboard'); }
   function isNavEnabled(id) {
+    // Tenant mode (real academy): only the modules cut over so far (Phase 1).
+    if (typeof isTenant === 'function' && isTenant()) {
+      return TENANT_MODULES.includes(id) || ['students','setup'].includes(id);
+    }
     if (DEMO_BASE_IDS.includes(id) || DEMO_ALWAYS.includes(id)) return true;
     const p = DEMO_PRESETS[effectivePreset()];
     if (!p || p.ids === '*') return true;
@@ -551,8 +556,10 @@
 
   function renderApp() {
     const route = getRoute();
-    // Demo module gating: redirect to dashboard if the section is disabled.
-    if (!isNavEnabled(route.section)) { route.section = 'dashboard'; route.params = []; }
+    // Module gating: redirect away from disabled sections.
+    const _fallback = (typeof isTenant === 'function' && isTenant()) ? 'students' : 'dashboard';
+    if (!isNavEnabled(route.section)) { route.section = _fallback; route.params = []; }
+    if (isTenant() && route.section === 'dashboard') { route.section = 'students'; route.params = []; }
     document.title = `openmat.me — ${t(UI.appName)} · ${t(UI.nav[route.section] || UI.appName)}`;
     document.getElementById('app').innerHTML = `
       ${Sidebar(route.section)}
@@ -867,6 +874,7 @@
             ${Object.entries(DEMO_PRESETS).map(([k,p]) => `<option value="${k}" ${effectivePreset()===k?'selected':''}>${t({en:'Demo',pt:'Demo'})}: ${t(p.label)}</option>`).join('')}
           </select>` : ''}
           <div class="lang-switch">${langs}</div>
+          ${(typeof isTenant === 'function' && isTenant()) ? `<button onclick="tenantSignOut()" title="Sign out" style="padding:5px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface-alt);cursor:pointer;font-size:12px;color:var(--text-muted)">Sign out</button>` : ''}
           <div class="avatar" title="${ACADEMY.name}">${ACADEMY.name.split(' ').map(w => w[0]).slice(0,2).join('')}</div>
         </div>
       </header>
@@ -1255,6 +1263,7 @@
     if (!stu) return;
     stu.inactive = !stu.inactive;
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tUpdateStudent(studentId, { inactive: stu.inactive });
     document.getElementById('content').innerHTML = StudentReport(studentId);
   }
 
@@ -1921,6 +1930,7 @@
     const picked = [...document.querySelectorAll(`input[data-tagedit="${studentId}"]:checked`)].map(c => c.value);
     student.tags = picked;            // admin override persists on the student record
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tUpdateStudent(studentId, { tags: picked });
     const row = document.getElementById('tagRow-' + studentId);
     if (row) row.innerHTML = studentTagRow(student);
     showToast('Tags updated');
@@ -4868,17 +4878,23 @@
     newStudent.tags = deriveStudentTags(newStudent);
     STUDENTS.push(newStudent);
     const sc = ACADEMY.sportConfigs[0] || {};
-    ENROLLMENTS.push({
+    const newEnrollment = {
+      id: 'enr-' + id,
       studentId: id,
       sportId:        sc.sportId        || 'sport-bjj',
-      gradingSystemId: sc.gradingSystemId || 'gs-bjj',
+      gradingSystemId: sc.gradingSystemId || 'grading-bjj-adult-default',
       currentLevelId: 'bjj-white',
       currentStripes: 0,
-      levelSince: new Date().toISOString(),
-      membership: studentWizardState.membership || 'monthly',
-      signedAt: new Date().toISOString()
-    });
+      levelSince: new Date().toISOString().slice(0, 10),
+      membership: studentWizardState.membership || 'plan-monthly'
+    };
+    ENROLLMENTS.push(newEnrollment);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) {
+      tSaveNewStudent(newStudent, newEnrollment).then(r => {
+        if (!r.ok) showToast('Saved locally but not to the server: ' + (r.error?.message || ''));
+      });
+    }
     studentWizardState = {
       step: 1,
       details: { name: '', dob: '', gender: '', competes: false, email: '', phone: '', emergencyName: '', emergencyPhone: '' },
@@ -9927,7 +9943,9 @@ ${CONFIG.academyName || 'The Team'}`;
 
   function changeMembership(studentId, planId) {
     const enr = ENROLLMENTS.find(e => e.studentId === studentId);
-    if (enr) { enr.membership = planId; persistData(); renderApp(); }
+    if (enr) { enr.membership = planId; persistData();
+      if (typeof isTenant === 'function' && isTenant()) tUpdateEnrollment(studentId, { membership: planId });
+      renderApp(); }
   }
 
   // ---------- Events --------------------------------------------------------
@@ -11536,6 +11554,7 @@ ${CONFIG.academyName || 'The Team'}`;
     if (!stu) return;
     stu.referredBy = referrerId || null;
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tUpdateStudent(studentId, { referredBy: stu.referredBy });
     document.getElementById('content').innerHTML = StudentReport(studentId);
   }
 
@@ -15316,7 +15335,15 @@ ${CONFIG.academyName || 'The Team'}`;
   loadCommLog();
   loadMembershipPlans();
   applyOrgSetup();
-  renderApp();
+  // Boot: in tenant mode (logged-in academy), hydrate from Supabase before the
+  // first render; demo mode renders immediately from data.js.
+  (async function bootstrap() {
+    try {
+      await initTenant();
+      if (isTenant()) await tHydrate();
+    } catch (e) { console.error('[boot]', e); }
+    renderApp();
+  })();
   </script>
 </body>
 </html>

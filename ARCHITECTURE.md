@@ -62,6 +62,25 @@ Onboarding shows available vs coming-soon modules (roadmap-as-marketing).
 - Adoption risk: student value only realizes if academies actually invite members —
   make the invite UX frictionless.
 
+### Student import & invites (roster onboarding)
+Most academies arrive with an **existing roster** (spreadsheet or another system),
+so importing students is core to onboarding — not an afterthought.
+- **Beta (technically easiest):** **bulk manual entry** — a multi-row form to add
+  several students at once with key fields (name, DOB/age, belt, contact, tags).
+  No spreadsheet parsing required for beta.
+- **Future:** CSV/spreadsheet import with column mapping + validation.
+- **Invite links (future, ties to Tier 2 student app):** generate a per-student
+  **invite token** that is pre-linked to the academy *and* that student record.
+  When the student authenticates via the link, their `auth.users` account is
+  auto-linked to the existing student record — **no academy selection needed**
+  (the invite already encodes the academy).
+- **Self-onboarding (later):** a public academy **directory / public join link** so
+  members can find an academy (or open its link), sign up, **buy a membership, and
+  book classes without the manager** — for academies that opt into it.
+
+Priority order: (1) onboard academies that already have a roster (bulk manual →
+CSV), (2) invite-link account linking, (3) public self-onboarding.
+
 ## Current state (today)
 A single, fully-populated academy ("Iron Roots Academy") rendered by `admin.html`
 with mock data from `data.js`. This is the **demo/sandbox** — it showcases every
