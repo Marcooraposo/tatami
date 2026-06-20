@@ -78,6 +78,35 @@ function enrollmentToDb(e) {
   };
 }
 
+function instructorFromDb(r) {
+  return { id: r.id, name: r.name, initials: r.initials, sportIds: r.sport_ids || [], payRate: r.pay_rate };
+}
+function instructorToDb(i) {
+  return { id: i.id, name: i.name, initials: i.initials, sport_ids: i.sportIds || [],
+    pay_rate: i.payRate ?? null, academy_id: TENANT.academyId };
+}
+function templateFromDb(r) {
+  return { id: r.id, dow: r.dow, time: r.time, durationMin: r.duration_min, classType: r.class_type,
+    audience: r.audience, audienceTags: r.audience_tags || [], instructorId: r.instructor_id,
+    capacity: r.capacity, sportId: r.sport_id };
+}
+function templateToDb(t) {
+  return { id: t.id, dow: t.dow, time: t.time, duration_min: t.durationMin ?? 60, class_type: t.classType,
+    audience: t.audience || null, audience_tags: t.audienceTags || [], instructor_id: t.instructorId || null,
+    capacity: t.capacity ?? 20, sport_id: t.sportId || 'sport-bjj', academy_id: TENANT.academyId };
+}
+function classFromDb(r) {
+  return { id: r.id, sportId: r.sport_id, instructorId: r.instructor_id, startsAt: r.starts_at,
+    durationMin: r.duration_min, classType: r.class_type, capacity: r.capacity,
+    plannedItemIds: r.planned_item_ids || [], status: r.status, audienceTags: r.audience_tags || [] };
+}
+function classToDb(c) {
+  return { id: c.id, sport_id: c.sportId || 'sport-bjj', instructor_id: c.instructorId || null,
+    starts_at: c.startsAt, duration_min: c.durationMin ?? 60, class_type: c.classType,
+    capacity: c.capacity ?? 20, planned_item_ids: c.plannedItemIds || [], status: c.status || 'scheduled',
+    audience_tags: c.audienceTags || [], academy_id: TENANT.academyId };
+}
+
 function _replace(arr, rows) { if (Array.isArray(arr)) { arr.length = 0; rows.forEach(r => arr.push(r)); } }
 function _empty(arr) { if (Array.isArray(arr)) arr.length = 0; }
 
@@ -86,17 +115,40 @@ function _empty(arr) { if (Array.isArray(arr)) arr.length = 0; }
 async function tHydrate() {
   if (!isTenant()) return;
   const aid = TENANT.academyId;
-  const [stu, enr] = await Promise.all([
+  const [stu, enr, inst, tpl, cls] = await Promise.all([
     sb.from('students').select('*').eq('academy_id', aid),
-    sb.from('enrollments').select('*').eq('academy_id', aid)
+    sb.from('enrollments').select('*').eq('academy_id', aid),
+    sb.from('instructors').select('*').eq('academy_id', aid),
+    sb.from('recurring_templates').select('*').eq('academy_id', aid),
+    sb.from('classes').select('*').eq('academy_id', aid)
   ]);
-  if (typeof STUDENTS !== 'undefined')    _replace(STUDENTS, (stu.data || []).map(studentFromDb));
-  if (typeof ENROLLMENTS !== 'undefined') _replace(ENROLLMENTS, (enr.data || []).map(enrollmentFromDb));
-  // Not-yet-cut modules: empty so the demo roster/classes don't appear.
-  ['CLASSES','BOOKINGS','ATTENDANCE','WAITLIST','GRADING_LOG','EVENTS','COMPETITION_RESULTS',
+  if (typeof STUDENTS !== 'undefined')            _replace(STUDENTS, (stu.data || []).map(studentFromDb));
+  if (typeof ENROLLMENTS !== 'undefined')         _replace(ENROLLMENTS, (enr.data || []).map(enrollmentFromDb));
+  if (typeof INSTRUCTORS !== 'undefined')         _replace(INSTRUCTORS, (inst.data || []).map(instructorFromDb));
+  if (typeof RECURRING_TEMPLATES !== 'undefined') _replace(RECURRING_TEMPLATES, (tpl.data || []).map(templateFromDb));
+  if (typeof CLASSES !== 'undefined')             _replace(CLASSES, (cls.data || []).map(classFromDb));
+  // Not-yet-cut modules: empty so demo data doesn't appear in a real academy.
+  ['BOOKINGS','ATTENDANCE','WAITLIST','GRADING_LOG','EVENTS','COMPETITION_RESULTS',
    'ANNOUNCEMENTS','STUDENT_INJURIES','PROSPECTS','EQUIPMENT','EQUIPMENT_LOANS',
    'STUDENT_PACKAGES','FAMILY_GROUPS'].forEach(n => { try { _empty(eval(n)); } catch {} });
 }
+
+// Generic write-through for an already-DB-shaped row (academy_id attached).
+async function tInsertDb(table, dbRow) {
+  if (!isTenant()) return { ok: true };
+  const r = await sb.from(table).insert(dbRow);
+  if (r.error) console.error(`[tenant] insert ${table}:`, r.error);
+  return { ok: !r.error, error: r.error };
+}
+async function tUpsertDb(table, dbRow) {
+  if (!isTenant()) return { ok: true };
+  const r = await sb.from(table).upsert(dbRow);
+  if (r.error) console.error(`[tenant] upsert ${table}:`, r.error);
+  return { ok: !r.error, error: r.error };
+}
+async function tSaveInstructor(i) { return tInsertDb('instructors', instructorToDb(i)); }
+async function tSaveTemplate(t)   { return tUpsertDb('recurring_templates', templateToDb(t)); }
+async function tSaveClass(c)      { return tInsertDb('classes', classToDb(c)); }
 
 // ---- Write-through helpers (no-ops in demo mode) ---------------------------
 async function tSaveNewStudent(student, enrollment) {
@@ -134,7 +186,7 @@ async function tUpdateEnrollment(studentId, patchInMemoryShape) {
 
 async function tenantSignOut() { try { await sb.auth.signOut(); } catch {} location.href = '/app'; }
 
-// Modules surfaced in the admin nav while in tenant mode (Phase 1).
-const TENANT_MODULES = ['dashboard', 'students', 'settings'];
+// Modules surfaced in the admin nav while in tenant mode (Phase 1 + 2a).
+const TENANT_MODULES = ['dashboard', 'students', 'schedule', 'classes', 'instructors', 'settings'];
 window.TENANT = TENANT; window.isTenant = isTenant;
 window.tenantSignOut = tenantSignOut;

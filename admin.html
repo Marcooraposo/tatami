@@ -2891,21 +2891,25 @@
 
     if (!inst) { alert('Please select an instructor.'); return; }
 
+    let saved;
     if (id === 'new') {
-      RECURRING_TEMPLATES.push({ id: 'rt-' + Date.now(), dow, time, durationMin: dur, classType: type, audience, audienceTags, instructorId: inst, capacity: cap, sportId: 'sport-bjj' });
+      saved = { id: 'rt-' + Date.now(), dow, time, durationMin: dur, classType: type, audience, audienceTags, instructorId: inst, capacity: cap, sportId: 'sport-bjj' };
+      RECURRING_TEMPLATES.push(saved);
     } else {
       const rt = RECURRING_TEMPLATES.find(r => r.id === id);
-      if (rt) Object.assign(rt, { dow, time, durationMin: dur, classType: type, audience, audienceTags, instructorId: inst, capacity: cap });
+      if (rt) { Object.assign(rt, { dow, time, durationMin: dur, classType: type, audience, audienceTags, instructorId: inst, capacity: cap }); saved = rt; }
     }
     editingTemplateId = null;
     editTemplateState = {};
     persistData();
+    if (saved && typeof isTenant === 'function' && isTenant()) tSaveTemplate(saved);
     document.getElementById('content').innerHTML = ClassesList();
   }
   function deleteTemplate(id) {
     if (!confirm('Remove this recurring slot?')) return;
     const idx = RECURRING_TEMPLATES.findIndex(r => r.id === id);
     if (idx > -1) RECURRING_TEMPLATES.splice(idx, 1);
+    if (typeof isTenant === 'function' && isTenant()) sb.from('recurring_templates').delete().eq('id', id).eq('academy_id', activeAcademyId());
     document.getElementById('content').innerHTML = ClassesList();
   }
 
@@ -6248,9 +6252,11 @@
     if (!instructorId) { alert('Please select an instructor.'); return; }
     const startsAt = new Date(`${date}T${time}:00`).toISOString();
     const id = 'cls-' + Date.now();
-    CLASSES.push({ id, startsAt, durationMin, classType, instructorId,
-      sportId: sportId || ACADEMY.sportConfigs[0]?.sportId || 'sport-bjj', capacity, audienceTags: audienceTags || [], plannedItemIds: [], status: 'scheduled' });
+    const cls = { id, startsAt, durationMin, classType, instructorId,
+      sportId: sportId || ACADEMY.sportConfigs[0]?.sportId || 'sport-bjj', capacity, audienceTags: audienceTags || [], plannedItemIds: [], status: 'scheduled' };
+    CLASSES.push(cls);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tSaveClass(cls);
     newClassState = { date: '', time: '19:00', durationMin: 60,
       classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [], sportId: '' };
     go('classes/' + id);
@@ -8137,8 +8143,10 @@
     const rate = parseFloat(document.getElementById('inst-rate').value) || 0;
     const sportIds = [...document.querySelectorAll('input[data-inst-sport]:checked')].map(c => c.value);
     const initials = name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    INSTRUCTORS.push({ id: 'inst-' + Date.now(), name, initials, sportIds, payRate: rate });
+    const inst = { id: 'inst-' + Date.now(), name, initials, sportIds, payRate: rate };
+    INSTRUCTORS.push(inst);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tSaveInstructor(inst);
     document.getElementById('inst-form')?.remove();
     showToast('Instructor added ✓');
     renderApp();
