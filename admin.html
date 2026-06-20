@@ -3291,13 +3291,11 @@
   }
 
   function bookStudent(classId, studentId) {
-    const existing = BOOKINGS.find(b => b.classId === classId && b.studentId === studentId);
-    if (existing) {
-      existing.status = 'booked';
-    } else {
-      BOOKINGS.push({ id: 'bk-' + Date.now(), classId, studentId, status: 'booked', bookedAt: new Date().toISOString() });
-    }
+    let b = BOOKINGS.find(b => b.classId === classId && b.studentId === studentId);
+    if (b) { b.status = 'booked'; }
+    else { b = { id: 'bk-' + classId + '-' + studentId, classId, studentId, status: 'booked', bookedAt: new Date().toISOString() }; BOOKINGS.push(b); }
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tSaveBooking(b);
     renderApp();
   }
 
@@ -3305,16 +3303,17 @@
     const existing = BOOKINGS.find(b => b.classId === classId && b.studentId === studentId);
     if (!existing) return;
     existing.status = 'cancelled';
+    const _tenant = (typeof isTenant === 'function' && isTenant());
+    if (_tenant) tSaveBooking(existing);
     // Auto-promote first person on the waitlist
     const next = WAITLIST.find(w => w.classId === classId);
     if (next) {
       WAITLIST.splice(WAITLIST.indexOf(next), 1);
-      const wb = BOOKINGS.find(b => b.classId === classId && b.studentId === next.studentId);
-      if (wb) {
-        wb.status = 'booked';
-      } else {
-        BOOKINGS.push({ id: 'bk-' + Date.now(), classId, studentId: next.studentId, status: 'booked', bookedAt: new Date().toISOString() });
-      }
+      if (_tenant) tDeleteWaitlist(classId, next.studentId);
+      let wb = BOOKINGS.find(b => b.classId === classId && b.studentId === next.studentId);
+      if (wb) { wb.status = 'booked'; }
+      else { wb = { id: 'bk-' + classId + '-' + next.studentId, classId, studentId: next.studentId, status: 'booked', bookedAt: new Date().toISOString() }; BOOKINGS.push(wb); }
+      if (_tenant) tSaveBooking(wb);
     }
     persistData();
     renderApp();
@@ -3323,37 +3322,36 @@
   function addToWaitlist(classId, studentId) {
     const already = WAITLIST.find(w => w.classId === classId && w.studentId === studentId);
     if (already) return;
-    WAITLIST.push({ id: 'wl-' + Date.now(), classId, studentId, addedAt: new Date().toISOString() });
+    const w = { id: 'wl-' + classId + '-' + studentId, classId, studentId, addedAt: new Date().toISOString() };
+    WAITLIST.push(w);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tSaveWaitlist(w);
     renderApp();
   }
 
   function removeFromWaitlist(classId, studentId) {
     const idx = WAITLIST.findIndex(w => w.classId === classId && w.studentId === studentId);
-    if (idx !== -1) { WAITLIST.splice(idx, 1); persistData(); renderApp(); }
+    if (idx !== -1) { WAITLIST.splice(idx, 1); persistData();
+      if (typeof isTenant === 'function' && isTenant()) tDeleteWaitlist(classId, studentId);
+      renderApp(); }
   }
 
   function toggleAttendance(classId, studentId, checked) {
-    const existing = ATTENDANCE.find(a => a.classId === classId && a.studentId === studentId);
-    if (existing) {
-      existing.attended = checked;
-      existing.markedAt = new Date().toISOString();
-    } else {
-      ATTENDANCE.push({ classId, studentId, attended: checked, markedAt: new Date().toISOString() });
-    }
+    let a = ATTENDANCE.find(a => a.classId === classId && a.studentId === studentId);
+    if (a) { a.attended = checked; a.markedAt = new Date().toISOString(); }
+    else { a = { id: 'at-' + classId + '-' + studentId, classId, studentId, attended: checked, markedAt: new Date().toISOString() }; ATTENDANCE.push(a); }
     persistAttendance();
+    if (typeof isTenant === 'function' && isTenant()) tSaveAttendance(a);
   }
 
   function markAllAttended(classId) {
+    const _tenant = (typeof isTenant === 'function' && isTenant());
     const bookedStudents = BOOKINGS.filter(b => b.classId === classId && b.status === 'booked');
     bookedStudents.forEach(b => {
-      const existing = ATTENDANCE.find(a => a.classId === classId && a.studentId === b.studentId);
-      if (existing) {
-        existing.attended = true;
-        existing.markedAt = new Date().toISOString();
-      } else {
-        ATTENDANCE.push({ classId, studentId: b.studentId, attended: true, markedAt: new Date().toISOString() });
-      }
+      let a = ATTENDANCE.find(a => a.classId === classId && a.studentId === b.studentId);
+      if (a) { a.attended = true; a.markedAt = new Date().toISOString(); }
+      else { a = { id: 'at-' + classId + '-' + b.studentId, classId, studentId: b.studentId, attended: true, markedAt: new Date().toISOString() }; ATTENDANCE.push(a); }
+      if (_tenant) tSaveAttendance(a);
     });
     persistData();
     renderApp();

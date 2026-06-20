@@ -107,6 +107,28 @@ function classToDb(c) {
     audience_tags: c.audienceTags || [], academy_id: TENANT.academyId };
 }
 
+function bookingFromDb(r) {
+  return { id: r.id, classId: r.class_id, studentId: r.student_id, status: r.status, bookedAt: r.booked_at };
+}
+function bookingToDb(b) {
+  return { id: b.id, class_id: b.classId, student_id: b.studentId, status: b.status || 'booked',
+    booked_at: b.bookedAt || new Date().toISOString(), academy_id: TENANT.academyId };
+}
+function attendanceFromDb(r) {
+  return { id: r.id, classId: r.class_id, studentId: r.student_id, attended: !!r.attended, markedAt: r.confirmed_at };
+}
+function attendanceToDb(a) {
+  return { id: a.id || ('at-' + a.classId + '-' + a.studentId), class_id: a.classId, student_id: a.studentId,
+    attended: !!a.attended, confirmed_at: a.markedAt || new Date().toISOString(), academy_id: TENANT.academyId };
+}
+function waitlistFromDb(r) {
+  return { id: r.id, classId: r.class_id, studentId: r.student_id, addedAt: r.queued_at };
+}
+function waitlistToDb(w) {
+  return { id: w.id, class_id: w.classId, student_id: w.studentId,
+    queued_at: w.addedAt || new Date().toISOString(), academy_id: TENANT.academyId };
+}
+
 function _replace(arr, rows) { if (Array.isArray(arr)) { arr.length = 0; rows.forEach(r => arr.push(r)); } }
 function _empty(arr) { if (Array.isArray(arr)) arr.length = 0; }
 
@@ -115,22 +137,28 @@ function _empty(arr) { if (Array.isArray(arr)) arr.length = 0; }
 async function tHydrate() {
   if (!isTenant()) return;
   const aid = TENANT.academyId;
-  const [stu, enr, inst, tpl, cls] = await Promise.all([
+  const [stu, enr, inst, tpl, cls, bk, att, wl] = await Promise.all([
     sb.from('students').select('*').eq('academy_id', aid),
     sb.from('enrollments').select('*').eq('academy_id', aid),
     sb.from('instructors').select('*').eq('academy_id', aid),
     sb.from('recurring_templates').select('*').eq('academy_id', aid),
-    sb.from('classes').select('*').eq('academy_id', aid)
+    sb.from('classes').select('*').eq('academy_id', aid),
+    sb.from('bookings').select('*').eq('academy_id', aid),
+    sb.from('attendance').select('*').eq('academy_id', aid),
+    sb.from('waitlist').select('*').eq('academy_id', aid)
   ]);
   if (typeof STUDENTS !== 'undefined')            _replace(STUDENTS, (stu.data || []).map(studentFromDb));
   if (typeof ENROLLMENTS !== 'undefined')         _replace(ENROLLMENTS, (enr.data || []).map(enrollmentFromDb));
   if (typeof INSTRUCTORS !== 'undefined')         _replace(INSTRUCTORS, (inst.data || []).map(instructorFromDb));
   if (typeof RECURRING_TEMPLATES !== 'undefined') _replace(RECURRING_TEMPLATES, (tpl.data || []).map(templateFromDb));
   if (typeof CLASSES !== 'undefined')             _replace(CLASSES, (cls.data || []).map(classFromDb));
+  if (typeof BOOKINGS !== 'undefined')            _replace(BOOKINGS, (bk.data || []).map(bookingFromDb));
+  if (typeof ATTENDANCE !== 'undefined')          _replace(ATTENDANCE, (att.data || []).map(attendanceFromDb));
+  if (typeof WAITLIST !== 'undefined')            _replace(WAITLIST, (wl.data || []).map(waitlistFromDb));
   // Not-yet-cut modules: empty so demo data doesn't appear in a real academy.
-  ['BOOKINGS','ATTENDANCE','WAITLIST','GRADING_LOG','EVENTS','COMPETITION_RESULTS',
-   'ANNOUNCEMENTS','STUDENT_INJURIES','PROSPECTS','EQUIPMENT','EQUIPMENT_LOANS',
-   'STUDENT_PACKAGES','FAMILY_GROUPS'].forEach(n => { try { _empty(eval(n)); } catch {} });
+  ['GRADING_LOG','EVENTS','COMPETITION_RESULTS','ANNOUNCEMENTS','STUDENT_INJURIES',
+   'PROSPECTS','EQUIPMENT','EQUIPMENT_LOANS','STUDENT_PACKAGES','FAMILY_GROUPS']
+    .forEach(n => { try { _empty(eval(n)); } catch {} });
 }
 
 // Generic write-through for an already-DB-shaped row (academy_id attached).
@@ -149,6 +177,39 @@ async function tUpsertDb(table, dbRow) {
 async function tSaveInstructor(i) { return tInsertDb('instructors', instructorToDb(i)); }
 async function tSaveTemplate(t)   { return tUpsertDb('recurring_templates', templateToDb(t)); }
 async function tSaveClass(c)      { return tInsertDb('classes', classToDb(c)); }
+
+// Ensure a class instance exists in the DB before booking/attendance reference
+// it (handles slots created in-memory). Idempotent upsert on the class PK.
+async function tEnsureClass(classId) {
+  if (!isTenant()) return;
+  const c = (typeof DB !== 'undefined') ? DB.class(classId) : null;
+  if (c) await sb.from('classes').upsert(classToDb(c));
+}
+async function tSaveBooking(b) {
+  if (!isTenant()) return { ok: true };
+  await tEnsureClass(b.classId);
+  const r = await sb.from('bookings').upsert(bookingToDb(b), { onConflict: 'class_id,student_id' });
+  if (r.error) console.error('[tenant] booking:', r.error);
+  return { ok: !r.error, error: r.error };
+}
+async function tSaveAttendance(a) {
+  if (!isTenant()) return { ok: true };
+  await tEnsureClass(a.classId);
+  const r = await sb.from('attendance').upsert(attendanceToDb(a), { onConflict: 'class_id,student_id' });
+  if (r.error) console.error('[tenant] attendance:', r.error);
+  return { ok: !r.error, error: r.error };
+}
+async function tSaveWaitlist(w) {
+  if (!isTenant()) return { ok: true };
+  await tEnsureClass(w.classId);
+  const r = await sb.from('waitlist').upsert(waitlistToDb(w), { onConflict: 'class_id,student_id' });
+  if (r.error) console.error('[tenant] waitlist:', r.error);
+  return { ok: !r.error, error: r.error };
+}
+async function tDeleteWaitlist(classId, studentId) {
+  if (!isTenant()) return;
+  await sb.from('waitlist').delete().eq('class_id', classId).eq('student_id', studentId).eq('academy_id', TENANT.academyId);
+}
 
 // ---- Write-through helpers (no-ops in demo mode) ---------------------------
 async function tSaveNewStudent(student, enrollment) {
