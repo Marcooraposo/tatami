@@ -3754,7 +3754,7 @@
           sb.from('modules').select('*').order('default_order'),
           sb.from('techniques').select('*').order('number'),
           sb.from('sports').select('*'),
-          sb.from('curriculum_configs').select('*').order('created_at')
+          sb.from('curriculum_configs').select('*').eq('academy_id', (typeof ACADEMY !== 'undefined' && ACADEMY.id) || 'academy-1').order('created_at')
         ]);
         if (mods.error || techs.error || sports.error) throw (mods.error || techs.error || sports.error);
         CV2.modules = mods.data || [];
@@ -4366,7 +4366,8 @@
       technique_id: t.id,
       module_id: t.default_module_id,
       sequence_order: seq++,
-      is_hidden: wizHidden(t)
+      is_hidden: wizHidden(t),
+      academy_id: cfg.academy_id || ((typeof ACADEMY !== 'undefined' && ACADEMY.id) || null)
     }));
     const { error: ctErr } = await sb.from('curriculum_techniques').insert(ctRows);
     if (ctErr) { WIZ.saving = false; renderWizard(); showToast('Saved config but techniques failed: ' + ctErr.message); return; }

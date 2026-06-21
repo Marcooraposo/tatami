@@ -260,6 +260,7 @@ async function tUpdateEnrollment(studentId, patchInMemoryShape) {
 async function tenantSignOut() { try { await sb.auth.signOut(); } catch {} location.href = '/app'; }
 
 // Modules surfaced in the admin nav while in tenant mode (Phase 1 + 2a).
-const TENANT_MODULES = ['dashboard', 'students', 'schedule', 'classes', 'instructors', 'grading', 'settings'];
+const TENANT_MODULES = ['dashboard', 'students', 'schedule', 'classes', 'instructors', 'grading',
+  'curriculum', 'curriculum-wizard', 'curriculum-tech', 'settings'];
 window.TENANT = TENANT; window.isTenant = isTenant;
 window.tenantSignOut = tenantSignOut;
