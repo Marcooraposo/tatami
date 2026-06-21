@@ -314,11 +314,19 @@
       if (!enrollment) return;
       const promo = computePromotionStatus(studentId, 'sport-bjj');
       if (!promo?.ready || !promo.nextLevel) return;
-      results.push({ studentId, fromLevelId: enrollment.currentLevelId, toLevelId: promo.nextLevel.id });
+      const fromLevelId = enrollment.currentLevelId;
+      results.push({ studentId, fromLevelId, toLevelId: promo.nextLevel.id });
       enrollment.currentLevelId  = promo.nextLevel.id;
       enrollment.currentStripes  = 0;
       enrollment.levelSince      = new Date().toISOString();
       enrollment.lastPromotionAt = new Date().toISOString();
+      if (typeof isTenant === 'function' && isTenant()) {
+        tUpdateEnrollment(studentId, { currentLevelId: enrollment.currentLevelId, currentStripes: 0,
+          levelSince: enrollment.levelSince.slice(0, 10), lastPromotionAt: enrollment.lastPromotionAt.slice(0, 10) });
+        tInsertGradingLog({ id: 'gl-' + Date.now() + '-' + studentId, studentId, sportId: 'sport-bjj',
+          type: 'promotion', fromLevelId, levelId: promo.nextLevel.id, stripes: 0,
+          date: new Date(CONFIG.today).toISOString().slice(0, 10) });
+      }
     });
     if (results.length === 0) return;
     GRADING_SESSIONS.unshift({
@@ -1885,17 +1893,18 @@
     enrollment.currentStripes  = 0;
     enrollment.levelSince      = new Date().toISOString();
     enrollment.lastPromotionAt = new Date().toISOString();
-    GRADING_LOG.push({
-      id: 'gl-' + Date.now(),
-      studentId,
-      sportId,
-      type: 'promotion',
-      fromLevelId: prevLevelId,
-      levelId: promo.nextLevel.id,
-      stripes: 0,
+    const logEntry = {
+      id: 'gl-' + Date.now(), studentId, sportId, type: 'promotion',
+      fromLevelId: prevLevelId, levelId: promo.nextLevel.id, stripes: 0,
       date: new Date(CONFIG.today).toISOString().slice(0, 10),
-    });
+    };
+    GRADING_LOG.push(logEntry);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) {
+      tUpdateEnrollment(studentId, { currentLevelId: enrollment.currentLevelId, currentStripes: 0,
+        levelSince: enrollment.levelSince.slice(0, 10), lastPromotionAt: enrollment.lastPromotionAt.slice(0, 10) });
+      tInsertGradingLog(logEntry);
+    }
     renderApp();
   }
 
@@ -1943,17 +1952,17 @@
     const max = level?.maxStripes ?? 4;
     const prev = enr.currentStripes;
     enr.currentStripes = Math.max(0, Math.min(max, newCount));
+    const _tenant = (typeof isTenant === 'function' && isTenant());
+    if (_tenant) tUpdateEnrollment(studentId, { currentStripes: enr.currentStripes });
     // Log stripe awards (not removals)
     if (enr.currentStripes > prev) {
-      GRADING_LOG.push({
-        id: 'gl-' + Date.now(),
-        studentId,
-        sportId,
-        type: 'stripe',
-        levelId: enr.currentLevelId,
-        stripes: enr.currentStripes,
+      const logEntry = {
+        id: 'gl-' + Date.now(), studentId, sportId, type: 'stripe',
+        levelId: enr.currentLevelId, stripes: enr.currentStripes,
         date: new Date(CONFIG.today).toISOString().slice(0, 10),
-      });
+      };
+      GRADING_LOG.push(logEntry);
+      if (_tenant) tInsertGradingLog(logEntry);
     }
     persistData();
     document.getElementById('content').innerHTML = StudentReport(studentId);

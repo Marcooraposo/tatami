@@ -128,6 +128,15 @@ function waitlistToDb(w) {
   return { id: w.id, class_id: w.classId, student_id: w.studentId,
     queued_at: w.addedAt || new Date().toISOString(), academy_id: TENANT.academyId };
 }
+function gradingLogFromDb(r) {
+  return { id: r.id, studentId: r.student_id, sportId: r.sport_id, type: r.type,
+    levelId: r.level_id, stripes: r.stripes, date: r.date, note: r.note };
+}
+function gradingLogToDb(g) {
+  return { id: g.id, student_id: g.studentId, sport_id: g.sportId, type: g.type,
+    level_id: g.levelId, stripes: g.stripes ?? null, date: g.date || new Date().toISOString().slice(0, 10),
+    note: g.note || null, academy_id: TENANT.academyId };
+}
 
 function _replace(arr, rows) { if (Array.isArray(arr)) { arr.length = 0; rows.forEach(r => arr.push(r)); } }
 function _empty(arr) { if (Array.isArray(arr)) arr.length = 0; }
@@ -137,7 +146,7 @@ function _empty(arr) { if (Array.isArray(arr)) arr.length = 0; }
 async function tHydrate() {
   if (!isTenant()) return;
   const aid = TENANT.academyId;
-  const [stu, enr, inst, tpl, cls, bk, att, wl] = await Promise.all([
+  const [stu, enr, inst, tpl, cls, bk, att, wl, gl] = await Promise.all([
     sb.from('students').select('*').eq('academy_id', aid),
     sb.from('enrollments').select('*').eq('academy_id', aid),
     sb.from('instructors').select('*').eq('academy_id', aid),
@@ -145,7 +154,8 @@ async function tHydrate() {
     sb.from('classes').select('*').eq('academy_id', aid),
     sb.from('bookings').select('*').eq('academy_id', aid),
     sb.from('attendance').select('*').eq('academy_id', aid),
-    sb.from('waitlist').select('*').eq('academy_id', aid)
+    sb.from('waitlist').select('*').eq('academy_id', aid),
+    sb.from('grading_log').select('*').eq('academy_id', aid)
   ]);
   if (typeof STUDENTS !== 'undefined')            _replace(STUDENTS, (stu.data || []).map(studentFromDb));
   if (typeof ENROLLMENTS !== 'undefined')         _replace(ENROLLMENTS, (enr.data || []).map(enrollmentFromDb));
@@ -155,8 +165,9 @@ async function tHydrate() {
   if (typeof BOOKINGS !== 'undefined')            _replace(BOOKINGS, (bk.data || []).map(bookingFromDb));
   if (typeof ATTENDANCE !== 'undefined')          _replace(ATTENDANCE, (att.data || []).map(attendanceFromDb));
   if (typeof WAITLIST !== 'undefined')            _replace(WAITLIST, (wl.data || []).map(waitlistFromDb));
+  if (typeof GRADING_LOG !== 'undefined')         _replace(GRADING_LOG, (gl.data || []).map(gradingLogFromDb));
   // Not-yet-cut modules: empty so demo data doesn't appear in a real academy.
-  ['GRADING_LOG','EVENTS','COMPETITION_RESULTS','ANNOUNCEMENTS','STUDENT_INJURIES',
+  ['EVENTS','COMPETITION_RESULTS','ANNOUNCEMENTS','STUDENT_INJURIES',
    'PROSPECTS','EQUIPMENT','EQUIPMENT_LOANS','STUDENT_PACKAGES','FAMILY_GROUPS']
     .forEach(n => { try { _empty(eval(n)); } catch {} });
 }
@@ -210,6 +221,7 @@ async function tDeleteWaitlist(classId, studentId) {
   if (!isTenant()) return;
   await sb.from('waitlist').delete().eq('class_id', classId).eq('student_id', studentId).eq('academy_id', TENANT.academyId);
 }
+async function tInsertGradingLog(entry) { return tInsertDb('grading_log', gradingLogToDb(entry)); }
 
 // ---- Write-through helpers (no-ops in demo mode) ---------------------------
 async function tSaveNewStudent(student, enrollment) {
@@ -248,6 +260,6 @@ async function tUpdateEnrollment(studentId, patchInMemoryShape) {
 async function tenantSignOut() { try { await sb.auth.signOut(); } catch {} location.href = '/app'; }
 
 // Modules surfaced in the admin nav while in tenant mode (Phase 1 + 2a).
-const TENANT_MODULES = ['dashboard', 'students', 'schedule', 'classes', 'instructors', 'settings'];
+const TENANT_MODULES = ['dashboard', 'students', 'schedule', 'classes', 'instructors', 'grading', 'settings'];
 window.TENANT = TENANT; window.isTenant = isTenant;
 window.tenantSignOut = tenantSignOut;
