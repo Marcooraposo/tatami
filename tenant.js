@@ -137,6 +137,27 @@ function gradingLogToDb(g) {
     level_id: g.levelId, stripes: g.stripes ?? null, date: g.date || new Date().toISOString().slice(0, 10),
     note: g.note || null, academy_id: TENANT.academyId };
 }
+function eventFromDb(r) {
+  return { id: r.id, title: r.title, type: r.type, date: r.date, time: r.time, durationMin: r.duration_min,
+    location: r.location, capacity: r.capacity, notes: r.notes, registeredStudentIds: r.registered_student_ids || [],
+    source: r.source, externalUrl: r.external_url, externalId: r.external_id, image: r.image, createdAt: r.created_at };
+}
+function eventToDb(e) {
+  return { id: e.id, title: e.title, type: e.type, date: e.date || null, time: e.time || null,
+    duration_min: e.durationMin ?? null, location: e.location || null, capacity: e.capacity ?? null,
+    notes: e.notes || null, registered_student_ids: e.registeredStudentIds || [], source: e.source || null,
+    external_url: e.externalUrl || null, external_id: e.externalId || null, image: e.image || null,
+    academy_id: TENANT.academyId };
+}
+function compResultFromDb(r) {
+  return { id: r.id, eventId: r.event_id, studentId: r.student_id, division: r.division,
+    placement: r.placement, medal: r.medal, notes: r.notes, loggedAt: r.logged_at };
+}
+function compResultToDb(c) {
+  return { id: c.id, event_id: c.eventId, student_id: c.studentId, division: c.division || null,
+    placement: c.placement || null, medal: c.medal || null, notes: c.notes || null,
+    logged_at: c.loggedAt || new Date().toISOString(), academy_id: TENANT.academyId };
+}
 
 function _replace(arr, rows) { if (Array.isArray(arr)) { arr.length = 0; rows.forEach(r => arr.push(r)); } }
 function _empty(arr) { if (Array.isArray(arr)) arr.length = 0; }
@@ -146,7 +167,7 @@ function _empty(arr) { if (Array.isArray(arr)) arr.length = 0; }
 async function tHydrate() {
   if (!isTenant()) return;
   const aid = TENANT.academyId;
-  const [stu, enr, inst, tpl, cls, bk, att, wl, gl] = await Promise.all([
+  const [stu, enr, inst, tpl, cls, bk, att, wl, gl, ev, cr] = await Promise.all([
     sb.from('students').select('*').eq('academy_id', aid),
     sb.from('enrollments').select('*').eq('academy_id', aid),
     sb.from('instructors').select('*').eq('academy_id', aid),
@@ -155,7 +176,9 @@ async function tHydrate() {
     sb.from('bookings').select('*').eq('academy_id', aid),
     sb.from('attendance').select('*').eq('academy_id', aid),
     sb.from('waitlist').select('*').eq('academy_id', aid),
-    sb.from('grading_log').select('*').eq('academy_id', aid)
+    sb.from('grading_log').select('*').eq('academy_id', aid),
+    sb.from('events').select('*').eq('academy_id', aid),
+    sb.from('competition_results').select('*').eq('academy_id', aid)
   ]);
   if (typeof STUDENTS !== 'undefined')            _replace(STUDENTS, (stu.data || []).map(studentFromDb));
   if (typeof ENROLLMENTS !== 'undefined')         _replace(ENROLLMENTS, (enr.data || []).map(enrollmentFromDb));
@@ -166,10 +189,11 @@ async function tHydrate() {
   if (typeof ATTENDANCE !== 'undefined')          _replace(ATTENDANCE, (att.data || []).map(attendanceFromDb));
   if (typeof WAITLIST !== 'undefined')            _replace(WAITLIST, (wl.data || []).map(waitlistFromDb));
   if (typeof GRADING_LOG !== 'undefined')         _replace(GRADING_LOG, (gl.data || []).map(gradingLogFromDb));
+  if (typeof EVENTS !== 'undefined')              _replace(EVENTS, (ev.data || []).map(eventFromDb));
+  if (typeof COMPETITION_RESULTS !== 'undefined') _replace(COMPETITION_RESULTS, (cr.data || []).map(compResultFromDb));
   // Not-yet-cut modules: empty so demo data doesn't appear in a real academy.
-  ['EVENTS','COMPETITION_RESULTS','ANNOUNCEMENTS','STUDENT_INJURIES',
-   'PROSPECTS','EQUIPMENT','EQUIPMENT_LOANS','STUDENT_PACKAGES','FAMILY_GROUPS']
-    .forEach(n => { try { _empty(eval(n)); } catch {} });
+  ['ANNOUNCEMENTS','STUDENT_INJURIES','PROSPECTS','EQUIPMENT','EQUIPMENT_LOANS',
+   'STUDENT_PACKAGES','FAMILY_GROUPS'].forEach(n => { try { _empty(eval(n)); } catch {} });
 }
 
 // Generic write-through for an already-DB-shaped row (academy_id attached).
@@ -222,6 +246,9 @@ async function tDeleteWaitlist(classId, studentId) {
   await sb.from('waitlist').delete().eq('class_id', classId).eq('student_id', studentId).eq('academy_id', TENANT.academyId);
 }
 async function tInsertGradingLog(entry) { return tInsertDb('grading_log', gradingLogToDb(entry)); }
+async function tSaveEvent(e) { return tUpsertDb('events', eventToDb(e)); }
+async function tDeleteEvent(id) { if (!isTenant()) return; await sb.from('events').delete().eq('id', id).eq('academy_id', TENANT.academyId); }
+async function tInsertCompResult(c) { return tInsertDb('competition_results', compResultToDb(c)); }
 
 // ---- Write-through helpers (no-ops in demo mode) ---------------------------
 async function tSaveNewStudent(student, enrollment) {
@@ -261,6 +288,6 @@ async function tenantSignOut() { try { await sb.auth.signOut(); } catch {} locat
 
 // Modules surfaced in the admin nav while in tenant mode (Phase 1 + 2a).
 const TENANT_MODULES = ['dashboard', 'students', 'schedule', 'classes', 'instructors', 'grading',
-  'curriculum', 'curriculum-wizard', 'curriculum-tech', 'settings'];
+  'curriculum', 'curriculum-wizard', 'curriculum-tech', 'events', 'settings'];
 window.TENANT = TENANT; window.isTenant = isTenant;
 window.tenantSignOut = tenantSignOut;

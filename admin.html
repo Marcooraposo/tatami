@@ -4745,13 +4745,13 @@
     const eventId = document.getElementById('cr-event')?.value;
     if (!studentId || !eventId) { showToast('Pick an athlete and event.'); return; }
     const medal = document.getElementById('cr-medal').value;
-    COMPETITION_RESULTS.push({
-      id: 'cr-' + Date.now(), eventId, studentId,
+    const cr = { id: 'cr-' + Date.now(), eventId, studentId,
       division: document.getElementById('cr-division').value || '',
       placement: document.getElementById('cr-placement').value || '',
-      medal, notes: '', loggedAt: new Date().toISOString()
-    });
+      medal, notes: '', loggedAt: new Date().toISOString() };
+    COMPETITION_RESULTS.push(cr);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tInsertCompResult(cr);
     showToast('Result logged ✓');
     renderApp();
   }
@@ -4789,6 +4789,7 @@
     };
     EVENTS.push(evt);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tSaveEvent(evt);
     showToast(data.ok ? 'Event imported ✓' : 'Event added (manual) ✓');
     renderApp();
   }
@@ -9981,7 +9982,9 @@ ${CONFIG.academyName || 'The Team'}`;
   function deleteEvent(evtId) {
     if (!confirm('Delete this event?')) return;
     const idx = EVENTS.findIndex(e => e.id === evtId);
-    if (idx !== -1) { EVENTS.splice(idx, 1); persistData(); go('events'); }
+    if (idx !== -1) { EVENTS.splice(idx, 1); persistData();
+      if (typeof isTenant === 'function' && isTenant()) tDeleteEvent(evtId);
+      go('events'); }
   }
 
   function registerStudentToEvent(evtId, stuId) {
@@ -9991,6 +9994,7 @@ ${CONFIG.academyName || 'The Team'}`;
     if (evt.capacity && evt.registeredStudentIds.length >= evt.capacity) return;
     evt.registeredStudentIds.push(stuId);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tSaveEvent(evt);
     document.getElementById('content').innerHTML = EventDetail(evtId);
   }
 
@@ -9999,6 +10003,7 @@ ${CONFIG.academyName || 'The Team'}`;
     if (!evt) return;
     evt.registeredStudentIds = evt.registeredStudentIds.filter(id => id !== stuId);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tSaveEvent(evt);
     document.getElementById('content').innerHTML = EventDetail(evtId);
   }
 
@@ -10024,6 +10029,7 @@ ${CONFIG.academyName || 'The Team'}`;
     };
     EVENTS.push(evt);
     persistData();
+    if (typeof isTenant === 'function' && isTenant()) tSaveEvent(evt);
     go('events/' + evt.id);
   }
 
