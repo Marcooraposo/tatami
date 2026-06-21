@@ -16,6 +16,12 @@ const TENANT = { mode: 'demo', academyId: null, role: null, academyName: null, u
 function isTenant() { return TENANT.mode === 'tenant'; }
 function activeAcademyId() { return TENANT.academyId; }
 
+// Per-academy module overrides loaded from academy_features. Keyed by module_id
+// → boolean. Absence of a key = registry default (see isModuleEnabled). Empty
+// until tHydrate runs, and stays empty if the table/migration isn't there yet.
+const ENABLED_FEATURES = {};
+let FEATURES_LOADED = false; // true once academy_features has been read (rows or not)
+
 // Resolve tenant vs demo. Demo path (/demo) always stays the showcase.
 async function initTenant() {
   try {
@@ -194,6 +200,7 @@ async function tHydrate() {
   // Not-yet-cut modules: empty so demo data doesn't appear in a real academy.
   ['ANNOUNCEMENTS','STUDENT_INJURIES','PROSPECTS','EQUIPMENT','EQUIPMENT_LOANS',
    'STUDENT_PACKAGES','FAMILY_GROUPS'].forEach(n => { try { _empty(eval(n)); } catch {} });
+  await tLoadFeatures();
 }
 
 // Generic write-through for an already-DB-shaped row (academy_id attached).
@@ -286,8 +293,121 @@ async function tUpdateEnrollment(studentId, patchInMemoryShape) {
 
 async function tenantSignOut() { try { await sb.auth.signOut(); } catch {} location.href = '/app'; }
 
-// Modules surfaced in the admin nav while in tenant mode (Phase 1 + 2a).
-const TENANT_MODULES = ['dashboard', 'students', 'schedule', 'classes', 'instructors', 'grading',
-  'curriculum', 'curriculum-wizard', 'curriculum-tech', 'events', 'settings'];
+// =============================================================================
+// P3 — per-academy module system
+// -----------------------------------------------------------------------------
+// MODULE_REGISTRY is the single source of truth for the tenant module catalogue.
+//   base    — mandatory, always on, can't be turned off (People, Settings).
+//   status  — 'available' (cut over, toggleable) | 'soon' (not built yet, shown
+//             disabled in Settings, never reachable).
+//   requires — other module ids that must be on for this one to be on (enforced
+//             both ways: enabling pulls prerequisites on, disabling cascades to
+//             dependents).
+// Sub-routes (wizard/detail pages) aren't modules; they inherit their parent's
+// enabled state via TENANT_SUBROUTES below.
+// =============================================================================
+const MODULE_REGISTRY = [
+  { id: 'students',    label: 'Students',     group: 'People',      base: true,  status: 'available', requires: [] },
+  { id: 'settings',    label: 'Settings',     group: 'People',      base: true,  status: 'available', requires: [] },
+  { id: 'instructors', label: 'Instructors',  group: 'People',      base: false, status: 'available', requires: [] },
+  { id: 'schedule',    label: 'Schedule',     group: 'Schedule',    base: false, status: 'available', requires: [] },
+  { id: 'classes',     label: 'Classes',      group: 'Schedule',    base: false, status: 'available', requires: [] },
+  { id: 'events',      label: 'Events',       group: 'Schedule',    base: false, status: 'available', requires: [] },
+  { id: 'curriculum',  label: 'Curriculum',   group: 'Programme',   base: false, status: 'available', requires: [] },
+  { id: 'grading',     label: 'Grading',      group: 'Programme',   base: false, status: 'available', requires: [] },
+  // ---- coming soon (declare deps now so the framework is exercised) ----
+  { id: 'families',      label: 'Families',      group: 'People',      base: false, status: 'soon', requires: [] },
+  { id: 'memberships',   label: 'Memberships',   group: 'Finance',     base: false, status: 'soon', requires: [] },
+  { id: 'discounts',     label: 'Discounts',     group: 'Finance',     base: false, status: 'soon', requires: ['memberships'] },
+  { id: 'billing',       label: 'Billing',       group: 'Finance',     base: false, status: 'soon', requires: ['memberships'] },
+  { id: 'competition',   label: 'Competition',   group: 'Competition', base: false, status: 'soon', requires: ['events'] },
+  { id: 'analytics',     label: 'Analytics',     group: 'Insights',    base: false, status: 'soon', requires: [] },
+  { id: 'attendance-log',label: 'Attendance Log',group: 'Insights',    base: false, status: 'soon', requires: ['classes'] },
+  { id: 'ratings',       label: 'Feedback',      group: 'Insights',    base: false, status: 'soon', requires: [] },
+  { id: 'goals',         label: 'Goals',         group: 'Insights',    base: false, status: 'soon', requires: [] },
+  { id: 'announcements', label: 'Announcements', group: 'Comms',       base: false, status: 'soon', requires: [] },
+];
+// Sub-route → owning module. A sub-route is reachable iff its parent is enabled.
+const TENANT_SUBROUTES = {
+  'curriculum-wizard': 'curriculum', 'curriculum-tech': 'curriculum',
+  'promotion-rules': 'curriculum', 'templates': 'schedule', 'closures': 'schedule',
+};
+function moduleMeta(id) { return MODULE_REGISTRY.find(m => m.id === id) || null; }
+function moduleResolve(id) { return TENANT_SUBROUTES[id] || id; }
+
+// Is a module on for the active academy? base → always; soon → never; otherwise
+// the explicit academy_features override, defaulting to ON for available modules.
+function isModuleEnabled(id) {
+  const meta = moduleMeta(moduleResolve(id));
+  if (!meta) return false;                 // not a tenant module (demo-only)
+  if (meta.base) return true;
+  if (meta.status === 'soon') return false;
+  if (Object.prototype.hasOwnProperty.call(ENABLED_FEATURES, meta.id)) return !!ENABLED_FEATURES[meta.id];
+  return true;                             // available modules default on
+}
+// Modules eligible to appear as toggles in Settings (everything except mandatory).
+function toggleableModules() { return MODULE_REGISTRY.filter(m => !m.base); }
+
+// Load the academy's overrides. Tolerant: a missing table (pre-migration) just
+// leaves ENABLED_FEATURES empty → defaults apply, nothing breaks.
+async function tLoadFeatures() {
+  if (!isTenant()) return;
+  Object.keys(ENABLED_FEATURES).forEach(k => delete ENABLED_FEATURES[k]);
+  const r = await sb.from('academy_features').select('module_id, enabled').eq('academy_id', TENANT.academyId);
+  if (r.error) { console.warn('[tenant] academy_features load (run migration 013?):', r.error.message); FEATURES_LOADED = false; return; }
+  (r.data || []).forEach(row => { ENABLED_FEATURES[row.module_id] = !!row.enabled; });
+  FEATURES_LOADED = true;
+}
+// True when this academy has never configured modules (first-run picker trigger).
+function featuresUnconfigured() { return FEATURES_LOADED && Object.keys(ENABLED_FEATURES).length === 0; }
+
+// Persist one toggle, cascading prerequisites/dependents per requires[].
+// Returns { ok, changed:[ids] } so the caller can re-render.
+async function tSetModuleEnabled(id, enabled) {
+  const meta = moduleMeta(id);
+  if (!meta || meta.base) return { ok: false, changed: [] };
+  const changed = {};
+  const want = (mid, on) => {
+    const mm = moduleMeta(mid); if (!mm || mm.base) return;
+    changed[mid] = on;
+  };
+  want(id, !!enabled);
+  if (enabled) {
+    // turning on → pull in every prerequisite (transitively)
+    const visit = (mid) => (moduleMeta(mid)?.requires || []).forEach(req => { if (!(req in changed)) { want(req, true); visit(req); } });
+    visit(id);
+  } else {
+    // turning off → cascade to anything that requires it (transitively)
+    const dependents = (mid) => MODULE_REGISTRY.filter(m => (m.requires || []).includes(mid));
+    const visit = (mid) => dependents(mid).forEach(d => { if (!(d.id in changed)) { want(d.id, false); visit(d.id); } });
+    visit(id);
+  }
+  // Apply locally first so the UI reflects immediately even in demo mode.
+  Object.entries(changed).forEach(([mid, on]) => { ENABLED_FEATURES[mid] = on; });
+  FEATURES_LOADED = true;
+  if (!isTenant()) return { ok: true, changed: Object.keys(changed) };
+  const rows = Object.entries(changed).map(([module_id, on]) => ({ academy_id: TENANT.academyId, module_id, enabled: on, updated_at: new Date().toISOString() }));
+  const r = await sb.from('academy_features').upsert(rows, { onConflict: 'academy_id,module_id' });
+  if (r.error) console.error('[tenant] set module:', r.error);
+  return { ok: !r.error, changed: Object.keys(changed), error: r.error };
+}
+// First-run: persist the picked set (and explicit OFFs) in one shot.
+async function tInitFeatures(enabledIds) {
+  const want = new Set(enabledIds);
+  const rows = toggleableModules()
+    .filter(m => m.status === 'available')
+    .map(m => ({ academy_id: TENANT.academyId, module_id: m.id, enabled: want.has(m.id), updated_at: new Date().toISOString() }));
+  rows.forEach(r => { ENABLED_FEATURES[r.module_id] = r.enabled; });
+  FEATURES_LOADED = true;
+  if (!isTenant()) return { ok: true };
+  const r = await sb.from('academy_features').upsert(rows, { onConflict: 'academy_id,module_id' });
+  if (r.error) console.error('[tenant] init features:', r.error);
+  return { ok: !r.error, error: r.error };
+}
+
 window.TENANT = TENANT; window.isTenant = isTenant;
 window.tenantSignOut = tenantSignOut;
+window.MODULE_REGISTRY = MODULE_REGISTRY; window.isModuleEnabled = isModuleEnabled;
+window.toggleableModules = toggleableModules; window.moduleMeta = moduleMeta;
+window.tSetModuleEnabled = tSetModuleEnabled; window.tInitFeatures = tInitFeatures;
+window.featuresUnconfigured = featuresUnconfigured;

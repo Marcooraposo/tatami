@@ -519,9 +519,10 @@
   function effectivePreset() { return getDemoPreset() || 'full'; }
   function setDemoPreset(p) { try { localStorage.setItem('tatami_demo_preset', p); } catch {} removeDemoPicker(); go('dashboard'); }
   function isNavEnabled(id) {
-    // Tenant mode (real academy): only the modules cut over so far (Phase 1).
+    // Tenant mode (real academy): per-academy module toggles (registry-driven).
     if (typeof isTenant === 'function' && isTenant()) {
-      return TENANT_MODULES.includes(id) || ['students','setup'].includes(id);
+      if (id === 'setup') return true;            // org-setup sub-flow always reachable
+      return isModuleEnabled(id);                 // resolves sub-routes to their parent
     }
     if (DEMO_BASE_IDS.includes(id) || DEMO_ALWAYS.includes(id)) return true;
     const p = DEMO_PRESETS[effectivePreset()];
@@ -559,6 +560,53 @@
   function removeDemoPicker() { document.getElementById('demo-picker')?.remove(); }
   window.setDemoPreset = setDemoPreset;
   window.showDemoPicker = showDemoPicker;
+
+  // ---------- First-run module picker (tenant, brand-new academy) ------------
+  function _modulesOnboardedKey() { return 'tatami_modules_onboarded_' + (TENANT.academyId || ''); }
+  function modulesOnboarded() { try { return !!localStorage.getItem(_modulesOnboardedKey()); } catch { return false; } }
+  function _markModulesOnboarded() { try { localStorage.setItem(_modulesOnboardedKey(), '1'); } catch {} }
+  function OnboardingModulesOverlay() {
+    const avail = MODULE_REGISTRY.filter(m => !m.base && m.status === 'available');
+    const cards = avail.map(m => `
+      <label style="display:flex;align-items:center;gap:var(--sp-3);padding:var(--sp-3);border:1px solid var(--border);border-radius:var(--r-md);cursor:pointer">
+        <input type="checkbox" class="onb-mod" value="${m.id}" checked style="width:18px;height:18px;accent-color:var(--accent)">
+        <div><div style="font-weight:600;font-size:14px">${m.label}</div><div class="muted" style="font-size:12px">${m.group}</div></div>
+      </label>`).join('');
+    const soon = MODULE_REGISTRY.filter(m => m.status === 'soon').map(m => m.label).join(' · ');
+    return `<div id="onb-modules" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:var(--sp-5)">
+      <div class="card" style="max-width:580px;width:100%">
+        <h3 class="card-title" style="margin-bottom:var(--sp-1)">Choose your modules</h3>
+        <p class="muted" style="font-size:13px;margin-bottom:var(--sp-2)">Pick what your academy needs. Students &amp; Settings are always on — change the rest anytime in Settings.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin:var(--sp-4) 0">${cards}</div>
+        ${soon ? `<p class="faint" style="font-size:12px">Coming soon: ${soon}</p>` : ''}
+        <div class="row-between" style="margin-top:var(--sp-4)">
+          <button class="btn btn-secondary" onclick="dismissOnboardingModules()">Use defaults</button>
+          <button class="btn" onclick="confirmOnboardingModules()">Continue →</button>
+        </div>
+      </div>
+    </div>`;
+  }
+  function showOnboardingModules() {
+    if (document.getElementById('onb-modules')) return;
+    document.body.insertAdjacentHTML('beforeend', OnboardingModulesOverlay());
+  }
+  async function confirmOnboardingModules() {
+    const ids = [...document.querySelectorAll('.onb-mod:checked')].map(c => c.value);
+    const res = await tInitFeatures(ids);
+    if (!res.ok) showToast('Could not save — run migration 013.');
+    _markModulesOnboarded();
+    document.getElementById('onb-modules')?.remove();
+    renderApp();
+  }
+  async function dismissOnboardingModules() {
+    // Accept defaults (all available modules on), but persist so it won't reappear.
+    await tInitFeatures(MODULE_REGISTRY.filter(m => !m.base && m.status === 'available').map(m => m.id));
+    _markModulesOnboarded();
+    document.getElementById('onb-modules')?.remove();
+    renderApp();
+  }
+  window.confirmOnboardingModules = confirmOnboardingModules;
+  window.dismissOnboardingModules = dismissOnboardingModules;
 
   // ---------- Top-level render ----------------------------------------------
 
@@ -6557,6 +6605,61 @@
   window.sportWizardSyncGrading = sportWizardSyncGrading;
   window.saveSportWizard = saveSportWizard;
 
+  // ---------- Manage modules (tenant only) ----------------------------------
+  function _moduleSwitch(m) {
+    const on   = isModuleEnabled(m.id);
+    const soon = m.status === 'soon';
+    const reqs = (m.requires || []).map(r => (moduleMeta(r)?.label || r));
+    const reqLabel = reqs.length ? `Requires ${reqs.join(', ')}` : '';
+    const knob = `
+      <label style="position:relative;display:inline-flex;align-items:center;cursor:${soon ? 'not-allowed' : 'pointer'}">
+        <input type="checkbox" ${on ? 'checked' : ''} ${soon ? 'disabled' : ''}
+          onchange="toggleModule('${m.id}',this.checked)" style="position:absolute;opacity:0;width:0;height:0">
+        <span style="width:38px;height:22px;border-radius:11px;transition:background .15s;
+          background:${on ? 'var(--accent)' : 'var(--border)'};position:relative;display:inline-block">
+          <span style="position:absolute;top:2px;left:${on ? '18px' : '2px'};width:18px;height:18px;border-radius:50%;
+            background:#fff;transition:left .15s;box-shadow:0 1px 2px rgba(0,0,0,.2)"></span>
+        </span>
+      </label>`;
+    return `
+      <div class="row-between" style="padding:var(--sp-3) 0;border-top:1px solid var(--border);${soon ? 'opacity:.65' : ''}">
+        <div>
+          <div style="font-weight:600;font-size:13px">${m.label}
+            ${soon ? `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:1px 6px;margin-left:6px">Soon</span>` : ''}
+          </div>
+          ${reqLabel ? `<div class="muted" style="font-size:11px;margin-top:2px">${reqLabel}</div>` : ''}
+        </div>
+        ${knob}
+      </div>`;
+  }
+  function ModulesCard() {
+    const groups = [...new Set(MODULE_REGISTRY.map(m => m.group))];
+    const body = groups.map(g => {
+      const mods = MODULE_REGISTRY.filter(m => m.group === g && !m.base);
+      if (!mods.length) return '';
+      return `<div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);margin-top:var(--sp-3)">${g}</div>
+        ${mods.map(_moduleSwitch).join('')}
+      </div>`;
+    }).join('');
+    return `
+      <div class="card" style="margin-bottom:var(--sp-4)">
+        <h3 class="card-title" style="margin-bottom:var(--sp-1)">Modules</h3>
+        <p class="muted" style="font-size:13px;margin-bottom:var(--sp-2)">Turn academy features on or off. Students &amp; Settings are always on. “Soon” features aren’t available yet.</p>
+        ${body}
+      </div>`;
+  }
+  async function toggleModule(id, enabled) {
+    const meta = moduleMeta(id);
+    if (meta && enabled && (meta.requires || []).some(r => moduleMeta(r)?.status === 'soon')) {
+      showToast('That module needs a feature that isn’t available yet.'); renderApp(); return;
+    }
+    const res = await tSetModuleEnabled(id, enabled);
+    if (!res.ok && isTenant()) showToast('Could not save — run migration 013.');
+    renderApp();
+  }
+  window.toggleModule = toggleModule;
+
   function SettingsScreen() {
     const setup = getOrgSetup() || {};
     const org = setup.org || {};
@@ -6566,6 +6669,8 @@
       <div style="max-width:680px;margin:0 auto">
         <h1 class="h1" style="margin-bottom:var(--sp-2)">${tr('screen.settings')}</h1>
         <p class="muted" style="margin-bottom:var(--sp-5)">Manage your academy details and gym rules.</p>
+
+        ${(typeof isTenant === 'function' && isTenant()) ? ModulesCard() : ''}
 
         <div class="card" style="margin-bottom:var(--sp-4)">
           <h3 class="card-title" style="margin-bottom:var(--sp-4)">Academy details</h3>
@@ -15365,6 +15470,12 @@ ${CONFIG.academyName || 'The Team'}`;
       if (isTenant()) await tHydrate();
     } catch (e) { console.error('[boot]', e); }
     renderApp();
+    // First-run module picker: brand-new academy that has never configured
+    // modules (only fires once academy_features exists — see migration 013).
+    if (isTenant() && typeof featuresUnconfigured === 'function'
+        && featuresUnconfigured() && !modulesOnboarded()) {
+      showOnboardingModules();
+    }
   })();
   </script>
 </body>
