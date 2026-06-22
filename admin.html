@@ -5489,22 +5489,12 @@
         </div>
       </div>
 
-      <div class="row" style="gap:var(--sp-4);margin-bottom:var(--sp-4);flex-wrap:wrap">
-        <div class="card" style="flex:1;min-width:140px;padding:var(--sp-3) var(--sp-4)">
-          <div style="font-size:22px;font-weight:700">${totalClasses}</div>
-          <div style="font-size:12px;font-weight:600;margin-top:var(--sp-1)">Classes</div>
-          <div class="faint" style="font-size:11px">${completedCount} completed</div>
-        </div>
-        <div class="card" style="flex:1;min-width:140px;padding:var(--sp-3) var(--sp-4)">
-          <div style="font-size:22px;font-weight:700">${totalBooked}</div>
-          <div style="font-size:12px;font-weight:600;margin-top:var(--sp-1)">Bookings</div>
-          <div class="faint" style="font-size:11px">across all classes</div>
-        </div>
-        <div class="card" style="flex:2;min-width:200px;padding:var(--sp-3) var(--sp-4)">
-          <div style="font-size:13px;font-weight:600">${weekLabel}</div>
-          <div class="faint" style="font-size:11px;margin-top:var(--sp-1)">
-            ${isCurrentWeek ? 'Current week' : scheduleWeekOffset < 0 ? `${Math.abs(scheduleWeekOffset)} week${Math.abs(scheduleWeekOffset)>1?'s':''} ago` : `${scheduleWeekOffset} week${scheduleWeekOffset>1?'s':''} ahead`}
-          </div>
+      <div class="stat-grid" style="margin-bottom:var(--sp-4)">
+        ${StatCard('', 'Classes', totalClasses, completedCount + ' completed')}
+        ${StatCard('', 'Bookings', totalBooked, 'across all classes')}
+        <div class="stat-card">
+          <div class="stat-label" style="margin-top:0">${weekLabel}</div>
+          <div class="stat-sub">${isCurrentWeek ? 'Current week' : scheduleWeekOffset < 0 ? `${Math.abs(scheduleWeekOffset)} week${Math.abs(scheduleWeekOffset)>1?'s':''} ago` : `${scheduleWeekOffset} week${scheduleWeekOffset>1?'s':''} ahead`}</div>
         </div>
       </div>
 
@@ -5859,17 +5849,6 @@
         </div>`;
     }).join('');
 
-    function StatCard(icon, label, value, sub, onclick) {
-      return `
-        <div class="card" style="cursor:${onclick ? 'pointer' : 'default'};flex:1;min-width:150px"
-             ${onclick ? `onclick="${onclick}"` : ''}>
-          <div style="font-size:22px;margin-bottom:var(--sp-2)">${icon}</div>
-          <div style="font-size:28px;font-weight:700;line-height:1">${value}</div>
-          <div style="font-size:13px;font-weight:600;margin-top:var(--sp-2)">${label}</div>
-          ${sub ? `<div class="faint" style="font-size:12px;margin-top:var(--sp-1)">${sub}</div>` : ''}
-        </div>`;
-    }
-
     const nextClassSub = nextClass
       ? formatClassTime(nextClass.startsAt) + ' · ' + nextClass.classType
       : 'No classes scheduled';
@@ -6124,7 +6103,7 @@
 
       ${todayStrip}
 
-      <div style="display:flex;flex-wrap:wrap;gap:var(--sp-4);margin-bottom:var(--sp-5)">
+      <div class="stat-grid">
         ${StatCard('◉', 'Active students', activeStudents, 'Total enrolled', "go('students')")}
         ${StatCard('◷', 'Classes this week', classesThisWeek.length, classesThisWeek.filter(c=>c.status==='completed').length + ' completed', "go('schedule')")}
         ${StatCard('▶', 'Next class', nextClassVal, nextClassSub, nextClass?.id ? `go('classes/${nextClass.id}')` : null)}
@@ -6343,31 +6322,13 @@
         <button class="btn" onclick="go('memberships/plans')">Edit plans →</button>
       </div>
 
-      <div style="display:flex;flex-wrap:wrap;gap:var(--sp-4);margin-bottom:var(--sp-5)">
-        <div class="card" style="flex:1;min-width:140px;padding:var(--sp-3) var(--sp-4)">
-          <div style="font-size:22px;font-weight:700">${total}</div>
-          <div style="font-size:13px;font-weight:600;margin-top:var(--sp-1)">Total members</div>
-        </div>
-        <div class="card" style="flex:1;min-width:140px;padding:var(--sp-3) var(--sp-4)">
-          <div style="font-size:22px;font-weight:700">€${mrr}</div>
-          <div style="font-size:13px;font-weight:600;margin-top:var(--sp-1)">Est. MRR</div>
-          <div class="faint" style="font-size:11px">approximate</div>
-        </div>
-        ${MEMBERSHIP_PLANS.map(p => {
-          const count = (byPlan[p.id] || []).length;
-          return `
-            <div class="card" style="flex:1;min-width:140px;padding:var(--sp-3) var(--sp-4)">
-              <div style="font-size:22px;font-weight:700">${count}</div>
-              <div style="font-size:13px;font-weight:600;margin-top:var(--sp-1)">${p.label}</div>
-              <div class="faint" style="font-size:11px">${p.price}</div>
-            </div>`;
-        }).join('')}
-        <div class="card" style="flex:1;min-width:140px;padding:var(--sp-3) var(--sp-4);${renewalItems.length > 0 ? 'border-left:3px solid var(--accent)' : ''}">
-          <div style="font-size:22px;font-weight:700;color:${renewalItems.length > 0 ? 'var(--accent)' : 'inherit'}">${renewalItems.length}</div>
-          <div style="font-size:13px;font-weight:600;margin-top:var(--sp-1)">Renewals due</div>
-          <div class="faint" style="font-size:11px">next 60 days</div>
-        </div>
-      </div>
+      ${StatGrid([
+        StatCard('', 'Total members', total, ''),
+        StatCard('', 'Est. MRR', '€' + mrr, 'approximate'),
+        ...MEMBERSHIP_PLANS.map(p => StatCard('', p.label, (byPlan[p.id] || []).length, p.price)),
+        StatCard('', 'Renewals due', renewalItems.length, 'next 60 days', null,
+          { accent: renewalItems.length > 0, valueColor: renewalItems.length > 0 ? 'var(--accent)' : '' })
+      ])}
 
 
       ${planCards}
@@ -7981,31 +7942,14 @@
         </div>
       </div>
 
-      <div style="display:flex;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-5)">
-        <div class="card" style="flex:1;min-width:140px">
-          <div style="font-size:22px;margin-bottom:var(--sp-2)">★</div>
-          <div style="font-size:28px;font-weight:700">${ready.length}</div>
-          <div style="font-size:13px;font-weight:600;margin-top:var(--sp-2)">Ready to promote</div>
-        </div>
-        <div class="card" style="flex:1;min-width:140px">
-          <div style="font-size:22px;margin-bottom:var(--sp-2)">✓</div>
-          <div style="font-size:28px;font-weight:700">${GRADING_SESSIONS.reduce((n,s)=>n+s.results.length,0)}</div>
-          <div style="font-size:13px;font-weight:600;margin-top:var(--sp-2)">Total promoted</div>
-          <div class="faint" style="font-size:12px;margin-top:var(--sp-1)">${GRADING_SESSIONS.length} session${GRADING_SESSIONS.length !== 1 ? 's' : ''}</div>
-        </div>
-        <div class="card" style="flex:1;min-width:140px">
-          <div style="font-size:22px;margin-bottom:var(--sp-2)">◉</div>
-          <div style="font-size:28px;font-weight:700">${selectedCount}</div>
-          <div style="font-size:13px;font-weight:600;margin-top:var(--sp-2)">Selected</div>
-          <div class="faint" style="font-size:12px;margin-top:var(--sp-1)">for this session</div>
-        </div>
-        <div class="card" style="flex:1;min-width:140px;${beltTestRequests.length > 0 ? 'border:2px solid var(--accent)' : ''}">
-          <div style="font-size:22px;margin-bottom:var(--sp-2)">🥋</div>
-          <div style="font-size:28px;font-weight:700;color:${beltTestRequests.length > 0 ? 'var(--accent)' : 'var(--text)'}">${beltTestRequests.length}</div>
-          <div style="font-size:13px;font-weight:600;margin-top:var(--sp-2)">Test requests</div>
-          <div class="faint" style="font-size:12px;margin-top:var(--sp-1)">from students</div>
-        </div>
-      </div>
+      ${StatGrid([
+        StatCard('★', 'Ready to promote', ready.length, ''),
+        StatCard('✓', 'Total promoted', GRADING_SESSIONS.reduce((n,s)=>n+s.results.length,0),
+          GRADING_SESSIONS.length + ' session' + (GRADING_SESSIONS.length !== 1 ? 's' : '')),
+        StatCard('◉', 'Selected', selectedCount, 'for this session'),
+        StatCard('🥋', 'Test requests', beltTestRequests.length, 'from students', null,
+          { accent: beltTestRequests.length > 0, valueColor: beltTestRequests.length > 0 ? 'var(--accent)' : '' })
+      ])}
 
       ${beltTestRequests.length > 0 ? `
       <h3 class="h3" style="margin-bottom:var(--sp-3)">🥋 Student belt test requests</h3>
@@ -8499,24 +8443,12 @@
           </div>
           <button class="btn" onclick="openInstructorForm()">+ ${t({en:'Add instructor',pt:'Adicionar professor'})}</button>
         </div>
-        <div style="display:flex;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-6)">
-          <div class="card" style="flex:1;min-width:120px;text-align:center">
-            <div style="font-size:28px;font-weight:700">${INSTRUCTORS.length}</div>
-            <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-top:var(--sp-1)">Instructors</div>
-          </div>
-          <div class="card" style="flex:1;min-width:120px;text-align:center">
-            <div style="font-size:28px;font-weight:700">${totalClassesThisMonth}</div>
-            <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-top:var(--sp-1)">Classes this month</div>
-          </div>
-          <div class="card" style="flex:1;min-width:120px;text-align:center">
-            <div style="font-size:28px;font-weight:700">${Math.round(totalHoursThisMonth)}</div>
-            <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-top:var(--sp-1)">Hours this month</div>
-          </div>
-          <div class="card" style="flex:1;min-width:120px;text-align:center">
-            <div style="font-size:28px;font-weight:700">${totalAttendedThisMonth}</div>
-            <div style="font-size:11px;color:var(--text-muted);font-weight:600;text-transform:uppercase;margin-top:var(--sp-1)">Check-ins this month</div>
-          </div>
-        </div>
+        ${StatGrid([
+          StatCard('', 'Instructors', INSTRUCTORS.length, ''),
+          StatCard('', 'Classes this month', totalClassesThisMonth, ''),
+          StatCard('', 'Hours this month', Math.round(totalHoursThisMonth), ''),
+          StatCard('', 'Check-ins this month', totalAttendedThisMonth, '')
+        ])}
         ${stats.map(s => InstructorCard(s)).join('')}
       </div>`;
   }
@@ -8964,6 +8896,25 @@
       <button onclick="closeAppModal('${id}')" aria-label="Close" style="background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted)">×</button>
     </div>`;
   }
+
+  // ---------- Canonical metric card -----------------------------------------
+  // One stat card used by every screen's top summary row. Wrap a set in
+  // StatGrid([...]) (or <div class="stat-grid">) for equal-width responsive
+  // cells of matching height. opts: { accent:bool, valueColor:str }.
+  function StatCard(icon, label, value, sub, onclick, opts) {
+    opts = opts || {};
+    const cls = 'stat-card' + (onclick ? ' stat-card-link' : '');
+    const border = opts.accent ? ' style="border-color:var(--accent)"' : '';
+    const vcolor = opts.valueColor ? ` style="color:${opts.valueColor}"` : '';
+    return `
+      <div class="${cls}"${border} ${onclick ? `onclick="${onclick}"` : ''}>
+        ${icon ? `<div class="stat-icon">${icon}</div>` : ''}
+        <div class="stat-value"${vcolor}>${value}</div>
+        <div class="stat-label">${label}</div>
+        ${sub ? `<div class="stat-sub">${sub}</div>` : ''}
+      </div>`;
+  }
+  function StatGrid(cards) { return `<div class="stat-grid">${cards.join('')}</div>`; }
 
   // ---------- Weekly focus picker (modal: search + attendance suggestions) --
   const WF_COMPLEXITY_COLOR = { beginner: 'var(--success)', intermediate: 'var(--accent)', advanced: 'var(--warn)' };
