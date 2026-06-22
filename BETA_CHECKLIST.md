@@ -15,13 +15,9 @@ dashboards — they can't be done from the repo.
 
 ---
 
-## You must do — DEV (unblock verification now)
-- [ ] Run **`014_master_readonly.sql`** on the dev project.
-- [ ] Re-run the smoke test → expect **10/10**:
-      ```
-      ./scripts/smoke-isolation.sh
-      ```
-      (Pre-014 it's 8/10; the two master-write checks flip to PASS after 014.)
+## DEV — done ✅
+- [x] Ran **`014_master_readonly.sql`** on the dev project.
+- [x] Smoke test passes **10/10** (`./scripts/smoke-isolation.sh`).
 
 ## You must do — PROD (before inviting academies)
 

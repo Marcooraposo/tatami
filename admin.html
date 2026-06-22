@@ -2907,12 +2907,13 @@
             </div>
             <div class="faint" style="font-size:11px;margin-top:4px">${tr('aud.openHintShort')}</div>
           </div>
+          ${isNavEnabled('instructors') ? `
           <div>
             <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-1)">Instructor</label>
             <select id="tpl-inst" class="input" style="width:100%">
               <option value="">— Select —</option>${instOpts}
             </select>
-          </div>
+          </div>` : ''}
         </div>
         <div style="display:flex;justify-content:space-between">
           <button class="btn btn-secondary" onclick="cancelEditTemplate()">Cancel</button>
@@ -2947,7 +2948,7 @@
     const inst     = document.getElementById('tpl-inst')?.value || '';
     const cap      = parseInt(document.getElementById('tpl-cap')?.value) || 20;
 
-    if (!inst) { alert('Please select an instructor.'); return; }
+    if (isNavEnabled('instructors') && !inst) { alert('Please select an instructor.'); return; }
 
     let saved;
     if (id === 'new') {
@@ -6307,7 +6308,8 @@
     collectNewClassForm();
     const { date, time, classType, instructorId, durationMin, capacity, audienceTags, sportId } = newClassState;
     if (!date) { alert('Please set a date.'); return; }
-    if (!instructorId) { alert('Please select an instructor.'); return; }
+    // Instructor is only required when the Instructors module is enabled.
+    if (isNavEnabled('instructors') && !instructorId) { alert('Please select an instructor.'); return; }
     const startsAt = new Date(`${date}T${time}:00`).toISOString();
     const id = 'cls-' + Date.now();
     const cls = { id, startsAt, durationMin, classType, instructorId,
@@ -6370,13 +6372,14 @@
               </div>
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
+              ${isNavEnabled('instructors') ? `
               <div>
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Instructor *</label>
                 <select id="nc-instructorId" class="input" style="width:100%">
                   <option value="">— Select instructor —</option>
                   ${instructorOpts}
                 </select>
-              </div>
+              </div>` : ''}
               <div>
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Capacity</label>
                 <input id="nc-capacity" type="number" class="input" style="width:100%"

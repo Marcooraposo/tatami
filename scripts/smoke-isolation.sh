@@ -18,6 +18,8 @@ pass=0; fail=0
 ok()  { echo "PASS  $1"; pass=$((pass+1)); }
 no()  { echo "FAIL  $1 ($2)"; fail=$((fail+1)); }
 chk() { if [ "$2" = "$3" ]; then ok "$1"; else no "$1" "got '$2' want '$3'"; fi; }
+# RLS denial: anon (no user JWT) → 401, authenticated-but-denied → 403. Both pass.
+denied() { case "$2" in 401|403) ok "$1";; *) no "$1" "got '$2' want 401/403";; esac; }
 
 jget() { python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('$1','') if isinstance(d,dict) else '')"; }
 jlen() { python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d) if isinstance(d,list) else -1)"; }
@@ -61,16 +63,16 @@ if [ "$n" -ge 1 ]; then ok "A reads own students ($n)"; else no "A reads own stu
 cb=$(get_body "$TA" "/students?select=id&academy_id=eq.$BID")
 chk "A cannot read B's students" "$cb" "[]"
 c=$(post_code "$TA" /students "{\"id\":\"${SID}x\",\"name\":\"X\",\"initials\":\"X\",\"joined_at\":\"2026-01-01\",\"academy_id\":\"$BID\"}")
-chk "A cannot write into B (with-check)" "$c" 403
+denied "A cannot write into B (with-check)" "$c"
 
 # Anon locked out of operational data.
 an=$(get_body "$K" "/students?select=id&academy_id=eq.$AID")
 chk "anon cannot read students" "$an" "[]"
 
 # Master library: public read, writes denied (post-014).
-chk "master read works (sports)"            "$(get_code "$K" "/sports?select=id&limit=1")" 200
-chk "anon write to master denied (sports)"  "$(post_code "$K"  /sports '{"id":"sport-smktest","name":{"en":"X"}}')" 403
-chk "member write to master denied (sports)" "$(post_code "$TA" /sports '{"id":"sport-smktest2","name":{"en":"X"}}')" 403
+chk    "master read works (sports)"            "$(get_code "$K" "/sports?select=id&limit=1")" 200
+denied "anon write to master denied (sports)"  "$(post_code "$K"  /sports '{"id":"sport-smktest","name":{"en":"X"}}')"
+denied "member write to master denied (sports)" "$(post_code "$TA" /sports '{"id":"sport-smktest2","name":{"en":"X"}}')"
 
 echo; echo "== $pass passed, $fail failed =="
 [ "$fail" -eq 0 ]
