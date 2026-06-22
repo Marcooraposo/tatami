@@ -97,9 +97,11 @@ the features they need, and enter their own data. Each tenant's data is isolated
 and protected.
 
 ### Decisions locked in
-- **Multi-academy per user:** in scope for the *future*, not now. Design the data
-  model so one user can belong to / switch between multiple academies, but don't
-  build the switcher yet.
+- **Multi-academy per user → multi-org / multi-location:** future, not now. Design
+  so one user can belong to / switch between multiple academies; the parent
+  **organization** + **location** model is specced in *Multi-org & multi-location
+  (future)* below. Build the sidebar academy switcher now as the UX seam; slot the
+  data model in later.
 - **Students get their own app:** students authenticate and log into the student
   app (`student.html`) to see their own data. So `auth.users` maps to **both**
   staff and students, distinguished by role.
@@ -148,6 +150,68 @@ Also the basis for pricing tiers.
 - **Fictional people/classes/attendance** = demo-only; never seed real tenants.
 - New academies start empty; optional "load sample data" for exploration.
 - Demo academy = a normal tenant row flagged `is_demo = true`, read-only.
+
+### Multi-org & multi-location (future)
+Today one `academies` row = one tenant = one gym. Two real-world shapes break that
+1:1 and need a **parent object above the academy**:
+- **One academy, many locations** — a brand runs several physical gyms that share
+  curriculum, branding, and staff but keep separate schedules / attendance / rosters.
+- **One user, many organizations** — an owner or coach manages unrelated brands.
+
+**Model — introduce `organizations` as the parent; today's "academy" becomes a `location`:**
+```
+organization        (brand / billing entity)
+  └─ location        (physical gym = today's academies row + org_id)
+       └─ operational data (students, classes, attendance, events, …)
+```
+- `organizations(id, name, …)` — owns shared config.
+- `academies` gains `org_id` (optionally rename → `locations`). Per-row scoping
+  stays at the location level — operational tables keep `academy_id`, so no data
+  rewrite.
+- **Roles, two tiers:**
+  - `organization_members(org_id, user_id, role)` — `owner | admin`: manage every
+    location, staff, curriculum, billing.
+  - `academy_members(academy_id, user_id, role)` — `instructor | front-desk`:
+    scoped to one location. Org owners are implicitly members of every location.
+  - A user managing N orgs = N `organization_members` rows.
+
+**At ORG level (shared):** curriculum master + grading systems, accent / branding,
+staff & admin user management, subscription / billing, and optionally a shared
+student identity (one member training at two locations of the same brand).
+**At LOCATION level:** schedule, classes, attendance, on-site instructors, events.
+
+**RLS evolution:** `auth_is_member(academy_id)` becomes org-aware — a new
+`auth_can_access_location(loc)` = member of the location **OR** admin of the
+location's org. One helper changes; existing policies keep referencing `academy_id`.
+
+**Active context:** persist `active_org` + `active_location` (localStorage now →
+`user_preferences` later); the sidebar switcher sets both.
+
+**Open decision — student identity:** student-per-location (simple, today) vs
+student-per-org with per-location enrollment (one person trains at multiple sites).
+Default to per-location for beta; revisit when multi-location ships.
+
+**Migration (backward compatible — post-beta, "P6"):**
+1. Add `organizations`.
+2. Add `academies.org_id` (+ optional rename to `locations`).
+3. Backfill one org per existing academy (1:1) — single-gym users unaffected.
+4. Add `organization_members`; backfill academy owners → org owners.
+5. Switch `auth_is_member` → location-or-org check.
+6. Move shared config (curriculum master, accent, billing) up to org.
+
+**Build the seam now, the model later:** ship the sidebar academy switcher (below)
+during single-academy beta so the org/location tree slots in without re-teaching
+the UI.
+
+### Where the academy switcher lives
+**Top-left of the sidebar, as its header** (replacing / under the `openmat.me`
+wordmark) — the standard SaaS "workspace switcher" slot (Slack / Linear / Notion).
+It shows the **current academy name + role** with a `▾`; the menu today lists the
+user's academies (switch) + Sign out, and grows into: switch location,
+**+ Add location**, **Manage organization** (user management, curriculum, billing).
+Keep *account* actions top-right (avatar / sign out); *workspace identity* goes
+top-left. Today the only hint of the active academy is the avatar initials in the
+top-right — not discoverable, hence this gap.
 
 ## Migration path
 1. **Now:** keep demo working; treat `data.js` as demo-only seed.
