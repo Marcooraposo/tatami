@@ -3841,10 +3841,7 @@
             <div class="muted" id="cv2Summary" style="font-size:13px">Loading…</div>
           </div>
           <div class="row" style="gap:var(--sp-2)">
-            <div class="cv2-seg" id="cv2Mode">
-              <button data-mode="view" class="${CV2.mode==='view'?'on':''}">${ct('ui','view')}</button>
-              <button data-mode="admin" class="${CV2.mode==='admin'?'on':''}">${ct('ui','admin')}</button>
-            </div>
+            <button id="cv2EditBtn" class="btn ${CV2.mode==='admin'?'btn-primary':'btn-secondary'}" onclick="cv2ToggleEdit()">${CV2.mode==='admin'?'Done':'✎ Edit'}</button>
             <button class="btn btn-primary" onclick="go('curriculum-wizard')">${ct('ui','reconfigure')}</button>
             <button class="btn btn-secondary" onclick="go('settings')">${ct('ui','settings')}</button>
           </div>
@@ -4015,12 +4012,20 @@
       await loadCV2Membership();
       renderCV2();
     };
-    const mode = document.getElementById('cv2Mode');
-    if (mode) mode.querySelectorAll('button').forEach(b => b.onclick = () => {
-      CV2.mode = b.dataset.mode;
-      document.querySelector('.cv2').dataset.mode = CV2.mode;
-      mode.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
-    });
+  }
+
+  // Toggle the curriculum between read-only (view) and edit (admin) mode. Edit
+  // mode reveals the hide/restore + technique-editing controls (.cv2-admin).
+  function cv2ToggleEdit() {
+    CV2.mode = CV2.mode === 'admin' ? 'view' : 'admin';
+    const root = document.querySelector('.cv2');
+    if (root) root.dataset.mode = CV2.mode;
+    const btn = document.getElementById('cv2EditBtn');
+    if (btn) {
+      const editing = CV2.mode === 'admin';
+      btn.textContent = editing ? 'Done' : '✎ Edit';
+      btn.className = 'btn ' + (editing ? 'btn-primary' : 'btn-secondary');
+    }
   }
 
   function renderCV2() {
@@ -4590,10 +4595,7 @@
           <a onclick="go('curriculum')" style="cursor:pointer;color:var(--accent)">Curriculum</a>
           ${TP.module ? ` › ${moduleName(TP.module)}` : ''} › ${t.name}
         </div>
-        <div class="cv2-seg">
-          <button class="${!admin?'on':''}" onclick="CV2.mode='view';renderTechniquePage()" style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${!admin?'var(--primary)':'var(--surface)'};color:${!admin?'#fff':'var(--text-muted)'}">View</button>
-          <button class="${admin?'on':''}" onclick="CV2.mode='admin';renderTechniquePage()" style="font:inherit;font-size:12px;padding:6px 12px;border:none;cursor:pointer;background:${admin?'var(--primary)':'var(--surface)'};color:${admin?'#fff':'var(--text-muted)'}">Admin</button>
-        </div>
+        <button class="btn ${admin?'btn-primary':'btn-secondary'}" style="font-size:12px" onclick="CV2.mode=(CV2.mode==='admin'?'view':'admin');renderTechniquePage()">${admin?'Done':'✎ Edit'}</button>
       </div>
 
       <div style="display:grid;grid-template-columns:1.9fr 1fr;gap:var(--sp-5);align-items:start">
