@@ -3657,7 +3657,7 @@
         </div>
         <div style="margin-top:var(--sp-6);display:flex;justify-content:space-between;align-items:center">
           <button class="btn btn-secondary" onclick="wizardBack()">← Back</button>
-          <button class="btn" onclick="wizardSave()" style="background:var(--success)">
+          <button class="btn" onclick="wizardSave()">
             ✓ Save &amp; Finish Setup
           </button>
         </div>
@@ -5209,7 +5209,7 @@
         </div>
         <div style="margin-top:var(--sp-6);display:flex;justify-content:space-between;align-items:center">
           <button class="btn btn-secondary" onclick="studentWizardBack()">← Back</button>
-          <button class="btn" onclick="studentWizardSave()" style="background:var(--success)">
+          <button class="btn" onclick="studentWizardSave()">
             ✓ Confirm &amp; Add Student
           </button>
         </div>
@@ -6272,7 +6272,7 @@
           <div style="font-size:13px;font-weight:600;margin-top:var(--sp-1)">Total members</div>
         </div>
         <div class="card" style="flex:1;min-width:140px;padding:var(--sp-3) var(--sp-4)">
-          <div style="font-size:22px;font-weight:700">$${mrr}</div>
+          <div style="font-size:22px;font-weight:700">€${mrr}</div>
           <div style="font-size:13px;font-weight:600;margin-top:var(--sp-1)">Est. MRR</div>
           <div class="faint" style="font-size:11px">approximate</div>
         </div>
@@ -6419,7 +6419,7 @@
           </div>
           <div style="margin-top:var(--sp-6);display:flex;justify-content:flex-end;gap:var(--sp-2);align-items:center">
             <button class="btn btn-secondary" onclick="closeAppModal('class-modal')">Cancel</button>
-            <button class="btn" onclick="saveNewClass()" style="background:var(--success)">
+            <button class="btn" onclick="saveNewClass()">
               ✓ Create class
             </button>
           </div>
@@ -7532,8 +7532,8 @@
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:var(--sp-3);flex-shrink:0">
-            <a href="https://dashboard.stripe.com" target="_blank" rel="noopener" class="btn btn-primary" style="font-size:13px;padding:8px 20px;background:#635bff;border-color:#635bff;text-decoration:none">Connect Stripe →</a>
-            <button class="btn" style="font-size:13px;padding:8px 16px" onclick="this.closest('.card').style.display='none'">Dismiss</button>
+            <a href="https://dashboard.stripe.com" target="_blank" rel="noopener" class="btn btn-primary" style="font-size:13px;padding:8px 20px;text-decoration:none">Connect Stripe →</a>
+            <button class="btn btn-secondary" style="font-size:13px;padding:8px 16px" onclick="this.closest('.card').style.display='none'">Dismiss</button>
           </div>
         </div>
 
@@ -11097,10 +11097,10 @@ ${CONFIG.academyName || 'The Team'}`;
 
     return `
       <div class="screen-content">
-        <div class="screen-header">
-          <h2 class="screen-title">Discount Codes</h2>
+        <div class="row-between" style="margin-bottom:var(--sp-5)">
+          <h1 class="h1">Discount Codes</h1>
           ${_discountDraft === null
-            ? `<button class="btn btn-primary" onclick="openDiscountForm(null)">+ New code</button>`
+            ? `<button class="btn" onclick="openDiscountForm(null)">+ New code</button>`
             : ''}
         </div>
 
