@@ -66,7 +66,24 @@
     if (data.session) { render(); }                 // email confirmation disabled → logged in
     else showMsg('ok', 'Account created. Check your email to confirm, then sign in.');
   }
-  async function signOut() { await sb.auth.signOut(); render(); }
+  async function signOut() { await sb.auth.signOut(); recoveryMode = false; render(); }
+
+  async function requestPasswordReset() {
+    const email = ($('email').value || '').trim();
+    if (!email) { showMsg('err', 'Enter your email first.'); return; }
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + '/app' });
+    if (error) { showMsg('err', error.message); return; }
+    showMsg('ok', 'If that email has an account, a reset link is on its way. Open it on this device.');
+  }
+  async function updatePassword() {
+    const pw = ($('password').value || '');
+    if (pw.length < 6) { showMsg('err', 'Password must be at least 6 characters.'); return; }
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) { showMsg('err', error.message); return; }
+    recoveryMode = false;
+    showMsg('ok', 'Password updated. Loading your academy…');
+    render();
+  }
 
   async function createAcademy() {
     const name = ($('acadName').value || '').trim();
@@ -87,11 +104,46 @@
       <input id="password" class="input" type="password" placeholder="••••••••" />
       <button class="btn btn-full" id="b-signin">Sign in</button>
       <button class="btn btn-secondary btn-full" id="b-signup">Create account</button>
+      <div style="text-align:center;margin-top:var(--sp-3)">
+        <a class="back" style="margin:0;cursor:pointer" id="b-forgot">Forgot password?</a>
+      </div>
       <div id="msg"></div>
+      <p class="muted" style="font-size:12px;text-align:center;margin-top:var(--sp-4)">
+        By creating an account you agree to our <a href="/terms" target="_blank">Terms &amp; Privacy</a>.
+      </p>
       <a class="back" href="/">← Back</a>`;
     $('b-signin').onclick = signIn;
     $('b-signup').onclick = signUp;
+    $('b-forgot').onclick = forgotPasswordView;
     $('password').addEventListener('keydown', e => { if (e.key === 'Enter') signIn(); });
+  }
+
+  function forgotPasswordView() {
+    root.innerHTML = `
+      ${brand}
+      <h1 style="font-size:18px;margin-bottom:var(--sp-2)">Reset your password</h1>
+      <p class="muted" style="margin-bottom:var(--sp-4)">We'll email you a link to set a new password.</p>
+      <label for="email">Email</label>
+      <input id="email" class="input" type="email" placeholder="you@academy.com" />
+      <button class="btn btn-full" id="b-reset">Send reset link</button>
+      <div id="msg"></div>
+      <a class="back" style="cursor:pointer" id="b-back">← Back to sign in</a>`;
+    $('b-reset').onclick = requestPasswordReset;
+    $('b-back').onclick = signInView;
+    $('email').addEventListener('keydown', e => { if (e.key === 'Enter') requestPasswordReset(); });
+  }
+
+  function setNewPasswordView() {
+    root.innerHTML = `
+      ${brand}
+      <h1 style="font-size:18px;margin-bottom:var(--sp-2)">Choose a new password</h1>
+      <p class="muted" style="margin-bottom:var(--sp-4)">Enter a new password for your account.</p>
+      <label for="password">New password</label>
+      <input id="password" class="input" type="password" placeholder="••••••••" />
+      <button class="btn btn-full" id="b-update">Update password</button>
+      <div id="msg"></div>`;
+    $('b-update').onclick = updatePassword;
+    $('password').addEventListener('keydown', e => { if (e.key === 'Enter') updatePassword(); });
   }
 
   function createAcademyView(email) {
@@ -144,7 +196,11 @@
   }
 
   // ---- Router -------------------------------------------------------------
+  // Set when the user arrives via a password-recovery link; forces the
+  // set-new-password view even though Supabase has created a session.
+  let recoveryMode = false;
   async function render() {
+    if (recoveryMode) { setNewPasswordView(); return; }
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { signInView(); return; }
     const email = session.user.email || session.user.user_metadata?.email || 'your account';
@@ -161,7 +217,10 @@
     else academiesView(email, rows);
   }
 
-  sb.auth.onAuthStateChange(() => render());
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'PASSWORD_RECOVERY') { recoveryMode = true; setNewPasswordView(); return; }
+    render();
+  });
   render();
   </script>
 </body>
