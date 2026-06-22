@@ -9,6 +9,7 @@
 <body>
   <div id="app" class="app"></div>
 
+  <script src="errlog.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="supabase-client.js"></script>
@@ -6760,6 +6761,7 @@
               ⬆ Restore from backup
               <input type="file" accept=".json" style="display:none" onchange="restoreFromBackup(this)" />
             </label>
+            <button class="btn btn-secondary" onclick="window.tatamiErrorLog && window.tatamiErrorLog.download()">🐞 Download error log</button>
           </div>
           <p class="faint" style="font-size:12px;margin-top:var(--sp-3)">Backup includes all students, attendance, classes, billing, and settings. Restoring will overwrite all current data.</p>
         </div>
