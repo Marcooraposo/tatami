@@ -12,7 +12,7 @@
 // data never leaks into a real academy; they're cut over in later phases.
 // =============================================================================
 
-const TENANT = { mode: 'demo', academyId: null, role: null, academyName: null, userId: null };
+const TENANT = { mode: 'demo', academyId: null, role: null, academyName: null, userId: null, academies: [] };
 function isTenant() { return TENANT.mode === 'tenant'; }
 function activeAcademyId() { return TENANT.academyId; }
 
@@ -39,6 +39,7 @@ async function initTenant() {
     TENANT.academyId = m.academy_id;
     TENANT.role = m.role;
     TENANT.academyName = (m.academies && m.academies.name) || 'My Academy';
+    TENANT.academies = mems.map(x => ({ id: x.academy_id, role: x.role, name: (x.academies && x.academies.name) || 'My Academy' }));
     // Point the app's academy identity at the real tenant.
     if (typeof ACADEMY !== 'undefined') { ACADEMY.id = m.academy_id; ACADEMY.name = TENANT.academyName; }
   } catch (e) { console.error('[tenant] init:', e); }
@@ -293,6 +294,13 @@ async function tUpdateEnrollment(studentId, patchInMemoryShape) {
 
 async function tenantSignOut() { try { await sb.auth.signOut(); } catch {} location.href = '/app'; }
 
+// Switch the active academy: persist the choice and reload so tHydrate re-runs.
+function switchAcademy(id) {
+  if (!id || id === TENANT.academyId) return;
+  try { localStorage.setItem('tatami_active_academy', id); } catch {}
+  location.reload();
+}
+
 // =============================================================================
 // P3 — per-academy module system
 // -----------------------------------------------------------------------------
@@ -406,7 +414,7 @@ async function tInitFeatures(enabledIds) {
 }
 
 window.TENANT = TENANT; window.isTenant = isTenant;
-window.tenantSignOut = tenantSignOut;
+window.tenantSignOut = tenantSignOut; window.switchAcademy = switchAcademy;
 window.MODULE_REGISTRY = MODULE_REGISTRY; window.isModuleEnabled = isModuleEnabled;
 window.toggleableModules = toggleableModules; window.moduleMeta = moduleMeta;
 window.tSetModuleEnabled = tSetModuleEnabled; window.tInitFeatures = tInitFeatures;

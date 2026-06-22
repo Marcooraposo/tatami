@@ -774,6 +774,82 @@
     if (window.lucide) lucide.createIcons();
   }
 
+  // ---------- Academy switcher (sidebar workspace header) -------------------
+  // The seam for the future org/location tree (see ARCHITECTURE.md): today it
+  // shows the active academy + role and lets a multi-academy user switch.
+  let _acadMenuOpen = false;
+  function _initials(name) { return (name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase(); }
+  function rerenderSidebar() {
+    const aside = document.querySelector('aside.sidebar');
+    if (aside) aside.outerHTML = Sidebar(getRoute().section);
+    if (window.lucide) lucide.createIcons();
+  }
+  function toggleAcademyMenu() { _acadMenuOpen = !_acadMenuOpen; rerenderSidebar(); }
+  function closeAcademyMenu() { if (_acadMenuOpen) { _acadMenuOpen = false; rerenderSidebar(); } }
+  function addLocationComingSoon() { _acadMenuOpen = false; rerenderSidebar(); showToast('Adding locations is coming soon.'); }
+  window.toggleAcademyMenu = toggleAcademyMenu;
+  window.closeAcademyMenu = closeAcademyMenu;
+  window.addLocationComingSoon = addLocationComingSoon;
+
+  function AcademySwitcher() {
+    const tenant = (typeof isTenant === 'function') && isTenant();
+    const name = (typeof ACADEMY !== 'undefined' && ACADEMY.name) ? ACADEMY.name : 'Demo academy';
+    const role = tenant ? (TENANT.role || 'member') : 'Demo mode';
+    return `
+      <div style="position:relative;padding:0 var(--sp-3) var(--sp-3)">
+        <button onclick="toggleAcademyMenu()" aria-haspopup="true" aria-expanded="${_acadMenuOpen}" style="
+          width:100%;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2);border:1px solid var(--border);
+          border-radius:var(--r-md);background:var(--surface);cursor:pointer;text-align:left">
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0">${_initials(name)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:capitalize">${role}</div>
+          </div>
+          <span style="font-size:10px;color:var(--text-muted);transition:transform .15s;${_acadMenuOpen ? 'transform:rotate(180deg)' : ''}">▾</span>
+        </button>
+        ${_acadMenuOpen ? AcademyMenu(tenant) : ''}
+      </div>`;
+  }
+
+  function AcademyMenu(tenant) {
+    const row = 'width:100%;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2);border:none;background:none;cursor:pointer;text-align:left;border-radius:var(--r-sm);font-size:13px;color:var(--text)';
+    const divider = '<div style="height:1px;background:var(--border);margin:4px 0"></div>';
+    let items = '';
+    if (tenant) {
+      const list = (TENANT.academies && TENANT.academies.length)
+        ? TENANT.academies
+        : [{ id: TENANT.academyId, name: ACADEMY.name, role: TENANT.role }];
+      items += `<div style="padding:6px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted)">Your academies</div>`;
+      items += list.map(a => {
+        const on = a.id === TENANT.academyId;
+        return `<button onclick="switchAcademy('${a.id}')" style="${row}">
+          <div style="width:24px;height:24px;border-radius:6px;background:${on ? 'var(--primary)' : 'var(--surface-alt)'};color:${on ? '#fff' : 'var(--text-muted)'};display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0">${_initials(a.name)}</div>
+          <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.name}<span style="color:var(--text-muted);font-size:11px;text-transform:capitalize"> · ${a.role || 'member'}</span></span>
+          ${on ? '<span style="color:var(--accent);font-size:13px">✓</span>' : ''}
+        </button>`;
+      }).join('');
+      items += divider;
+      items += `<button onclick="addLocationComingSoon()" style="${row};color:var(--text-muted)">
+        <span style="width:24px;text-align:center;flex-shrink:0">＋</span>
+        <span style="flex:1">Add location</span>
+        <span style="font-size:10px;font-weight:600;background:var(--surface-alt);border:1px solid var(--border);border-radius:6px;padding:1px 6px">Soon</span>
+      </button>`;
+      items += divider;
+      items += `<button onclick="tenantSignOut()" style="${row}">
+        <span style="width:24px;text-align:center;flex-shrink:0">⏻</span><span>Sign out</span></button>`;
+    } else {
+      items += `<div style="padding:8px;font-size:12px;color:var(--text-muted);line-height:1.5">You're viewing the demo academy.</div>`;
+      items += `<a href="/app" style="${row};text-decoration:none">
+        <span style="width:24px;text-align:center;flex-shrink:0">→</span><span>Sign in / create academy</span></a>`;
+    }
+    return `
+      <div onclick="closeAcademyMenu()" style="position:fixed;inset:0;z-index:50"></div>
+      <div style="position:absolute;left:var(--sp-3);right:var(--sp-3);top:calc(100% - var(--sp-2));z-index:51;
+        background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--shadow-md);padding:4px">
+        ${items}
+      </div>`;
+  }
+
   function Sidebar(active) {
     const groups = [
       {
@@ -873,6 +949,7 @@
           <div class="brand-mark"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="openmat.me" style="width:24px;height:24px"><path d="M18 4 H8 a4 4 0 0 0-4 4 v8 a4 4 0 0 0 4 4 h8 a4 4 0 0 0 4-4 V10" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"></path></svg></div>
           <div class="brand-wordmark">openmat<span class="brand-tld">.me</span></div>
         </div>
+        ${AcademySwitcher()}
         <nav class="nav">
           <div class="nav-item ${active === 'dashboard' ? 'active' : ''}" onclick="go('dashboard')">
             <span class="nav-icon">${navIcon('dashboard')}</span>
