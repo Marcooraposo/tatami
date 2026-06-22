@@ -43,14 +43,15 @@ Onboarding shows available vs coming-soon modules (roadmap-as-marketing).
   write only own bookings/check-ins/registrations/requests.
 
 ### Phased path
-- **P1 — Tenant shell + Students:** session→active-academy context; tenant-vs-demo
-  flag; cut Students (list/create/edit) to Supabase; empty-state onboarding.
-- **P2 — Daily-ops:** cut Schedule/Classes + Attendance, then Grading, then
+- **P1 — Tenant shell + Students:** ✅ done. session→active-academy context;
+  tenant-vs-demo flag; cut Students (list/create/edit) to Supabase; empty-state onboarding.
+- **P2 — Daily-ops:** ✅ done. cut Schedule/Classes + Attendance, then Grading, then
   Curriculum (per-academy config on auth), then Events.
-- **P3 — Modularity framework:** `academy_features` + Settings manage-modules +
+- **P3 — Modularity framework:** ✅ done. `academy_features` + Settings manage-modules +
   nav gating + coming-soon placeholders + onboarding module picker.
-- **P4 — Admin-beta hardening:** prod tenancy migrations + tenant RLS (allow
-  authed writes); email confirmation ON + real email provider (Resend/SMTP) +
+- **P4 — Admin-beta hardening:** code ✅ done; infra/config pending (see
+  `BETA_CHECKLIST.md`). prod tenancy migrations + tenant RLS (master library locked
+  read-only via 014); email confirmation ON + real email provider (Resend/SMTP) +
   password reset; terms page; error logging; backups; isolation smoke-test.
   → **Ship admin beta.**
 - **P5 — Student app:** student identity/invite + student-role RLS; cut
