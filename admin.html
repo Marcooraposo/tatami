@@ -637,13 +637,13 @@
     const content = document.getElementById('content');
     switch (route.section) {
       case 'students':
-        if (route.params[0] === 'new') content.innerHTML = StudentOnboardingWizard();
+        if (route.params[0] === 'new') { content.innerHTML = StudentsList(); openStudentModal(); }
         else content.innerHTML = route.params.length ? StudentReport(route.params[0]) : StudentsList();
         break;
       case 'templates':     content.innerHTML = TemplatesScreen();         break;
       case 'closures':      content.innerHTML = ClosuresScreen();          break;
       case 'classes':
-        if (route.params[0] === 'new') content.innerHTML = NewClassForm();
+        if (route.params[0] === 'new') { content.innerHTML = ClassesList(); openClassModal(); }
         else content.innerHTML = route.params.length ? ClassDetail(route.params[0]) : ClassesList();
         break;
       case 'curriculum':        content.innerHTML = CurriculumBuilder();     break;
@@ -674,7 +674,7 @@
       case 'attendance-log':    content.innerHTML = AttendanceLogScreen();   break;
       case 'goals':             content.innerHTML = GoalsScreen();           break;
       case 'events':
-        if (route.params[0] === 'new') content.innerHTML = NewEventForm();
+        if (route.params[0] === 'new') { content.innerHTML = EventsList(); openEventModal(); }
         else if (route.params.length)  content.innerHTML = EventDetail(route.params[0]);
         else                           content.innerHTML = EventsList();
         break;
@@ -1144,7 +1144,7 @@
           <button class="btn btn-secondary" onclick="exportStudentsCSV()" title="Download all students as CSV">↓ CSV</button>
           <button class="btn btn-secondary" onclick="document.getElementById('student-csv-import').click()" title="Import students from a CSV file (Name, Contact, DOB, Membership columns)">↑ Import</button>
           <input type="file" id="student-csv-import" accept=".csv,.txt" style="display:none" onchange="importStudentsCSV(this)">
-          <button class="btn" onclick="go('students/new')">${t(UI.labels.addStudent)}</button>
+          <button class="btn" onclick="openStudentModal()">${t(UI.labels.addStudent)}</button>
         </div>
       </div>
       ${_studentBulkBar()}
@@ -2823,6 +2823,7 @@
           <h1 class="h1" style="margin-bottom:var(--sp-1)">${t(UI.nav.classes)}</h1>
           <p class="muted">Recurring class schedule — ${RECURRING_TEMPLATES.length} active slot${RECURRING_TEMPLATES.length !== 1 ? 's' : ''}</p>
         </div>
+        <button class="btn btn-secondary" onclick="openClassModal()">+ New class</button>
         <button class="btn" onclick="startNewTemplate()">+ Add slot</button>
       </div>
 
@@ -4898,7 +4899,7 @@
     } else {
       studentWizardState.step = Math.min(studentWizardState.step + 1, 4);
     }
-    renderApp();
+    studentWizardRender();
   }
 
   function studentWizardBack() {
@@ -4908,12 +4909,12 @@
     } else {
       studentWizardState.step = Math.max(studentWizardState.step - 1, 1);
     }
-    renderApp();
+    studentWizardRender();
   }
 
   function studentWizardSelectMembership(id) {
     studentWizardState.membership = id;
-    renderApp();
+    studentWizardRender();
   }
 
   function studentWizardSave() {
@@ -4964,10 +4965,13 @@
       guardian: { name: '', phone: '', email: '' },
       membership: null, signature: ''
     };
+    closeAppModal('student-modal');
     go('students');
   }
 
-  function StudentOnboardingWizard() {
+  // Inner content of the add-student wizard (step bar + current step). Lives in
+  // a modal; step changes re-render just this body via studentWizardRender().
+  function StudentWizardBody() {
     const minor = isMinor(studentWizardState.details.dob);
     const allSteps = ['Details', 'Guardian', 'Membership', 'Sign T&C'];
     const visibleSteps = minor ? allSteps : [allSteps[0], allSteps[2], allSteps[3]];
@@ -4998,18 +5002,34 @@
     if (studentWizardState.step === 4) body = SWStep4();
 
     return `
-      <div style="max-width:640px;margin:0 auto">
-        <div style="margin-bottom:var(--sp-4)">
-          <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('students')">← Back to students</a>
-        </div>
-        <h1 class="h1" style="margin-bottom:var(--sp-2)">${tr('screen.addStudent')}</h1>
-        <p class="muted" style="margin-bottom:var(--sp-5)">Complete all steps to onboard a new student.</p>
-        <div class="card" style="margin-bottom:var(--sp-4)">
-          <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-1)">${stepBar}</div>
-        </div>
-        ${body}
+      <div class="card" style="margin-bottom:var(--sp-4)">
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-1)">${stepBar}</div>
       </div>
-    `;
+      ${body}`;
+  }
+  function StudentModalCard() {
+    return `
+      <div style="background:var(--bg);border-radius:var(--r-xl);max-width:640px;width:100%;margin:auto;padding:var(--sp-5);box-shadow:var(--shadow-md)">
+        ${modalHead(tr('screen.addStudent'), 'student-modal')}
+        <p class="muted" style="margin:-12px 0 var(--sp-4)">Complete all steps to onboard a new student.</p>
+        <div id="student-modal-body">${StudentWizardBody()}</div>
+      </div>`;
+  }
+  function openStudentModal() {
+    studentWizardState = {
+      step: 1,
+      details: { name: '', dob: '', gender: '', competes: false, email: '', phone: '', emergencyName: '', emergencyPhone: '' },
+      guardian: { name: '', phone: '', email: '' },
+      membership: null, signature: ''
+    };
+    openAppModal('student-modal', StudentModalCard());
+    const el = document.getElementById('sw-name'); if (el) el.focus();
+  }
+  // Re-render the wizard body in place if the modal is open; else fall back to a
+  // full app render (e.g. if reached via a deep link before the modal mounts).
+  function studentWizardRender() {
+    const b = document.getElementById('student-modal-body');
+    if (b) b.innerHTML = StudentWizardBody(); else renderApp();
   }
 
   function SWStep1() {
@@ -6319,10 +6339,15 @@
     if (typeof isTenant === 'function' && isTenant()) tSaveClass(cls);
     newClassState = { date: '', time: '19:00', durationMin: 60,
       classType: 'Fundamentals', instructorId: '', capacity: 20, audienceTags: [], sportId: '' };
+    closeAppModal('class-modal');
     go('classes/' + id);
   }
 
-  function NewClassForm() {
+  function openClassModal() {
+    openAppModal('class-modal', ClassModalCard());
+    const el = document.getElementById('nc-date'); if (el) el.focus();
+  }
+  function ClassModalCard() {
     const today = new Date().toISOString().slice(0, 10);
     const instructorOpts = INSTRUCTORS.map(i =>
       `<option value="${i.id}" ${newClassState.instructorId === i.id ? 'selected' : ''}>${i.name}</option>`
@@ -6332,13 +6357,9 @@
     ).join('');
 
     return `
-      <div style="max-width:560px;margin:0 auto">
-        <div style="margin-bottom:var(--sp-4)">
-          <a class="muted" style="cursor:pointer;text-decoration:none" onclick="go('classes')">← Back to classes</a>
-        </div>
-        <h1 class="h1" style="margin-bottom:var(--sp-5)">${tr('screen.newClass')}</h1>
-        <div class="card">
-          <div class="stack" style="gap:var(--sp-4)">
+      <div class="card" style="max-width:560px;width:100%;margin:auto">
+        ${modalHead(tr('screen.newClass'), 'class-modal')}
+        <div class="stack" style="gap:var(--sp-4)">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
               <div>
                 <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Date *</label>
@@ -6395,14 +6416,13 @@
               </div>
             </div>
           </div>
-          <div style="margin-top:var(--sp-6);display:flex;justify-content:space-between;align-items:center">
-            <button class="btn btn-secondary" onclick="go('classes')">Cancel</button>
+          <div style="margin-top:var(--sp-6);display:flex;justify-content:flex-end;gap:var(--sp-2);align-items:center">
+            <button class="btn btn-secondary" onclick="closeAppModal('class-modal')">Cancel</button>
             <button class="btn" onclick="saveNewClass()" style="background:var(--success)">
               ✓ Create class
             </button>
           </div>
         </div>
-      </div>
     `;
   }
 
@@ -8839,6 +8859,26 @@
     renderApp();
   }
 
+  // ---------- Shared modal shell --------------------------------------------
+  // Generic overlay used by the create-form modals (event/class/student). The
+  // overlay scrolls so tall forms (the student wizard) stay reachable; clicking
+  // the backdrop closes it. Each caller supplies its own .card markup.
+  function openAppModal(id, contentHtml) {
+    // Only one create-modal at a time.
+    document.querySelectorAll('.app-modal').forEach(e => e.remove());
+    document.body.insertAdjacentHTML('beforeend',
+      `<div id="${id}" class="app-modal" style="position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:var(--sp-6) var(--sp-5);overflow-y:auto"
+        onclick="if(event.target===this)closeAppModal('${id}')">${contentHtml}</div>`);
+  }
+  function closeAppModal(id) { const el = document.getElementById(id); if (el) el.remove(); }
+  function setAppModalBody(id, html) { const el = document.getElementById(id + '-body'); if (el) el.innerHTML = html; }
+  function modalHead(title, id) {
+    return `<div class="row-between" style="align-items:flex-start;margin-bottom:var(--sp-5)">
+      <h2 class="h1" style="margin:0;font-size:20px">${title}</h2>
+      <button onclick="closeAppModal('${id}')" aria-label="Close" style="background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted)">×</button>
+    </div>`;
+  }
+
   // ---------- Weekly focus picker (modal: search + attendance suggestions) --
   const WF_COMPLEXITY_COLOR = { beginner: 'var(--success)', intermediate: 'var(--accent)', advanced: 'var(--warn)' };
   let weeklyFocusModalState = { wk: null, q: '' };
@@ -10333,19 +10373,20 @@ ${CONFIG.academyName || 'The Team'}`;
     EVENTS.push(evt);
     persistData();
     if (typeof isTenant === 'function' && isTenant()) tSaveEvent(evt);
+    closeAppModal('event-modal');
     go('events/' + evt.id);
   }
 
-  function NewEventForm() {
+  function openEventModal() {
+    openAppModal('event-modal', EventModalCard());
+    const el = document.getElementById('evt-title'); if (el) el.focus();
+  }
+  function EventModalCard() {
     const today = new Date().toISOString().slice(0, 10);
     return `
-      <div style="max-width:600px">
-        <div class="row-between" style="margin-bottom:var(--sp-5)">
-          <h1 class="h1">New Event</h1>
-          <button class="btn" onclick="go('events')">← Cancel</button>
-        </div>
-        <div class="card">
-          <div style="display:flex;flex-direction:column;gap:var(--sp-4)">
+      <div class="card" style="max-width:600px;width:100%;margin:auto">
+        ${modalHead('New Event', 'event-modal')}
+        <div style="display:flex;flex-direction:column;gap:var(--sp-4)">
 
             <div>
               <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Title *</label>
@@ -10391,12 +10432,12 @@ ${CONFIG.academyName || 'The Team'}`;
                 placeholder="Additional details, cost, requirements..."></textarea>
             </div>
 
-            <div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--sp-2);margin-top:var(--sp-2)">
+              <button class="btn btn-secondary" onclick="closeAppModal('event-modal')">Cancel</button>
               <button class="btn btn-primary" onclick="saveNewEvent()">Create event</button>
             </div>
           </div>
         </div>
-      </div>
     `;
   }
 
@@ -10618,7 +10659,7 @@ ${CONFIG.academyName || 'The Team'}`;
     return `
       <div class="row-between" style="margin-bottom:var(--sp-5)">
         <h1 class="h1">Events</h1>
-        <button class="btn btn-primary" onclick="go('events/new')">+ New event</button>
+        <button class="btn btn-primary" onclick="openEventModal()">+ New event</button>
       </div>
 
       <div style="display:flex;gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-6)">
