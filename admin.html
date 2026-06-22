@@ -8839,6 +8839,214 @@
     renderApp();
   }
 
+  // ---------- Weekly focus picker (modal: search + attendance suggestions) --
+  const WF_COMPLEXITY_COLOR = { beginner: 'var(--success)', intermediate: 'var(--accent)', advanced: 'var(--warn)' };
+  let weeklyFocusModalState = { wk: null, q: '' };
+
+  function wfBjjSections() { return CURRICULUM_SECTIONS.filter(s => s.sportId === 'sport-bjj'); }
+  function wfBjjItems() {
+    const ids = new Set(wfBjjSections().map(s => s.id));
+    return CURRICULUM_ITEMS.filter(i => ids.has(i.sectionId));
+  }
+  function wfSelectedIds(wk) {
+    const plan = getWeeklyPlan(wk);
+    return plan ? plan.sections.flatMap(s => s.itemIds) : [];
+  }
+  function wfCountLabel(wk) {
+    const n = wfSelectedIds(wk).length;
+    return n ? `${n} technique${n !== 1 ? 's' : ''} selected` : 'Nothing selected yet';
+  }
+
+  // Map a student to a complexity bucket from their belt position in the ladder.
+  function wfStudentBucket(studentId) {
+    const enr = ENROLLMENTS.find(e => e.studentId === studentId);
+    if (!enr) return null;
+    const g = DB.grading(enr.gradingSystemId);
+    if (!g || !g.levels || !g.levels.length) return null;
+    const idx = g.levels.findIndex(l => l.id === enr.currentLevelId);
+    if (idx < 0) return 'beginner';
+    const frac = idx / Math.max(1, g.levels.length - 1);
+    return frac < 0.34 ? 'beginner' : frac < 0.67 ? 'intermediate' : 'advanced';
+  }
+
+  // "Both combined": rank candidate techniques by the complexity level of who's
+  // actually been attending (last 6 weeks), then break ties toward the techniques
+  // taught least recently (or never) so the syllabus keeps rotating. Always
+  // returns up to `limit` items so there's something to suggest even when the
+  // whole curriculum has been covered recently.
+  function weeklyFocusSuggestions(wk, excludeIds, limit) {
+    limit = limit || 6;
+    const weekMs = new Date(wk).getTime();
+    const windowStart = weekMs - 6 * 7 * 24 * 60 * 60 * 1000;
+    const inWindow = (ts) => { const tt = new Date(ts).getTime(); return tt >= windowStart && tt < weekMs; };
+
+    // Most recent time each item was taught (any past class) → staleness signal.
+    const lastTaught = {};
+    CLASSES.forEach(c => {
+      if (!c.startsAt) return;
+      const ms = new Date(c.startsAt).getTime();
+      if (ms >= weekMs) return; // only look backwards
+      (c.plannedItemIds || []).forEach(id => { if (ms > (lastTaught[id] || -Infinity)) lastTaught[id] = ms; });
+    });
+
+    // Attendance level mix over the recent window.
+    const weights = { beginner: 0, intermediate: 0, advanced: 0 };
+    ATTENDANCE.forEach(a => {
+      if (!a.attended) return;
+      const cls = CLASSES.find(c => c.id === a.classId);
+      if (!cls || !cls.startsAt || !inWindow(cls.startsAt)) return;
+      const b = wfStudentBucket(a.studentId);
+      if (b) weights[b]++;
+    });
+    const totalW = weights.beginner + weights.intermediate + weights.advanced;
+    const fallback = { beginner: 0.34, intermediate: 0.33, advanced: 0.33 };
+    const levelScore = (cx) => totalW ? (weights[cx] || 0) / totalW : (fallback[cx] || 0);
+
+    const exclude = new Set(excludeIds || []);
+    return wfBjjItems()
+      .filter(i => !exclude.has(i.id))
+      .sort((a, b) => {
+        const ls = levelScore(b.complexity) - levelScore(a.complexity);
+        if (Math.abs(ls) > 1e-9) return ls;                 // attendee level first
+        return (lastTaught[a.id] ?? -Infinity) - (lastTaught[b.id] ?? -Infinity); // stalest first
+      })
+      .slice(0, limit);
+  }
+
+  function wfChip(wk, item, selected) {
+    const isSel = selected.includes(item.id);
+    return `<span onclick="weeklyFocusToggle('${wk}','${item.sectionId}','${item.id}')" style="
+      display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;
+      border:1.5px solid ${isSel ? 'var(--accent)' : 'var(--border)'};background:${isSel ? 'var(--accent-bg,#f1f3f5)' : 'var(--surface)'};
+      color:${isSel ? 'var(--accent)' : 'var(--text-muted)'};margin:0 5px 7px 0;transition:all .12s">
+      <span style="width:6px;height:6px;border-radius:50%;background:${WF_COMPLEXITY_COLOR[item.complexity]};flex-shrink:0"></span>
+      ${t(item.name)}${isSel ? ' <span style="font-size:11px">✓</span>' : ''}
+    </span>`;
+  }
+
+  function weeklyFocusBodyHtml(wk) {
+    const selected = wfSelectedIds(wk);
+    const q = (weeklyFocusModalState.q || '').trim().toLowerCase();
+    if (q) {
+      const matches = wfBjjItems().filter(i => t(i.name).toLowerCase().includes(q));
+      if (!matches.length) return `<div class="muted" style="font-size:13px;padding:var(--sp-4) 0">No techniques match “${q}”.</div>`;
+      return `<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:var(--sp-2)">Results</div>
+        <div style="display:flex;flex-wrap:wrap">${matches.map(i => wfChip(wk, i, selected)).join('')}</div>`;
+    }
+    const sugg = weeklyFocusSuggestions(wk, selected, 6);
+    const suggBlock = `
+      <div style="margin-bottom:var(--sp-4)">
+        <div style="display:flex;align-items:baseline;gap:8px;margin-bottom:var(--sp-2);flex-wrap:wrap">
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--accent)">✦ Suggested for this week</div>
+          <div style="font-size:11px;color:var(--text-faint)">from recent attendance &amp; what you haven’t covered</div>
+        </div>
+        ${sugg.length
+          ? `<div style="display:flex;flex-wrap:wrap">${sugg.map(i => wfChip(wk, i, selected)).join('')}</div>`
+          : `<div class="muted" style="font-size:13px">You’ve recently covered most of the syllabus — browse below to pick anything.</div>`}
+      </div>`;
+    const browse = wfBjjSections().map(sec => {
+      const items = CURRICULUM_ITEMS.filter(i => i.sectionId === sec.id);
+      if (!items.length) return '';
+      return `<div style="margin-bottom:var(--sp-3)">
+        <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:var(--sp-2)">${t(sec.name)}</div>
+        <div style="display:flex;flex-wrap:wrap">${items.map(i => wfChip(wk, i, selected)).join('')}</div>
+      </div>`;
+    }).join('');
+    return suggBlock + `<div style="border-top:1px solid var(--border);padding-top:var(--sp-3)">${browse}</div>`;
+  }
+
+  function WeeklyFocusModal(wk) {
+    const wkLabel = new Date(wk).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const legend = [['beginner', 'Beginner'], ['intermediate', 'Intermediate'], ['advanced', 'Advanced']]
+      .map(([c, l]) => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-right:12px"><span style="width:8px;height:8px;border-radius:50%;background:${WF_COMPLEXITY_COLOR[c]}"></span>${l}</span>`).join('');
+    return `
+    <div id="wf-modal" style="position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:var(--sp-5)"
+         onclick="if(event.target===this)closeWeeklyFocusModal()">
+      <div class="card" style="max-width:760px;width:100%;max-height:88vh;display:flex;flex-direction:column;padding:0">
+        <div style="padding:var(--sp-5) var(--sp-5) var(--sp-3);border-bottom:1px solid var(--border)">
+          <div class="row-between" style="align-items:flex-start">
+            <div>
+              <h3 class="card-title" style="margin:0">Weekly focus — ${wkLabel}</h3>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">Search, pick from suggestions, or browse. Selections push to every class this week.</div>
+            </div>
+            <button onclick="closeWeeklyFocusModal()" style="background:none;border:none;font-size:22px;line-height:1;cursor:pointer;color:var(--text-muted)">×</button>
+          </div>
+          <div style="position:relative;margin-top:var(--sp-3)">
+            <input id="wf-search" class="input" style="width:100%;padding-left:32px" placeholder="Search techniques…"
+              value="${(weeklyFocusModalState.q || '').replace(/"/g, '&quot;')}" oninput="weeklyFocusSearch(this.value)" />
+            <span style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:var(--text-faint);font-size:14px">⌕</span>
+          </div>
+        </div>
+        <div id="wf-body" style="padding:var(--sp-4) var(--sp-5);overflow-y:auto;flex:1">${weeklyFocusBodyHtml(wk)}</div>
+        <div style="padding:var(--sp-3) var(--sp-5);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3);flex-wrap:wrap">
+          <div>${legend}</div>
+          <div style="display:flex;align-items:center;gap:var(--sp-3)">
+            <span id="wf-count" style="font-size:12px;color:var(--text-muted)">${wfCountLabel(wk)}</span>
+            <button class="btn btn-secondary" style="font-size:12px" onclick="weeklyFocusAutoFill('${wk}')">✦ Auto-fill</button>
+            <button id="wf-save" class="btn" style="font-size:12px" onclick="weeklyFocusSaveApply('${wk}')" ${wfSelectedIds(wk).length ? '' : 'disabled'}>Save &amp; apply</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function openWeeklyFocusModal(wk) {
+    weeklyFocusModalState = { wk: wk, q: '' };
+    closeWeeklyFocusModal();
+    document.body.insertAdjacentHTML('beforeend', WeeklyFocusModal(wk));
+    const inp = document.getElementById('wf-search');
+    if (inp) inp.focus();
+  }
+  function closeWeeklyFocusModal() {
+    const el = document.getElementById('wf-modal');
+    if (el) el.remove();
+  }
+  function weeklyFocusRefresh(wk) {
+    const body = document.getElementById('wf-body');
+    if (body) body.innerHTML = weeklyFocusBodyHtml(wk);
+    const count = document.getElementById('wf-count');
+    if (count) count.textContent = wfCountLabel(wk);
+    const save = document.getElementById('wf-save');
+    if (save) save.disabled = wfSelectedIds(wk).length === 0;
+  }
+  function weeklyFocusSearch(q) {
+    weeklyFocusModalState.q = q;
+    const body = document.getElementById('wf-body');
+    if (body) body.innerHTML = weeklyFocusBodyHtml(weeklyFocusModalState.wk);
+  }
+  function weeklyFocusToggle(wk, sectionId, itemId) {
+    const plan = ensureWeeklyPlan(wk);
+    let sec = plan.sections.find(s => s.sectionId === sectionId);
+    if (!sec) { sec = { sectionId, itemIds: [] }; plan.sections.push(sec); }
+    const idx = sec.itemIds.indexOf(itemId);
+    if (idx > -1) sec.itemIds.splice(idx, 1); else sec.itemIds.push(itemId);
+    plan.sections = plan.sections.filter(s => s.itemIds.length > 0);
+    saveWeeklyPlans();
+    weeklyFocusRefresh(wk);
+  }
+  function weeklyFocusAutoFill(wk) {
+    const allSections = wfBjjSections();
+    if (!allSections.length) return;
+    const wkNum = Math.floor(new Date(wk).getTime() / (7 * 24 * 60 * 60 * 1000));
+    const primary = allSections[wkNum % allSections.length];
+    const secondary = allSections[(wkNum + 1) % allSections.length];
+    const plan = ensureWeeklyPlan(wk);
+    plan.sections = [
+      { sectionId: primary.id, itemIds: CURRICULUM_ITEMS.filter(i => i.sectionId === primary.id).slice(0, 3).map(i => i.id) },
+      { sectionId: secondary.id, itemIds: CURRICULUM_ITEMS.filter(i => i.sectionId === secondary.id).slice(0, 2).map(i => i.id) },
+    ];
+    saveWeeklyPlans();
+    weeklyFocusRefresh(wk);
+  }
+  function weeklyFocusSaveApply(wk) {
+    if (!wfSelectedIds(wk).length) return;
+    distributeWeeklyPlan(wk);
+    const plan = getWeeklyPlan(wk);
+    if (plan) { plan.applied = true; saveWeeklyPlans(); }
+    closeWeeklyFocusModal();
+    renderApp();
+  }
+
   // ---------- Weekly plan card (rendered inside Schedule) ------------------
 
   function WeeklyPlanCard(wk) {
@@ -8882,7 +9090,7 @@
               <span style="font-size:11px;font-weight:600;color:var(--success);background:#f0fdf4;border:1px solid #bbf7d0;border-radius:20px;padding:2px 10px">✓ Applied</span>
             </div>
             <button class="btn btn-secondary" style="font-size:12px;padding:5px 12px;white-space:nowrap;margin-left:var(--sp-4)"
-              onclick="editWeeklyPlan('${wk}')">Edit</button>
+              onclick="openWeeklyFocusModal('${wk}')">Edit</button>
           </div>
           ${allItemIds.length > 0 ? readonlySections : `<p style="font-size:13px;color:var(--text-muted)">No techniques selected.</p>`}
           <div style="padding:var(--sp-3) 0 0;border-top:1px solid var(--border)">
@@ -8891,62 +9099,47 @@
         </div>`;
     }
 
-    // ── EDIT VIEW ────────────────────────────────────────────────────────────
-    const sectionRows = CURRICULUM_SECTIONS.filter(s => s.sportId === 'sport-bjj').map(sec => {
-      const items = CURRICULUM_ITEMS.filter(i => i.sectionId === sec.id);
-
-      const itemChips = items.map(item => {
-        const selected = allItemIds.includes(item.id);
-        return `<span onclick="weeklyPlanToggleItem('${wk}','${sec.id}','${item.id}')" style="
-          display:inline-flex;align-items:center;gap:4px;
-          padding:4px 10px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;
-          border:1.5px solid ${selected ? 'var(--accent)' : 'var(--border)'};
-          background:${selected ? 'var(--accent-bg,#f1f3f5)' : 'var(--surface)'};
-          color:${selected ? 'var(--accent)' : 'var(--text-muted)'};
-          margin:0 4px 6px 0;transition:all .12s">
+    // ── COMPACT CARD (not yet applied) — opens the picker modal ───────────────
+    const selectedBySection = {};
+    allItemIds.forEach(id => {
+      const item = CURRICULUM_ITEMS.find(i => i.id === id);
+      if (!item) return;
+      (selectedBySection[item.sectionId] = selectedBySection[item.sectionId] || []).push(item);
+    });
+    const previewSections = Object.entries(selectedBySection).map(([secId, items]) => {
+      const sec = CURRICULUM_SECTIONS.find(s => s.id === secId);
+      const chips = items.map(item => `
+        <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;
+          font-size:12px;font-weight:500;border:1.5px solid var(--accent);
+          background:var(--accent-bg,#f1f3f5);color:var(--accent);margin:0 4px 6px 0">
           <span style="width:6px;height:6px;border-radius:50%;background:${complexityColor[item.complexity]};flex-shrink:0"></span>
           ${t(item.name)}
-        </span>`;
-      }).join('');
-
+        </span>`).join('');
       return `
         <div style="margin-bottom:var(--sp-3)">
-          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:var(--sp-2)">${t(sec.name)}</div>
-          <div style="display:flex;flex-wrap:wrap">${itemChips}</div>
+          <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);margin-bottom:var(--sp-2)">${sec ? t(sec.name) : secId}</div>
+          <div style="display:flex;flex-wrap:wrap">${chips}</div>
         </div>`;
     }).join('');
-
-    const legendItems = [
-      { color: 'var(--success)', label: 'Beginner' },
-      { color: 'var(--accent)',  label: 'Intermediate' },
-      { color: 'var(--warn)',    label: 'Advanced' },
-    ].map(l => `<span style="display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--text-muted);margin-right:12px">
-      <span style="width:8px;height:8px;border-radius:50%;background:${l.color}"></span>${l.label}</span>`).join('');
 
     return `
       <div class="card" style="margin-bottom:var(--sp-5)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:var(--sp-4)">
           <div>
             <h3 class="card-title" style="margin:0 0 var(--sp-1)">Weekly focus — ${wkLabel}</h3>
-            <div style="font-size:12px;color:var(--text-muted)">Select techniques from the curriculum. When you're happy, hit Save &amp; apply to push them to all classes this week.</div>
+            <div style="font-size:12px;color:var(--text-muted)">This week's techniques — pushed to every class, filtered by audience &amp; level.</div>
           </div>
-          <div style="display:flex;gap:var(--sp-2);margin-left:var(--sp-4);flex-shrink:0">
-            <button class="btn btn-secondary" style="font-size:12px;padding:5px 12px;white-space:nowrap"
-              onclick="autoFillWeeklyPlan('${wk}')">✦ Auto-fill</button>
-            <button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap"
-              onclick="saveAndApplyWeeklyPlan('${wk}')" ${allItemIds.length === 0 ? 'disabled' : ''}>
-              Save &amp; apply
-            </button>
-          </div>
+          <button class="btn" style="font-size:12px;padding:5px 14px;white-space:nowrap;margin-left:var(--sp-4);flex-shrink:0"
+            onclick="openWeeklyFocusModal('${wk}')">${allItemIds.length > 0 ? 'Edit focus' : '✦ Set weekly focus'}</button>
         </div>
-        <div style="margin-bottom:var(--sp-3)">${legendItems}</div>
-        ${sectionRows}
-        <div style="padding:var(--sp-3) 0 0;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
-          <span style="font-size:12px;color:var(--text-muted)">
-            ${allItemIds.length > 0 ? `${allItemIds.length} technique${allItemIds.length !== 1 ? 's' : ''} selected` : 'No techniques selected yet'}
-          </span>
-          ${allItemIds.length > 0 ? `<span style="font-size:11px;color:var(--text-faint)">Filtered by audience &amp; complexity when applied</span>` : ''}
-        </div>
+        ${allItemIds.length > 0
+          ? `${previewSections}
+             <div style="padding:var(--sp-3) 0 0;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:var(--sp-3)">
+               <span style="font-size:12px;color:var(--text-muted)">${allItemIds.length} technique${allItemIds.length !== 1 ? 's' : ''} selected · not yet applied</span>
+               <button class="btn btn-primary" style="font-size:12px;padding:5px 14px;white-space:nowrap" onclick="weeklyFocusSaveApply('${wk}')">Save &amp; apply</button>
+             </div>`
+          : `<div class="faint" style="font-size:13px;padding:var(--sp-2) 0">No focus set for this week yet.
+               <a onclick="openWeeklyFocusModal('${wk}')" style="cursor:pointer;color:var(--accent)">Set one →</a></div>`}
       </div>`;
   }
 
