@@ -10,6 +10,7 @@
   <div id="app" class="app"></div>
 
   <script src="errlog.js"></script>
+  <script src="accent.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="supabase-client.js"></script>
@@ -5009,7 +5010,7 @@
   }
   function StudentModalCard() {
     return `
-      <div style="background:var(--bg);border-radius:var(--r-xl);max-width:640px;width:100%;margin:auto;padding:var(--sp-5);box-shadow:var(--shadow-md)">
+      <div style="background:var(--bg);border-radius:var(--r-xl);max-width:640px;width:100%;margin:0 auto;padding:var(--sp-5);box-shadow:var(--shadow-md)">
         ${modalHead(tr('screen.addStudent'), 'student-modal')}
         <p class="muted" style="margin:-12px 0 var(--sp-4)">Complete all steps to onboard a new student.</p>
         <div id="student-modal-body">${StudentWizardBody()}</div>
@@ -6357,7 +6358,7 @@
     ).join('');
 
     return `
-      <div class="card" style="max-width:560px;width:100%;margin:auto">
+      <div class="card" style="max-width:560px;width:100%;margin:0 auto">
         ${modalHead(tr('screen.newClass'), 'class-modal')}
         <div class="stack" style="gap:var(--sp-4)">
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-4)">
@@ -6695,6 +6696,12 @@
         <p class="muted" style="margin-bottom:var(--sp-5)">Manage your academy details and gym rules.</p>
 
         ${(typeof isTenant === 'function' && isTenant()) ? ModulesCard() : ''}
+
+        <div class="card" style="margin-bottom:var(--sp-4)">
+          <h3 class="card-title" style="margin-bottom:var(--sp-1)">Accent color</h3>
+          <p class="muted" style="font-size:13px;margin-bottom:var(--sp-3)">Sets the highlight color across the whole app.</p>
+          <div style="display:flex;gap:var(--sp-3);flex-wrap:wrap">${accentSwatchesHtml()}</div>
+        </div>
 
         <div class="card" style="margin-bottom:var(--sp-4)">
           <h3 class="card-title" style="margin-bottom:var(--sp-4)">Academy details</h3>
@@ -8866,8 +8873,10 @@
   function openAppModal(id, contentHtml) {
     // Only one create-modal at a time.
     document.querySelectorAll('.app-modal').forEach(e => e.remove());
+    // Block scroll container (not flex) so tall modals scroll fully — flex
+    // centering with margin:auto clips the top of overflowing content.
     document.body.insertAdjacentHTML('beforeend',
-      `<div id="${id}" class="app-modal" style="position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:var(--sp-6) var(--sp-5);overflow-y:auto"
+      `<div id="${id}" class="app-modal" style="position:fixed;inset:0;z-index:10000;background:rgba(15,23,42,.55);overflow-y:auto;padding:var(--sp-6) var(--sp-5)"
         onclick="if(event.target===this)closeAppModal('${id}')">${contentHtml}</div>`);
   }
   function closeAppModal(id) { const el = document.getElementById(id); if (el) el.remove(); }
@@ -10384,7 +10393,7 @@ ${CONFIG.academyName || 'The Team'}`;
   function EventModalCard() {
     const today = new Date().toISOString().slice(0, 10);
     return `
-      <div class="card" style="max-width:600px;width:100%;margin:auto">
+      <div class="card" style="max-width:600px;width:100%;margin:0 auto">
         ${modalHead('New Event', 'event-modal')}
         <div style="display:flex;flex-direction:column;gap:var(--sp-4)">
 
