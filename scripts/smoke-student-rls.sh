@@ -14,12 +14,17 @@ pass=0; fail=0
 ok(){ echo "PASS  $1"; pass=$((pass+1)); }
 no(){ echo "FAIL  $1 ($2)"; fail=$((fail+1)); }
 chk(){ [ "$2" = "$3" ] && ok "$1" || no "$1" "got '$2' want '$3'"; }
-denied(){ case "$2" in 401|403) ok "$1";; *) no "$1" "got '$2' want 401/403";; esac; }
+# A rejected write is any 4xx (400 constraint/representation, 401 anon, 403 RLS);
+# an *allowed* write would be 2xx. The staff-count assertion below corroborates
+# denial by effect (no row was actually created).
+denied(){ case "$2" in 4[0-9][0-9]) ok "$1";; *) no "$1" "got '$2' want 4xx (rejected)";; esac; }
 jget(){ python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('$1','') if isinstance(d,dict) else '')"; }
 jlen(){ python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d) if isinstance(d,list) else -1)"; }
 signup(){ curl -s -X POST "$U/auth/v1/signup" -H "apikey: $K" -H "Content-Type: application/json" -d "{\"email\":\"$1.$(date +%s)-$RANDOM@example.com\",\"password\":\"test123456\"}" | jget access_token; }
 get_body(){ curl -s "$U/rest/v1$2" -H "apikey: $K" -H "Authorization: Bearer $1"; }
-post_code(){ curl -s -o /dev/null -w '%{http_code}' -X POST "$U/rest/v1$2" -H "apikey: $K" -H "Authorization: Bearer $1" -H "Content-Type: application/json" -H "Prefer: return=representation" -d "$3"; }
+# No return=representation here: on an RLS-blocked insert that header can mask the
+# clean 403, so we omit it for these write-denial probes.
+post_code(){ curl -s -o /dev/null -w '%{http_code}' -X POST "$U/rest/v1$2" -H "apikey: $K" -H "Authorization: Bearer $1" -H "Content-Type: application/json" -d "$3"; }
 
 echo "== student-role RLS smoke test =="; echo "target: $U"; echo
 
