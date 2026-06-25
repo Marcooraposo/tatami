@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>openmat.me — Join your academy</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    body { display: grid; place-items: center; min-height: 100vh; padding: var(--sp-5); }
+    .card { max-width: 420px; width: 100%; background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: var(--sp-6); box-shadow: var(--shadow-card); }
+    .brand { display: flex; align-items: center; gap: var(--sp-2); margin-bottom: var(--sp-5); }
+    .brand-mark { width: 28px; height: 28px; display: grid; place-items: center; }
+    .brand-mark svg { width: 28px; height: 28px; }
+    .brand-mark svg path { stroke: var(--black); }
+    .wordmark { font-family: var(--font-display); font-weight: var(--fw-bold); font-size: 18px; letter-spacing: var(--ls-tight); color: var(--black); }
+    .wordmark .tld { color: var(--text-faint); font-weight: var(--fw-medium); }
+    label { display: block; font-weight: 600; font-size: 13px; margin: 0 0 var(--sp-2); }
+    input { width: 100%; }
+    .btn-full { width: 100%; justify-content: center; margin-top: var(--sp-3); }
+    .msg { margin-top: var(--sp-4); padding: var(--sp-3); border-radius: var(--r-md); font-size: 13px; line-height: 1.5; }
+    .msg.ok { background: var(--success-bg); color: var(--success); }
+    .msg.err { background: var(--danger-bg); color: var(--danger); }
+    .muted { color: var(--text-muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="card" id="root"><div class="muted">Loading…</div></div>
+
+  <script src="errlog.js"></script>
+  <script src="accent.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-client.js"></script>
+  <script>
+  const $ = (id) => document.getElementById(id);
+  const root = $('root');
+  const brand = `<div class="brand"><div class="brand-mark"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-label="openmat.me"><path d="M18 4 H8 a4 4 0 0 0-4 4 v8 a4 4 0 0 0 4 4 h8 a4 4 0 0 0 4-4 V10" fill="none" stroke-width="2.6" stroke-linecap="round"></path></svg></div><span class="wordmark">openmat<span class="tld">.me</span></span></div>`;
+
+  // Token comes in the hash (#token=…) or query (?token=…).
+  function getToken() {
+    const h = new URLSearchParams((location.hash || '').replace(/^#/, ''));
+    if (h.get('token')) return h.get('token');
+    return new URLSearchParams(location.search).get('token');
+  }
+  const TOKEN = getToken();
+
+  function showMsg(kind, text) { const el = $('msg'); if (el) { el.className = 'msg ' + kind; el.textContent = text; } }
+  function creds() { return { email: ($('email').value || '').trim(), password: ($('password').value || '') }; }
+
+  async function claim() {
+    root.innerHTML = `${brand}<div class="muted">Linking your account…</div>`;
+    const { data, error } = await sb.rpc('claim_student_invite', { p_token: TOKEN });
+    if (error) { authView(error.message); return; }
+    try { localStorage.setItem('tatami_active_academy', data); } catch {}
+    root.innerHTML = `${brand}<div class="msg ok">You're in! Opening your academy…</div>`;
+    location.href = '/student';
+  }
+
+  async function signIn() {
+    const { email, password } = creds();
+    if (!email || !password) { showMsg('err', 'Enter your email and password.'); return; }
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) { showMsg('err', error.message); return; }
+    claim();
+  }
+  async function signUp() {
+    const { email, password } = creds();
+    if (!email || !password) { showMsg('err', 'Enter an email and password.'); return; }
+    if (password.length < 6) { showMsg('err', 'Password must be at least 6 characters.'); return; }
+    const { data, error } = await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.href } });
+    if (error) { showMsg('err', error.message); return; }
+    if (data.session) claim();                       // email confirmation off → claim now
+    else showMsg('ok', 'Account created. Confirm your email, then reopen this link.');
+  }
+
+  function authView(errText) {
+    root.innerHTML = `
+      ${brand}
+      <h1 style="font-size:18px;margin:0 0 var(--sp-2)">Join your academy</h1>
+      <p class="muted" style="margin-bottom:var(--sp-4)">Create an account (or sign in) to link this invite to you.</p>
+      <label for="email">Email</label>
+      <input id="email" class="input" type="email" placeholder="you@email.com" style="margin-bottom:var(--sp-3)" />
+      <label for="password">Password</label>
+      <input id="password" class="input" type="password" placeholder="••••••••" />
+      <button class="btn btn-full" id="b-create">Create account &amp; join</button>
+      <button class="btn btn-secondary btn-full" id="b-signin">I already have an account</button>
+      <div id="msg"></div>`;
+    $('b-create').onclick = signUp;
+    $('b-signin').onclick = signIn;
+    $('password').addEventListener('keydown', e => { if (e.key === 'Enter') signUp(); });
+    if (errText) showMsg('err', errText);
+  }
+
+  async function init() {
+    if (!TOKEN) { root.innerHTML = `${brand}<div class="msg err">This invite link is invalid or incomplete.</div>`; return; }
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) claim(); else authView();
+  }
+  init();
+  </script>
+</body>
+</html>

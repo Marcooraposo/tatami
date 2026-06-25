@@ -2349,19 +2349,27 @@
     if (w) { w.document.write(html); w.document.close(); }
   }
 
-  function copyStudentAppLink(studentId, btn) {
-    // Build a deep-link URL the student can open to be auto-logged into the student app
-    const base = location.href.replace(/admin\.html.*$/, 'student.html');
-    const link = base + '#login/' + studentId;
+  async function copyStudentAppLink(studentId, btn) {
+    let link;
+    if (typeof isTenant === 'function' && isTenant()) {
+      // Real invite: one-time token the student redeems to link their account.
+      const res = await tCreateStudentInvite(studentId);
+      if (!res.ok) { showToast(res.error ? 'Could not create invite — run migration 015.' : 'Invites need a logged-in academy.'); return; }
+      link = res.url;
+    } else {
+      // Demo: deep-link that auto-selects this student in the demo student app.
+      const base = location.href.replace(/admin\.html.*$/, 'student.html');
+      link = base + '#login/' + studentId;
+    }
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(link).then(() => {
-        showToast('App link copied to clipboard');
+        showToast('Invite link copied to clipboard');
         if (btn) { const orig = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = orig; }, 1800); }
       }).catch(() => {
-        prompt('Copy this link:', link);
+        prompt('Copy this invite link:', link);
       });
     } else {
-      prompt('Copy this link:', link);
+      prompt('Copy this invite link:', link);
     }
   }
 

@@ -54,8 +54,26 @@ Onboarding shows available vs coming-soon modules (roadmap-as-marketing).
   read-only via 014); email confirmation ON + real email provider (Resend/SMTP) +
   password reset; terms page; error logging; backups; isolation smoke-test.
   → **Ship admin beta.**
-- **P5 — Student app:** student identity/invite + student-role RLS; cut
-  `student.html` to Supabase (read views first, then writes). → **Ship student beta.**
+- **P5 — Student app (mobile PWA).** `student.html` is already a 430px responsive
+  app on demo data; P5 wires it to real auth + Supabase. Approach: installable PWA,
+  not native (wrap in Capacitor later if push/store needed). Sub-phases:
+  - **P5a — Identity & invite linking** *(in progress)*: `students.user_id`,
+    `student_invites` + staff RLS, `claim_student_invite()` RPC (links auth user →
+    student row + adds `student` membership; invite encodes the academy, so no
+    picker). Admin "App link" generates a one-time `/join` link; `join.html` redeems
+    it. Migration 015.
+  - **P5b — student-role RLS** *(the hard part)*: split `auth_is_staff()` vs student;
+    students read own record + academy-public data (classes/events/curriculum/
+    announcements) and write only own bookings/check-ins/registrations/test-requests
+    — never other students' PII.
+  - **P5c — reads**: student-scoped hydrate (mirrors admin `tenant.js`); replace
+    `data.js` reads; module-aware via `academy_features`. Keep `/demo` on data.js.
+  - **P5d — writes**: book/cancel, check-in, event register, request belt test, edit
+    profile — own rows only.
+  - **P5e — PWA**: `manifest.json` + service worker (offline shell + install) +
+    apple-touch-icon.
+  - **P5f — verify & ship**: extend isolation smoke test for the student role; invite
+    real students at a friendly academy. → **Ship student beta.**
 
 ### Honest notes
 - ~80% of effort is the P1–P2 data cutover. Student writes (P5) come last — they

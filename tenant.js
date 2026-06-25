@@ -294,6 +294,22 @@ async function tUpdateEnrollment(studentId, patchInMemoryShape) {
 
 async function tenantSignOut() { try { await sb.auth.signOut(); } catch {} location.href = '/app'; }
 
+// Create a one-time student invite and return a shareable /join link. Demo mode
+// returns { demo:true } so the caller can fall back to the demo deep-link.
+async function tCreateStudentInvite(studentId) {
+  if (!isTenant()) return { ok: false, demo: true };
+  const token = (self.crypto && crypto.randomUUID)
+    ? crypto.randomUUID().replace(/-/g, '')
+    : (Date.now().toString(36) + Math.random().toString(36).slice(2, 12));
+  const r = await sb.from('student_invites').insert({
+    token, academy_id: TENANT.academyId, student_id: studentId,
+    created_by: TENANT.userId,
+    expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+  });
+  if (r.error) { console.error('[tenant] create invite (run migration 015?):', r.error); return { ok: false, error: r.error }; }
+  return { ok: true, token, url: location.origin + '/join#token=' + token };
+}
+
 // Switch the active academy: persist the choice and reload so tHydrate re-runs.
 function switchAcademy(id) {
   if (!id || id === TENANT.academyId) return;
@@ -415,6 +431,7 @@ async function tInitFeatures(enabledIds) {
 
 window.TENANT = TENANT; window.isTenant = isTenant;
 window.tenantSignOut = tenantSignOut; window.switchAcademy = switchAcademy;
+window.tCreateStudentInvite = tCreateStudentInvite;
 window.MODULE_REGISTRY = MODULE_REGISTRY; window.isModuleEnabled = isModuleEnabled;
 window.toggleableModules = toggleableModules; window.moduleMeta = moduleMeta;
 window.tSetModuleEnabled = tSetModuleEnabled; window.tInitFeatures = tInitFeatures;
