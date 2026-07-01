@@ -370,9 +370,12 @@
 <div id="toast"></div>
 
 <script src="errlog.js"></script>
+<script src="accent.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="supabase-client.js"></script>
 <script src="data.js"></script>
+<script src="tenant.js"></script>
+<script src="student-tenant.js"></script>
 <script>
 // ─── Persistence (shared key with admin.html) ─────────────────────────────────
 const DATA_KEY = 'tatami_v1_data';
@@ -605,7 +608,6 @@ function studentResolveInjury(injId) {
 }
 
 window.addEventListener('hashchange', render);
-window.addEventListener('load', render);
 
 function render() {
   const hash = location.hash.replace('#/', '').replace('#', '') || '';
@@ -1117,15 +1119,20 @@ function renderLogin() {
       </div>
 
       <h1 style="font-size:24px;font-weight:800;letter-spacing:-0.5px;margin-bottom:6px">Student App</h1>
-      <p style="font-size:14px;color:var(--text-muted);margin-bottom:32px">Sign in or create a new account.</p>
+      <p style="font-size:14px;color:var(--text-muted);margin-bottom:20px">Sign in to your academy.</p>
 
-      <button class="btn btn-primary btn-full" onclick="go('register')" style="margin-bottom:20px">
-        Create account
-      </button>
+      ${STUDENT_CTX.mode === 'unlinked' ? `<div class="card" style="margin-bottom:16px;padding:14px;font-size:13px;color:var(--text-muted)">You're signed in but not linked to a student yet. Open your academy's invite link, or <a onclick="studentSignOut().then(()=>location.reload())" style="color:var(--primary);cursor:pointer">sign out</a>.</div>` : ''}
 
-      <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">Demo — pick a student</div>
+      <input id="st-email" type="email" placeholder="you@email.com" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-md);font-size:15px;margin-bottom:10px" />
+      <input id="st-pass" type="password" placeholder="Password" style="width:100%;padding:12px 14px;border:1px solid var(--border);border-radius:var(--r-md);font-size:15px;margin-bottom:12px" onkeydown="if(event.key==='Enter')studentSignIn()" />
+      <button class="btn btn-primary btn-full" onclick="studentSignIn()">Sign in</button>
+      <div id="login-msg" style="color:var(--danger);font-size:13px;margin-top:10px;min-height:16px"></div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin:24px 0 16px;color:var(--text-faint);font-size:12px;letter-spacing:0.5px"><div style="flex:1;height:1px;background:var(--border)"></div>DEMO<div style="flex:1;height:1px;background:var(--border)"></div></div>
+
+      <button class="btn btn-secondary btn-full" onclick="go('register')" style="margin-bottom:20px">Create demo account</button>
+      <div style="font-size:13px;font-weight:600;color:var(--text-muted);margin-bottom:12px;text-transform:uppercase;letter-spacing:0.5px">Pick a demo student</div>
       <div class="card">${studentRows}</div>
-
       <p style="margin-top:20px;font-size:12px;color:var(--text-faint);text-align:center">Demo mode: select any student above to log in as them.</p>
     </div>
   `;
@@ -1135,6 +1142,17 @@ function loginAs(studentId) {
   currentStudentId = studentId;
   localStorage.setItem('tatami_student_id', studentId);
   go('home');
+}
+
+// Real student sign-in (email+password). On success, onAuthStateChange reloads
+// the app into tenant mode and hydrates from Supabase.
+async function studentSignIn() {
+  const email = (document.getElementById('st-email')?.value || '').trim();
+  const pw = document.getElementById('st-pass')?.value || '';
+  const msg = document.getElementById('login-msg');
+  if (!email || !pw) { if (msg) msg.textContent = 'Enter your email and password.'; return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error && msg) { msg.textContent = error.message; }
 }
 
 // ─── Register Screen ──────────────────────────────────────────────────────────
@@ -1431,7 +1449,7 @@ function renderHome() {
     <div class="screen">
       <div class="topbar">
         <div class="topbar-title">Home</div>
-        <div class="topbar-right" style="font-size:12px;color:var(--text-muted)">${beltColors && level ? `<span style="padding:2px 8px;border-radius:12px;background:${beltColors.bg};color:${beltColors.text};font-weight:700;font-size:11px">${level.name}</span>` : ''}</div>
+        <div class="topbar-right" style="font-size:12px;color:var(--text-muted)">${beltColors && level ? `<span style="padding:2px 8px;border-radius:12px;background:${beltColors.bg};color:${beltColors.text};font-weight:700;font-size:11px">${typeof level.name === 'object' ? t(level.name) : level.name}</span>` : ''}</div>
       </div>
       <div class="content" style="padding-top:16px">
 
@@ -2573,7 +2591,7 @@ function renderMe() {
     return `
       <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
         <span style="width:10px;height:10px;border-radius:50%;background:${c.dot};flex-shrink:0"></span>
-        <span style="font-size:14px;color:var(--text-muted)">${lvl.name}</span>
+        <span style="font-size:14px;color:var(--text-muted)">${typeof lvl.name === 'object' ? t(lvl.name) : lvl.name}</span>
       </div>`;
   }).join('');
 
@@ -2637,7 +2655,7 @@ function renderMe() {
               <div style="margin-top:6px">
                 <span class="belt-pill" style="background:${beltColors.bg};color:${beltColors.text}">
                   <span class="belt-dot" style="background:${beltColors.dot}"></span>
-                  ${level.name}${stripes > 0 ? ' · ' + '●'.repeat(stripes) : ''}
+                  ${typeof level.name === 'object' ? t(level.name) : level.name}${stripes > 0 ? ' · ' + '●'.repeat(stripes) : ''}
                 </span>
               </div>` : ''}
           </div>
@@ -3698,7 +3716,12 @@ function renderNews() {
   `;
 }
 
-function logout() {
+async function logout() {
+  if (typeof isStudentTenant === 'function' && isStudentTenant()) {
+    await studentSignOut();
+    location.reload();
+    return;
+  }
   currentStudentId = null;
   localStorage.removeItem('tatami_student_id');
   go('');
@@ -3706,7 +3729,6 @@ function logout() {
 
 // ---- App init: run after all declarations are defined (avoids TDZ) ----
 loadTheme();
-loadPersistedData();
 loadClassRatings();
 loadSessionNotes();
 loadMyNotes();
@@ -3714,6 +3736,26 @@ loadHolds();
 loadPrivateLessons();
 loadStudentPackages();
 loadMyInjuries();
+
+// Boot: resolve the logged-in student and hydrate from Supabase (tenant mode);
+// otherwise fall back to demo data (data.js + admin's localStorage).
+(async function bootStudent() {
+  try { await initStudentApp(); } catch (e) { console.error('[student] boot:', e); }
+  if (isStudentTenant()) {
+    currentStudentId = STUDENT_CTX.studentId;
+    try { localStorage.setItem('tatami_student_id', currentStudentId); } catch {}
+    const h = location.hash.replace(/^#\/?/, '');
+    if (h === '' || h === 'login' || h.startsWith('login/')) location.hash = 'home';
+  } else {
+    loadPersistedData();   // demo data only when not a real logged-in student
+  }
+  render();
+})();
+
+// A real sign-in / sign-out re-boots the app into the right mode.
+sb.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') location.reload();
+});
 </script>
 </body>
 </html>
