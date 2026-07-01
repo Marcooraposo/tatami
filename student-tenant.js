@@ -32,14 +32,17 @@ async function initStudentApp() {
 
 function _srep(arr, rows, map) { if (Array.isArray(arr)) arr.splice(0, arr.length, ...((rows || []).map(map))); }
 function _annFromDb(r) { return { id: r.id, title: r.title, body: r.body, pinned: !!r.pinned, expiresAt: r.expires_at, createdAt: r.created_at }; }
+// instructor_directory view exposes only safe columns (no pay_rate) — see migration 017.
+function _instFromView(r) { return { id: r.id, name: r.name, initials: r.initials, sportIds: [] }; }
 
 async function sHydrate() {
   const aid = STUDENT_CTX.academyId;
-  const [me, enr, cls, tpl, bk, att, wl, ev, ann, gl, feat] = await Promise.all([
+  const [me, enr, cls, tpl, ins, bk, att, wl, ev, ann, gl, feat] = await Promise.all([
     sb.from('students').select('*').eq('academy_id', aid),            // RLS → my row only
     sb.from('enrollments').select('*').eq('academy_id', aid),         // RLS → mine
     sb.from('classes').select('*').eq('academy_id', aid),             // public
     sb.from('recurring_templates').select('*').eq('academy_id', aid), // public
+    sb.from('instructor_directory').select('*').eq('academy_id', aid),// public (name only, no pay)
     sb.from('bookings').select('*').eq('academy_id', aid),            // RLS → mine
     sb.from('attendance').select('*').eq('academy_id', aid),          // RLS → mine
     sb.from('waitlist').select('*').eq('academy_id', aid),            // RLS → mine
@@ -48,6 +51,7 @@ async function sHydrate() {
     sb.from('grading_log').select('*').eq('academy_id', aid),         // RLS → mine
     sb.from('academy_features').select('module_id, enabled').eq('academy_id', aid)
   ]);
+  if (typeof INSTRUCTORS !== 'undefined')         _srep(INSTRUCTORS, ins.data, _instFromView);
   if (typeof STUDENTS !== 'undefined')            _srep(STUDENTS, me.data, studentFromDb);
   if (typeof ENROLLMENTS !== 'undefined')         _srep(ENROLLMENTS, enr.data, enrollmentFromDb);
   if (typeof CLASSES !== 'undefined')             _srep(CLASSES, cls.data, classFromDb);

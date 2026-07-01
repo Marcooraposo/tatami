@@ -38,7 +38,8 @@ curl -s -o /dev/null -X POST "$U/rest/v1/students" "${H[@]}" -d "{\"id\":\"$ME\"
 curl -s -o /dev/null -X POST "$U/rest/v1/students" "${H[@]}" -d "{\"id\":\"$OTHER\",\"name\":\"Other Student\",\"initials\":\"OS\",\"joined_at\":\"2026-01-01\",\"academy_id\":\"$AID\"}"
 curl -s -o /dev/null -X POST "$U/rest/v1/enrollments" "${H[@]}" -d "{\"id\":\"enr-$OTHER\",\"student_id\":\"$OTHER\",\"sport_id\":\"sport-bjj\",\"grading_system_id\":\"g\",\"current_level_id\":\"l\",\"current_stripes\":0,\"level_since\":\"2026-01-01\",\"academy_id\":\"$AID\"}"
 curl -s -o /dev/null -X POST "$U/rest/v1/classes" "${H[@]}" -d "{\"id\":\"cls-$ME\",\"sport_id\":\"sport-bjj\",\"starts_at\":\"2026-05-20T18:00:00Z\",\"duration_min\":60,\"class_type\":\"Fundamentals\",\"capacity\":20,\"status\":\"scheduled\",\"academy_id\":\"$AID\"}"
-ok "staff seeded 2 students + enrollment + class"
+curl -s -o /dev/null -X POST "$U/rest/v1/instructors" "${H[@]}" -d "{\"id\":\"ins-$ME\",\"name\":\"Coach Rui\",\"initials\":\"CR\",\"pay_rate\":99,\"academy_id\":\"$AID\"}"
+ok "staff seeded 2 students + enrollment + class + instructor"
 
 # mint invite for MY student record, then claim as a new student user
 TOK="rls$(date +%s)$RANDOM"
@@ -55,6 +56,10 @@ n=$(get_body "$TST" "/students?select=id&academy_id=eq.$AID" | jlen); [ "$n" = "
 n=$(get_body "$TST" "/enrollments?select=id&student_id=eq.$OTHER"); chk "student CANNOT read other's enrollment" "$n" "[]"
 n=$(get_body "$TST" "/classes?select=id&academy_id=eq.$AID" | jlen);  [ "$n" -ge 1 ] && ok "student reads academy classes (public)" || no "public classes" "n=$n"
 n=$(get_body "$TST" "/academy_features?select=module_id&academy_id=eq.$AID"); echo "$n" | python3 -c "import sys,json;sys.exit(0 if isinstance(json.load(sys.stdin),list) else 1)" && ok "student reads academy_features (public)" || no "features read" "$n"
+# instructor pay must NOT leak: table is staff-only, name-only via the directory view
+n=$(get_body "$TST" "/instructors?select=name&academy_id=eq.$AID"); chk "student CANNOT read instructors table" "$n" "[]"
+n=$(get_body "$TST" "/instructor_directory?select=name&academy_id=eq.$AID"); echo "$n" | grep -q "Coach Rui" && ok "student reads instructor NAME via directory view" || no "directory name" "$n"
+pay=$(get_body "$TST" "/instructor_directory?select=pay_rate&academy_id=eq.$AID"); echo "$pay" | grep -qi "pay_rate\|99" && no "pay_rate exposed via view" "$pay" || ok "instructor pay_rate NOT exposed via view"
 
 # --- WRITES: student is read-only in P5b ---
 denied "student CANNOT insert a student" "$(post_code "$TST" /students "{\"id\":\"x-$RANDOM\",\"name\":\"X\",\"initials\":\"X\",\"joined_at\":\"2026-01-01\",\"academy_id\":\"$AID\"}")"

@@ -1152,7 +1152,8 @@ async function studentSignIn() {
   const msg = document.getElementById('login-msg');
   if (!email || !pw) { if (msg) msg.textContent = 'Enter your email and password.'; return; }
   const { error } = await sb.auth.signInWithPassword({ email, password: pw });
-  if (error && msg) { msg.textContent = error.message; }
+  if (error) { if (msg) msg.textContent = error.message; return; }
+  location.reload();   // re-boot into tenant mode + hydrate
 }
 
 // ─── Register Screen ──────────────────────────────────────────────────────────
@@ -3751,11 +3752,9 @@ loadMyInjuries();
   }
   render();
 })();
-
-// A real sign-in / sign-out re-boots the app into the right mode.
-sb.auth.onAuthStateChange((event) => {
-  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') location.reload();
-});
+// Note: sign-in (studentSignIn) and sign-out (logout) reload explicitly, so we
+// deliberately do NOT reload from onAuthStateChange — that would risk a reload
+// loop if the SDK ever emits SIGNED_IN on session restore.
 </script>
 </body>
 </html>
