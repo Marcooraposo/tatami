@@ -26,13 +26,19 @@ dashboards — they can't be done from the repo.
 - [ ] Set them in `supabase-client.js` env handling / `TATAMI_ENV` for the prod deploy.
 
 ### 2. Run the migration chain on prod (in order)
-Run these — they build schema, the shared curriculum master library, and tenancy:
+Run these — they build schema, the shared curriculum master library, tenancy, and
+the student-app security model:
 ```
-001, 003, 004, 005, 007, 008, 009, 010, 011, 012, 013, 014
+001, 003, 004, 005, 007, 008, 009, 010, 011, 012, 013, 014, 015, 016, 017, 018
 ```
 **Skip `002` and `006`** — `002` seeds the *demo* academy/students, and `006` is the
 demo-only read-only lock (prod gets read-only via `014`). The backfills in 008/011
 touch zero rows on a fresh project, so skipping the demo seed is safe.
+
+> ⚠️ **Security-critical:** `016` (student-role RLS), `017` (hide instructor pay),
+> and `018` (lock injuries/prospects/packages/discounts to staff) MUST be applied
+> before any student is invited — without them, students can read/write other
+> members' PII. The two smoke tests in step 5 verify this.
 
 ### 3. Supabase Auth config (prod)
 - [ ] **Email confirmation: ON** (it's off on dev only).
@@ -45,13 +51,17 @@ touch zero rows on a fresh project, so skipping the demo seed is safe.
 ### 4. Backups
 - [ ] Enable daily backups / PITR on the prod project (Supabase Pro).
 
-### 5. Prod smoke test
-- [ ] After migrations, run against prod and expect **10/10**:
+### 5. Prod smoke test (before inviting anyone)
+- [ ] Run BOTH against prod with the prod URL + anon key:
       ```
-      SUPABASE_URL=https://<prod-ref>.supabase.co \
-      SUPABASE_ANON_KEY=<prod-anon-key> \
-      ./scripts/smoke-isolation.sh
+      SUPABASE_URL=https://<prod-ref>.supabase.co SUPABASE_ANON_KEY=<prod-anon> ./scripts/smoke-isolation.sh    # expect 10/10
+      SUPABASE_URL=https://<prod-ref>.supabase.co SUPABASE_ANON_KEY=<prod-anon> ./scripts/smoke-student-rls.sh  # expect 31/31
       ```
+
+### 6. Ship the code
+- [ ] Merge `dev` → `main` (Vercel auto-deploys `main` to the prod host). Do this
+      AFTER the prod DB is migrated + smoke-tested, so the live code always has a
+      backend that matches it.
 
 ---
 
