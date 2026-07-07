@@ -65,6 +65,19 @@ pay=$(get_body "$TST" "/instructor_directory?select=pay_rate&academy_id=eq.$AID"
 denied "student CANNOT insert a student" "$(post_code "$TST" /students "{\"id\":\"x-$RANDOM\",\"name\":\"X\",\"initials\":\"X\",\"joined_at\":\"2026-01-01\",\"academy_id\":\"$AID\"}")"
 denied "student CANNOT create a class"   "$(post_code "$TST" /classes "{\"id\":\"x-$RANDOM\",\"sport_id\":\"sport-bjj\",\"starts_at\":\"2026-05-21T18:00:00Z\",\"class_type\":\"X\",\"academy_id\":\"$AID\"}")"
 
+# --- Staff-only tables (018): students get NO access, even to rows that exist ---
+# Seed a sensitive row (injury/medical PII) as staff, then prove the student is blind to it.
+curl -s -o /dev/null -X POST "$U/rest/v1/student_injuries" "${H[@]}" \
+  -d "{\"id\":\"inj-$RANDOM\",\"student_id\":\"$ME\",\"date\":\"2026-06-01\",\"type\":\"fracture\",\"body_part\":\"knee\",\"notes\":\"PII\",\"academy_id\":\"$AID\"}"
+chk "student CANNOT read student_injuries (medical PII)" "$(get_body "$TST" "/student_injuries?select=id&academy_id=eq.$AID")" "[]"
+# Strict RLS denial (401/403) — a 400 would mean the write got PAST RLS and only
+# failed a column constraint, i.e. the policy still lets students in (pre-018 leak).
+rls_denied(){ case "$2" in 401|403) ok "$1";; *) no "$1" "got '$2' — write reached the table (RLS not enforced)";; esac; }
+for tbl in prospects student_injuries equipment equipment_loans class_package_types student_packages discount_codes; do
+  chk "student CANNOT read $tbl" "$(get_body "$TST" "/$tbl?select=id&academy_id=eq.$AID")" "[]"
+  rls_denied "student CANNOT write $tbl" "$(post_code "$TST" "/$tbl" "{\"id\":\"x-$RANDOM\",\"academy_id\":\"$AID\"}")"
+done
+
 # --- STAFF still has full access ---
 n=$(get_body "$TS" "/students?select=id&academy_id=eq.$AID" | jlen); [ "$n" -ge 2 ] && ok "staff still sees all students ($n)" || no "staff access" "n=$n"
 
