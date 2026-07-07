@@ -59,7 +59,7 @@ n=$(get_body "$TST" "/academy_features?select=module_id&academy_id=eq.$AID"); ec
 # instructor pay must NOT leak: table is staff-only, name-only via the directory view
 n=$(get_body "$TST" "/instructors?select=name&academy_id=eq.$AID"); chk "student CANNOT read instructors table" "$n" "[]"
 n=$(get_body "$TST" "/instructor_directory?select=name&academy_id=eq.$AID"); echo "$n" | grep -q "Coach Rui" && ok "student reads instructor NAME via directory view" || no "directory name" "$n"
-pay=$(get_body "$TST" "/instructor_directory?select=pay_rate&academy_id=eq.$AID"); echo "$pay" | grep -qi "pay_rate\|99" && no "pay_rate exposed via view" "$pay" || ok "instructor pay_rate NOT exposed via view"
+pay=$(get_body "$TST" "/instructor_directory?select=pay_rate&academy_id=eq.$AID"); echo "$pay" | grep -qi "does not exist\|42703" && ok "instructor pay_rate absent from view" || no "pay_rate exposed via view" "$pay"
 
 # --- WRITES: student is read-only in P5b ---
 denied "student CANNOT insert a student" "$(post_code "$TST" /students "{\"id\":\"x-$RANDOM\",\"name\":\"X\",\"initials\":\"X\",\"joined_at\":\"2026-01-01\",\"academy_id\":\"$AID\"}")"
@@ -70,12 +70,14 @@ denied "student CANNOT create a class"   "$(post_code "$TST" /classes "{\"id\":\
 curl -s -o /dev/null -X POST "$U/rest/v1/student_injuries" "${H[@]}" \
   -d "{\"id\":\"inj-$RANDOM\",\"student_id\":\"$ME\",\"date\":\"2026-06-01\",\"type\":\"fracture\",\"body_part\":\"knee\",\"notes\":\"PII\",\"academy_id\":\"$AID\"}"
 chk "student CANNOT read student_injuries (medical PII)" "$(get_body "$TST" "/student_injuries?select=id&academy_id=eq.$AID")" "[]"
-# Strict RLS denial (401/403) — a 400 would mean the write got PAST RLS and only
-# failed a column constraint, i.e. the policy still lets students in (pre-018 leak).
-rls_denied(){ case "$2" in 401|403) ok "$1";; *) no "$1" "got '$2' — write reached the table (RLS not enforced)";; esac; }
+# Representative write proof: a FULL, constraint-valid injury row must NOT be
+# created (4xx). Pre-018 the member policy would let this succeed (201); post-018
+# it's rejected (403, or 400 when NOT NULL is evaluated first). Either 4xx = safe.
+denied "student write to injuries denied (full valid body)" \
+  "$(post_code "$TST" /student_injuries "{\"id\":\"z-$RANDOM\",\"student_id\":\"$ME\",\"date\":\"2026-06-01\",\"type\":\"other\",\"academy_id\":\"$AID\"}")"
 for tbl in prospects student_injuries equipment equipment_loans class_package_types student_packages discount_codes; do
   chk "student CANNOT read $tbl" "$(get_body "$TST" "/$tbl?select=id&academy_id=eq.$AID")" "[]"
-  rls_denied "student CANNOT write $tbl" "$(post_code "$TST" "/$tbl" "{\"id\":\"x-$RANDOM\",\"academy_id\":\"$AID\"}")"
+  denied "student write to $tbl not created" "$(post_code "$TST" "/$tbl" "{\"id\":\"x-$RANDOM\",\"academy_id\":\"$AID\"}")"
 done
 
 # --- STAFF still has full access ---
