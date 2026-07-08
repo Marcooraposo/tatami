@@ -381,6 +381,16 @@
 const DATA_KEY = 'tatami_v1_data';
 // HTML-escape user-controlled free-text before innerHTML. No-op on clean strings.
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+// Student writes aren't wired to Supabase yet (P5d). In a real academy they'd only
+// hit localStorage and vanish on reload, so guard write actions to avoid a fake
+// "it worked" — they'll be flipped on per-action in P5d.
+function tenantWriteBlocked() {
+  if (typeof isStudentTenant === 'function' && isStudentTenant()) {
+    if (typeof showToast === 'function') showToast('Coming soon — not available yet');
+    return true;
+  }
+  return false;
+}
 function loadPersistedData() {
   try {
     const saved = JSON.parse(localStorage.getItem(DATA_KEY));
@@ -422,6 +432,7 @@ function loadMyNotes() {
   try { MY_NOTES = JSON.parse(localStorage.getItem(MY_NOTES_KEY)) || {}; } catch { MY_NOTES = {}; }
 }
 function saveMyNote(classId, text) {
+  if (typeof isStudentTenant==='function' && isStudentTenant()) return;
   const key = (currentStudentId || '') + '_' + classId;
   if (text.trim()) {
     MY_NOTES[key] = { text: text.trim(), updatedAt: new Date().toISOString() };
@@ -444,6 +455,7 @@ function loadSessionNotes() {
 
 // ─── Events ──────────────────────────────────────────────────────────────────
 function studentRegisterEvent(eventId) {
+  if (tenantWriteBlocked()) return;
   const evt = EVENTS.find(e => e.id === eventId);
   if (!evt || !currentStudentId) return;
   if (evt.registeredStudentIds.includes(currentStudentId)) return;
@@ -457,6 +469,7 @@ function studentRegisterEvent(eventId) {
 }
 
 function studentUnregisterEvent(eventId) {
+  if (tenantWriteBlocked()) return;
   const evt = EVENTS.find(e => e.id === eventId);
   if (!evt || !currentStudentId) return;
   evt.registeredStudentIds = evt.registeredStudentIds.filter(id => id !== currentStudentId);
@@ -578,6 +591,7 @@ function saveMyInjuries() {
 }
 
 function studentAddInjury() {
+  if (tenantWriteBlocked()) return;
   const bodyPart = (document.getElementById('inj-body') || {}).value?.trim();
   const type = (document.getElementById('inj-type') || {}).value || 'other';
   const notes = (document.getElementById('inj-notes') || {}).value?.trim() || '';
@@ -600,6 +614,7 @@ function studentAddInjury() {
 }
 
 function studentResolveInjury(injId) {
+  if (tenantWriteBlocked()) return;
   if (typeof STUDENT_INJURIES === 'undefined') return;
   const inj = STUDENT_INJURIES.find(i => i.id === injId);
   if (!inj) return;
@@ -667,14 +682,17 @@ function bottomNav(active) {
   if (!currentStudentId) return '';
   const now = Date.now();
   const activeAnns = ANNOUNCEMENTS.filter(a => !a.expiresAt || new Date(a.expiresAt).getTime() > now);
+  // `mod` gates a tab on the academy's enabled modules (tenant mode); base tabs
+  // (home/profile) have no module and always show.
+  const _mod = (id) => typeof sModuleEnabled === 'function' ? sModuleEnabled(id) : true;
   const tabs = [
     { id: 'home',     icon: '🏠', label: 'Home' },
-    { id: 'classes',  icon: '🥋', label: 'Classes' },
-    { id: 'schedule', icon: '📅', label: 'Schedule' },
-    { id: 'progress', icon: '📋', label: 'Progress' },
-    { id: 'news',     icon: '📢', label: 'News', badge: activeAnns.length },
+    { id: 'classes',  icon: '🥋', label: 'Classes',  mod: 'classes' },
+    { id: 'schedule', icon: '📅', label: 'Schedule', mod: 'schedule' },
+    { id: 'progress', icon: '📋', label: 'Progress', mod: 'grading' },
+    { id: 'news',     icon: '📢', label: 'News', badge: activeAnns.length, mod: 'announcements' },
     { id: 'me',       icon: '👤', label: 'Profile', badge: currentStudentId ? getMyWaiverStatus().filter(d => !d.signed).length : 0 },
-  ];
+  ].filter(t => !t.mod || _mod(t.mod));
   return `
     <nav class="bottom-nav">
       ${tabs.map(t => `
@@ -738,6 +756,7 @@ function materializeVirtualClass(classId) {
 }
 
 function checkIn(classId) {
+  if (tenantWriteBlocked()) return;
   materializeVirtualClass(classId); // ensure it's in CLASSES for history/streak
   const existing = ATTENDANCE.find(a => a.classId === classId && a.studentId === currentStudentId);
   if (existing) {
@@ -763,6 +782,7 @@ function waitlistPosition(classId, studentId) {
   return idx === -1 ? null : idx + 1;
 }
 function joinWaitlist(classId) {
+  if (tenantWriteBlocked()) return;
   if (isOnWaitlist(classId, currentStudentId)) return;
   materializeVirtualClass(classId);
   WAITLIST.push({ id: 'wl-' + Date.now(), classId, studentId: currentStudentId, addedAt: new Date().toISOString() });
@@ -771,6 +791,7 @@ function joinWaitlist(classId) {
   render();
 }
 function leaveWaitlist(classId) {
+  if (tenantWriteBlocked()) return;
   const idx = WAITLIST.findIndex(w => w.classId === classId && w.studentId === currentStudentId);
   if (idx !== -1) { WAITLIST.splice(idx, 1); persistData(); }
   showToast('Removed from waitlist');
@@ -859,6 +880,7 @@ function getMyPlRequests(studentId) {
   return loadPlRequests().filter(r => r.studentId === studentId).sort((a,b) => b.requestedAt.localeCompare(a.requestedAt));
 }
 function submitPlRequest() {
+  if (tenantWriteBlocked()) return;
   const preferredDate = document.getElementById('plr-date').value;
   const preferredTime = document.getElementById('plr-time').value;
   const focus = document.getElementById('plr-focus').value.trim();
@@ -911,6 +933,7 @@ function _loadWaiverRecords() {
 }
 
 function signWaiverFromStudent(docId) {
+  if (tenantWriteBlocked()) return;
   const sigEl = document.getElementById('waiver-sig-' + docId);
   const sig = sigEl ? sigEl.value.trim() : '';
   if (!sig) { alert('Please type your full name to sign.'); return; }
@@ -931,6 +954,7 @@ function toggleWaiverForm(docId) {
 }
 
 function getMyWaiverStatus() {
+  if (typeof isStudentTenant==='function' && isStudentTenant()) return [];
   const docs    = _loadWaiverDocs();
   const records = _loadWaiverRecords();
   const myRec   = records[currentStudentId] || {};
@@ -966,6 +990,7 @@ function getPendingFutureHold(studentId) {
 }
 
 function submitHold() {
+  if (tenantWriteBlocked()) return;
   const start  = (document.getElementById('hold-start') || {}).value;
   const end    = (document.getElementById('hold-end')   || {}).value;
   const reason = ((document.getElementById('hold-reason') || {}).value || '').trim();
@@ -993,6 +1018,7 @@ function toggleHoldForm() {
 }
 
 function renderHoldCard() {
+  if (typeof isStudentTenant==='function' && isStudentTenant()) return '';
   const today   = new Date().toISOString().split('T')[0];
   const maxDate = new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0];
   const myHolds = HOLDS.filter(h => h.studentId === currentStudentId)
@@ -1081,6 +1107,7 @@ function getBeltTestRequestDate(studentId) {
 }
 
 function requestBeltTest(studentId, studentName) {
+  if (tenantWriteBlocked()) return;
   const existing = getBeltTestRequestDate(studentId);
   if (existing) {
     showToast('Request already sent on ' + new Date(existing).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
@@ -1819,8 +1846,8 @@ function renderClassDetail(classId) {
       <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
         <span style="font-size:16px">${section?.icon || '•'}</span>
         <div>
-          <div style="font-size:14px;font-weight:600">${item.name}</div>
-          <div style="font-size:12px;color:var(--text-muted)">${section?.name || ''}</div>
+          <div style="font-size:14px;font-weight:600">${typeof item.name === 'object' ? t(item.name) : item.name}</div>
+          <div style="font-size:12px;color:var(--text-muted)">${section ? (typeof section.name === 'object' ? t(section.name) : section.name) : ''}</div>
         </div>
       </div>
     ` : '';
@@ -1963,6 +1990,7 @@ function renderClassDetail(classId) {
 }
 
 function bookClass(classId) {
+  if (tenantWriteBlocked()) return;
   materializeVirtualClass(classId); // persist virtual slot so admin can see the booking
   // Enforce class audience restrictions.
   const cls = CLASSES.find(c => c.id === classId);
@@ -2698,7 +2726,7 @@ function renderMe() {
             <div style="display:flex;align-items:center;gap:12px">
               ${beltColors ? `<span style="width:12px;height:12px;border-radius:50%;background:${beltColors.dot}"></span>` : ''}
               <div>
-                <div style="font-size:15px;font-weight:700">${level?.name || '—'}</div>
+                <div style="font-size:15px;font-weight:700">${level ? (typeof level.name === 'object' ? t(level.name) : level.name) : '—'}</div>
                 ${levelSinceStr ? `<div style="font-size:11px;color:var(--text-muted)">Since ${levelSinceStr}</div>` : ''}
               </div>
             </div>
@@ -2793,7 +2821,7 @@ function renderMe() {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${_renewalStr || _memberSinceStr ? '12px' : '0'}">
             <div>
               <div style="font-size:15px;font-weight:600">${membershipLabel} plan${_membershipPrice ? ` <span style="font-size:13px;font-weight:400;color:var(--text-muted)">· ${_membershipPrice}</span>` : ''}</div>
-              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${sport?.name || 'BJJ'}</div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px">${sport ? (typeof sport.name === 'object' ? t(sport.name) : sport.name) : 'BJJ'}</div>
             </div>
             <span style="font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;background:var(--success-bg);color:var(--success)">Active</span>
           </div>
@@ -2818,7 +2846,7 @@ function renderMe() {
         ${renderHoldCard()}
 
         <!-- Injuries -->
-        ${(() => {
+        ${(() => { if (isStudentTenant()) return '';
           const myInj = (typeof STUDENT_INJURIES !== 'undefined'
             ? STUDENT_INJURIES.filter(i => i.studentId === currentStudentId)
             : []).sort((a, b) => b.loggedAt.localeCompare(a.loggedAt));
@@ -2905,7 +2933,7 @@ function renderMe() {
         })()}
 
         <!-- Documents / Waivers -->
-        ${(() => {
+        ${(() => { if (isStudentTenant()) return '';
           const docs = getMyWaiverStatus();
           const pending = docs.filter(d => !d.signed);
           const signed  = docs.filter(d => d.signed);
@@ -2966,7 +2994,7 @@ function renderMe() {
         })()}
 
         <!-- Class packages -->
-        ${(() => {
+        ${(() => { if (isStudentTenant()) return '';
           const myPkgs = getMyActivePackages(currentStudentId);
           if (!myPkgs.length) return '';
           const rows = myPkgs.map(sp => {
@@ -3055,7 +3083,7 @@ function renderMe() {
         })()}
 
         <!-- Private lessons -->
-        ${(() => {
+        ${(() => { if (isStudentTenant()) return '';
           const myPL = getMyPrivateLessons(currentStudentId);
           if (!myPL.length) return '';
           const todayStr = new Date().toISOString().split('T')[0];
@@ -3096,7 +3124,7 @@ function renderMe() {
         })()}
 
         <!-- Request private lesson -->
-        ${(() => {
+        ${(() => { if (isStudentTenant()) return '';
           const myReqs = getMyPlRequests(currentStudentId);
           const pendingReqs = myReqs.filter(r => r.status === 'pending');
           const FOCUS_OPTIONS = ['Technique Review','Competition Prep','Fundamentals','Sparring','Conditioning','Video Review'];
@@ -3376,6 +3404,7 @@ function histFilterType(type) {
 }
 
 function saveProfileEdits() {
+  if (tenantWriteBlocked()) return;
   const student = STUDENTS.find(s => s.id === currentStudentId);
   if (!student) return;
 
