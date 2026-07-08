@@ -31,6 +31,11 @@
     ratings: 'star', goals: 'target',
     'comms-group': 'megaphone', announcements: 'megaphone',
   };
+  // HTML-escape user-controlled free-text before it goes into innerHTML. No-op on
+  // clean strings, so it's safe to wrap any interpolated user field. Correct inside
+  // value="..." too (browsers decode entities when parsing the attribute).
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
   function navIcon(id) {
     const name = NAV_LUCIDE[id] || 'circle';
     return `<i data-lucide="${name}"></i>`;
@@ -801,10 +806,10 @@
         <button onclick="toggleAcademyMenu()" aria-haspopup="true" aria-expanded="${_acadMenuOpen}" style="
           width:100%;display:flex;align-items:center;gap:var(--sp-2);padding:var(--sp-2);border:1px solid var(--border);
           border-radius:var(--r-md);background:var(--surface);cursor:pointer;text-align:left">
-          <div style="width:28px;height:28px;border-radius:7px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0">${_initials(name)}</div>
+          <div style="width:28px;height:28px;border-radius:7px;background:var(--primary);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex-shrink:0">${esc(_initials(name))}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</div>
-            <div style="font-size:11px;color:var(--text-muted);text-transform:capitalize">${role}</div>
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(name)}</div>
+            <div style="font-size:11px;color:var(--text-muted);text-transform:capitalize">${esc(role)}</div>
           </div>
           <span style="font-size:10px;color:var(--text-muted);transition:transform .15s;${_acadMenuOpen ? 'transform:rotate(180deg)' : ''}">▾</span>
         </button>
@@ -824,8 +829,8 @@
       items += list.map(a => {
         const on = a.id === TENANT.academyId;
         return `<button onclick="switchAcademy('${a.id}')" style="${row}">
-          <div style="width:24px;height:24px;border-radius:6px;background:${on ? 'var(--primary)' : 'var(--surface-alt)'};color:${on ? '#fff' : 'var(--text-muted)'};display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0">${_initials(a.name)}</div>
-          <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.name}<span style="color:var(--text-muted);font-size:11px;text-transform:capitalize"> · ${a.role || 'member'}</span></span>
+          <div style="width:24px;height:24px;border-radius:6px;background:${on ? 'var(--primary)' : 'var(--surface-alt)'};color:${on ? '#fff' : 'var(--text-muted)'};display:grid;place-items:center;font-size:11px;font-weight:700;flex-shrink:0">${esc(_initials(a.name))}</div>
+          <span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}<span style="color:var(--text-muted);font-size:11px;text-transform:capitalize"> · ${a.role || 'member'}</span></span>
           ${on ? '<span style="color:var(--accent);font-size:13px">✓</span>' : ''}
         </button>`;
       }).join('');
@@ -974,7 +979,7 @@
       const parent = origin === 'students'
         ? t(UI.nav.students)
         : `<span style="cursor:pointer" onclick="go('${origin}')">${sectionLabel(origin)}</span>`;
-      crumb = `${parent} / <span class="muted">${DB.student(route.params[0])?.name || ''}</span>`;
+      crumb = `${parent} / <span class="muted">${esc(DB.student(route.params[0])?.name || '')}</span>`;
     } else if (route.section === 'classes' && route.params[0] === 'new') {
       crumb = `${t(UI.nav.classes)} / <span class="muted">New class</span>`;
     } else if (route.section === 'classes' && route.params.length) {
@@ -1011,7 +1016,7 @@
           </select>` : ''}
           <div class="lang-switch">${langs}</div>
           ${(typeof isTenant === 'function' && isTenant()) ? `<button onclick="tenantSignOut()" title="Sign out" style="padding:5px 9px;border-radius:6px;border:1px solid var(--border);background:var(--surface-alt);cursor:pointer;font-size:12px;color:var(--text-muted)">Sign out</button>` : ''}
-          <div class="avatar" title="${ACADEMY.name}">${ACADEMY.name.split(' ').map(w => w[0]).slice(0,2).join('')}</div>
+          <div class="avatar" title="${esc(ACADEMY.name)}">${esc(ACADEMY.name.split(' ').map(w => w[0]).slice(0,2).join(''))}</div>
         </div>
       </header>
     `;
@@ -1066,15 +1071,15 @@
             onclick="event.stopPropagation()"
             onchange="toggleStudentSelect('${stu.id}',this.checked)"
             style="width:15px;height:15px;cursor:pointer;accent-color:var(--accent);justify-self:center">
-          <div class="avatar" style="${isInactive ? 'background:var(--surface-alt);color:var(--text-muted)' : ''}">${stu.initials}</div>
+          <div class="avatar" style="${isInactive ? 'background:var(--surface-alt);color:var(--text-muted)' : ''}">${esc(stu.initials)}</div>
           <div>
             <div style="font-weight:600;display:flex;align-items:center;gap:6px">
-              ${stu.name}
+              ${esc(stu.name)}
               ${isInactive ? `<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;background:#f1f5f9;color:#64748b">Archived</span>` : ''}
               ${!isInactive && activeInjuries ? `<span style="font-size:11px;font-weight:700;padding:1px 6px;border-radius:999px;background:#fef2f2;color:#ef4444">🩹 ${activeInjuries}</span>` : ''}
               ${!isInactive && family ? `<span style="font-size:11px;font-weight:600;padding:1px 6px;border-radius:999px;background:#f1f3f5;color:#1a1a1a;cursor:pointer" onclick="event.stopPropagation();go('families')">👪 ${family.name}</span>` : ''}
             </div>
-            <div class="faint" style="font-size:12px">${stu.contact}</div>
+            <div class="faint" style="font-size:12px">${esc(stu.contact)}</div>
           </div>
           <div>${BeltChip(enrollment.gradingSystemId, enrollment.currentLevelId, enrollment.currentStripes)}</div>
           <div class="muted list-col-hide">${t(sport.name)}</div>
@@ -1782,7 +1787,7 @@
       return `<div style="display:flex;gap:var(--sp-3);align-items:flex-start;padding:var(--sp-2) 0;border-bottom:1px solid var(--surface-alt,#f1f5f9)">
         <div style="width:32px;height:32px;border-radius:50%;background:${dotColor}18;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:2px">${ev.icon}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${ev.title}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${esc(ev.title)}</div>
           ${ev.sub ? `<div style="font-size:12px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.sub.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>` : ''}
         </div>
         <div style="font-size:11px;color:var(--text-faint,#9ca3af);white-space:nowrap;flex-shrink:0;margin-top:3px">${dateStr}</div>
@@ -1842,9 +1847,9 @@
 
       <div class="card" style="margin-bottom:var(--sp-4)">
         <div class="row" style="gap:var(--sp-5)">
-          <div class="avatar lg">${student.initials}</div>
+          <div class="avatar lg">${esc(student.initials)}</div>
           <div style="flex:1">
-            <h1 class="h1" style="margin-bottom:var(--sp-2)">${student.name}</h1>
+            <h1 class="h1" style="margin-bottom:var(--sp-2)">${esc(student.name)}</h1>
             <div class="row" style="gap:var(--sp-4); flex-wrap:wrap">
               ${BeltChip(enrollment.gradingSystemId, enrollment.currentLevelId, enrollment.currentStripes)}
               <span class="muted">·</span>
@@ -1907,8 +1912,8 @@
             ${(student.contact || student.phone) ? `
             <div style="margin-top:var(--sp-2);display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
               <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Contact</span>
-              ${student.contact ? `<a href="mailto:${student.contact}" style="font-size:12px;color:var(--accent);text-decoration:none">${student.contact}</a>` : ''}
-              ${student.phone ? `<span style="font-size:12px;color:var(--text-muted)">${student.phone}</span>` : ''}
+              ${student.contact ? `<a href="mailto:${esc(student.contact)}" style="font-size:12px;color:var(--accent);text-decoration:none">${esc(student.contact)}</a>` : ''}
+              ${student.phone ? `<span style="font-size:12px;color:var(--text-muted)">${esc(student.phone)}</span>` : ''}
             </div>` : ''}
             <div style="margin-top:var(--sp-2);display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap">
               <span style="font-size:12px;font-weight:600;color:var(--text-muted)">Referred by</span>
@@ -1916,7 +1921,7 @@
                       onchange="setReferral('${student.id}', this.value)">
                 <option value="">— None —</option>
                 ${STUDENTS.filter(s => s.id !== student.id && !s.inactive).map(s =>
-                  `<option value="${s.id}" ${student.referredBy === s.id ? 'selected' : ''}>${s.name}</option>`
+                  `<option value="${s.id}" ${student.referredBy === s.id ? 'selected' : ''}>${esc(s.name)}</option>`
                 ).join('')}
               </select>
               ${student.referredBy ? `<span style="font-size:11px;cursor:pointer;color:var(--accent)" onclick="go('referrals')">🔗 View referrals</span>` : ''}
@@ -2221,7 +2226,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Progress Report — ${stu.name}</title>
+  <title>Progress Report — ${esc(stu.name)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2256,7 +2261,7 @@
 <body>
   <div class="header">
     <div>
-      <div class="academy-name">${ACADEMY.name}</div>
+      <div class="academy-name">${esc(ACADEMY.name)}</div>
       <div class="report-title">Student Progress Report</div>
       <div class="report-date">Generated ${today}</div>
     </div>
@@ -2267,14 +2272,14 @@
   </div>
 
   <div class="student-row">
-    <div class="avatar" style="background:${beltColor};color:${beltText};${isLight?'color:#334155;border:1px solid #cbd5e1':''}">${stu.initials}</div>
+    <div class="avatar" style="background:${beltColor};color:${beltText};${isLight?'color:#334155;border:1px solid #cbd5e1':''}">${esc(stu.initials)}</div>
     <div style="flex:1">
-      <div style="font-size:18px;font-weight:700;margin-bottom:4px">${stu.name}</div>
+      <div style="font-size:18px;font-weight:700;margin-bottom:4px">${esc(stu.name)}</div>
       <div style="display:flex;gap:16px;flex-wrap:wrap">
         <span style="font-size:11px;color:#64748b">📋 ${plan?.label || 'Membership'}</span>
         <span style="font-size:11px;color:#64748b">📅 Joined ${stu.joinedAt ? new Date(stu.joinedAt).toLocaleDateString('en-GB',{month:'short',year:'numeric'}) : '—'}</span>
         <span style="font-size:11px;color:#64748b">🥋 ${t(sport?.name||{en:'Brazilian Jiu-Jitsu'})}</span>
-        ${stu.contact ? `<span style="font-size:11px;color:#64748b">✉ ${stu.contact}</span>` : ''}
+        ${stu.contact ? `<span style="font-size:11px;color:#64748b">✉ ${esc(stu.contact)}</span>` : ''}
       </div>
     </div>
   </div>
@@ -2338,7 +2343,7 @@
   </div>
 
   <div class="footer">
-    <span>Generated by openmat.me · ${ACADEMY.name}</span>
+    <span>Generated by openmat.me · ${esc(ACADEMY.name)}</span>
     <span>${today}</span>
   </div>
 
@@ -2390,7 +2395,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Belt Certificate — ${stu.name}</title>
+  <title>Belt Certificate — ${esc(stu.name)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Inter:wght@300;400;600&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2452,10 +2457,10 @@
     <div class="corner tr"></div>
     <div class="corner bl"></div>
     <div class="corner br"></div>
-    <div class="academy">${ACADEMY.name}</div>
+    <div class="academy">${esc(ACADEMY.name)}</div>
     <div class="title">Certificate of Promotion</div>
     <div class="subtitle">This is to certify that</div>
-    <div class="name">${stu.name}</div>
+    <div class="name">${esc(stu.name)}</div>
     <div class="award-text">has been awarded the rank of</div>
     <div class="belt-badge">${levelName} Belt</div>
     <div class="sport-label">${sportName}</div>
@@ -2506,7 +2511,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Member Card — ${stu.name}</title>
+  <title>Member Card — ${esc(stu.name)}</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2606,7 +2611,7 @@
           <div class="academy-label">${academyName}<br>MEMBER CARD</div>
         </div>
         <div class="front-mid">
-          <div class="member-name">${stu.name}</div>
+          <div class="member-name">${esc(stu.name)}</div>
           ${stripes > 0 ? `<div class="stripe-dots">${stripeDots}</div>` : ''}
         </div>
         <div class="front-bottom">
@@ -2697,8 +2702,8 @@
         <tr style="break-inside:avoid">
           <td style="text-align:center;color:#94a3b8;font-size:13px">${idx + 1}</td>
           <td>
-            <div style="font-weight:600;font-size:14px">${stu.name}</div>
-            ${stu.contact ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px">${stu.contact}</div>` : ''}
+            <div style="font-weight:600;font-size:14px">${esc(stu.name)}</div>
+            ${stu.contact ? `<div style="font-size:11px;color:#94a3b8;margin-top:2px">${esc(stu.contact)}</div>` : ''}
           </td>
           <td style="text-align:center">
             <span style="display:inline-block;background:${beltColor};color:${beltText};font-size:11px;font-weight:700;padding:2px 10px;border-radius:3px;letter-spacing:.5px;text-transform:uppercase${beltColor === '#f8fafc' || beltColor === '#ffffff' ? ';border:1px solid #cbd5e1' : ''}">${beltName}</span>
@@ -2717,7 +2722,7 @@
     const waitlistRows = waitlist.map((w, idx) => {
       const stu = DB.student(w.studentId);
       if (!stu) return '';
-      return `<tr><td style="text-align:center;color:#94a3b8;font-size:12px">W${idx+1}</td><td style="font-size:13px;color:#92400e">${stu.name}</td><td colspan="3" style="font-size:11px;color:#92400e">Waitlisted</td></tr>`;
+      return `<tr><td style="text-align:center;color:#94a3b8;font-size:12px">W${idx+1}</td><td style="font-size:13px;color:#92400e">${esc(stu.name)}</td><td colspan="3" style="font-size:11px;color:#92400e">Waitlisted</td></tr>`;
     }).join('');
 
     const html = `<!DOCTYPE html>
@@ -2755,12 +2760,12 @@
 <body>
   <div class="header">
     <div>
-      <div class="academy-name">${ACADEMY.name}</div>
+      <div class="academy-name">${esc(ACADEMY.name)}</div>
       <div class="class-title">${cls.classType}</div>
       <div class="meta">
         <span>📅 ${classDate}</span>
         <span>🕐 ${classTime} – ${endTime}</span>
-        <span>👤 ${inst?.name || '—'}</span>
+        <span>👤 ${esc(inst?.name || '—')}</span>
       </div>
     </div>
     <div class="stats">
@@ -2935,7 +2940,7 @@
         </div>
         <div style="font-weight:500">${rt.classType}</div>
         <div><span class="tag tag-basics" style="font-size:11px">${rt.audience || 'Adults'}</span></div>
-        <div class="muted">${inst?.name || '—'}</div>
+        <div class="muted">${esc(inst?.name || '—')}</div>
         <div class="muted" style="font-size:13px">Cap. ${rt.capacity}</div>
         <div style="display:flex;gap:var(--sp-2);justify-content:flex-end">
           <button class="btn btn-secondary" style="padding:4px 10px;font-size:12px"
@@ -2960,7 +2965,7 @@
       `<option value="${ct}" ${rt.classType === ct ? 'selected' : ''}>${ct}</option>`
     ).join('');
     const instOpts = INSTRUCTORS.map(i =>
-      `<option value="${i.id}" ${rt.instructorId === i.id ? 'selected' : ''}>${i.name}</option>`
+      `<option value="${i.id}" ${rt.instructorId === i.id ? 'selected' : ''}>${esc(i.name)}</option>`
     ).join('');
 
     return `
@@ -3081,7 +3086,7 @@
           <div style="font-weight:500">${cls.classType}</div>
           <div class="faint" style="font-size:12px">${plannedItems}</div>
         </div>
-        <div class="muted">${inst?.name || '—'}</div>
+        <div class="muted">${esc(inst?.name || '—')}</div>
         <div class="muted" style="font-size:13px">
           ${isCancelled ? '—'
             : isCompleted ? (isVirtual ? '—' : `${attended} ${t(UI.labels.attended)}`)
@@ -3135,9 +3140,9 @@
                 ${!isCompleted && !isCancelled
                   ? `<select style="font-size:13px;border:1px solid var(--border);border-radius:var(--r-sm);padding:2px 6px;margin-left:4px;font-family:var(--font);color:var(--text);background:var(--surface)"
                        onchange="updateClassInstructor('${cls.id}', this.value)">
-                       ${INSTRUCTORS.map(i => `<option value="${i.id}" ${i.id === cls.instructorId ? 'selected' : ''}>${i.name}</option>`).join('')}
+                       ${INSTRUCTORS.map(i => `<option value="${i.id}" ${i.id === cls.instructorId ? 'selected' : ''}>${esc(i.name)}</option>`).join('')}
                      </select>`
-                  : ` ${inst?.name || '—'}`}
+                  : ` ${esc(inst?.name || '—')}`}
               </span>
               <span class="muted">·</span>
               <span class="muted">${bookings.length}/${cls.capacity} ${t(UI.labels.bookedStudents).toLowerCase()}${(() => { const wl = WAITLIST.filter(w => w.classId === cls.id); return wl.length ? ` · <span style="color:#92400e;font-weight:600">⏳ ${wl.length} waiting</span>` : ''; })()}</span>
@@ -3169,7 +3174,7 @@
                 `🗓  ${classDateStr} at ${classTimeStr}\n` +
                 `⏱  ${cls.durationMin} minutes\n` +
                 `👤 Instructor: ${instName}\n\n` +
-                `See you on the mat!\n\n${ACADEMY.name || 'The Team'}`
+                `See you on the mat!\n\n${esc(ACADEMY.name || 'The Team')}`
               );
               return `<a href="mailto:?bcc=${bcc}&subject=${subj}&body=${body}" style="text-decoration:none">
                 <button class="btn btn-secondary" style="font-size:13px" title="Send reminder to ${withEmail.length} booked student${withEmail.length !== 1 ? 's' : ''} with email">
@@ -3238,9 +3243,9 @@
                   <div class="row-between" style="padding:var(--sp-2) 0;border-bottom:1px solid var(--border)">
                     <div class="row" style="gap:var(--sp-3)">
                       <div style="min-width:20px;text-align:center;font-size:12px;font-weight:700;color:var(--text-muted)">#${idx+1}</div>
-                      <div class="avatar" style="width:32px;height:32px;font-size:12px">${stu.initials}</div>
+                      <div class="avatar" style="width:32px;height:32px;font-size:12px">${esc(stu.initials)}</div>
                       <div>
-                        <div style="font-weight:500;font-size:13px">${stu.name}</div>
+                        <div style="font-weight:500;font-size:13px">${esc(stu.name)}</div>
                         <div style="margin-top:2px">${enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : ''}</div>
                       </div>
                     </div>
@@ -3273,9 +3278,9 @@
                 return `
                   <div class="row-between" style="padding:var(--sp-2) 0;border-bottom:1px solid var(--border)">
                     <div class="row" style="gap:var(--sp-3)">
-                      <div class="avatar" style="width:32px;height:32px;font-size:12px">${stu.initials}</div>
+                      <div class="avatar" style="width:32px;height:32px;font-size:12px">${esc(stu.initials)}</div>
                       <div>
-                        <div style="font-weight:500;font-size:13px">${stu.name}</div>
+                        <div style="font-weight:500;font-size:13px">${esc(stu.name)}</div>
                         <div style="margin-top:2px">${enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : ''}</div>
                       </div>
                     </div>
@@ -3340,7 +3345,7 @@
       const emailBody = encodeURIComponent(
         `Hi ${firstName},\n\nWe missed you at ${cls.classType} on ${classDateStr} at ${classTimeStr}.\n\n` +
         `Hope everything is okay — if you have any questions or need to reschedule, just reply to this message.\n\n` +
-        `See you on the mat soon 🥋\n${ACADEMY.name || 'The Team'}`
+        `See you on the mat soon 🥋\n${esc(ACADEMY.name || 'The Team')}`
       );
       const emailBtn = hasEmail
         ? `<a href="mailto:${encodeURIComponent(stu.contact)}?subject=${emailSubject}&body=${emailBody}"
@@ -3353,9 +3358,9 @@
         <div class="row-between" style="padding:var(--sp-2) 0;border-bottom:1px solid var(--border);cursor:pointer"
              onclick="go('students/${stu.id}')">
           <div class="row" style="gap:var(--sp-3)">
-            <div class="avatar" style="width:32px;height:32px;font-size:12px">${stu.initials}</div>
+            <div class="avatar" style="width:32px;height:32px;font-size:12px">${esc(stu.initials)}</div>
             <div>
-              <div style="font-weight:500;font-size:13px">${stu.name}</div>
+              <div style="font-weight:500;font-size:13px">${esc(stu.name)}</div>
               <div style="margin-top:2px">${enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : ''}</div>
             </div>
           </div>
@@ -3370,7 +3375,7 @@
     const bulkBody = encodeURIComponent(
       `Hi everyone,\n\nWe missed you at ${cls.classType} on ${classDateStr} at ${classTimeStr}.\n\n` +
       `Hope you're all doing well. If there's anything we can help with, just reply to this message.\n\n` +
-      `See you on the mat soon 🥋\n${ACADEMY.name || 'The Team'}`
+      `See you on the mat soon 🥋\n${esc(ACADEMY.name || 'The Team')}`
     );
     const bulkBtn = absenteesWithEmail.length > 1
       ? `<a href="mailto:?bcc=${bulkBcc}&subject=${bulkSubject}&body=${bulkBody}" style="text-decoration:none">
@@ -3512,9 +3517,9 @@
     return `
       <div class="row-between" style="padding:var(--sp-3) 0; border-bottom:1px solid var(--border); cursor:pointer" onclick="go('students/${stu.id}')">
         <div class="row" style="gap:var(--sp-3)">
-          <div class="avatar">${stu.initials}</div>
+          <div class="avatar">${esc(stu.initials)}</div>
           <div>
-            <div style="font-weight:500">${stu.name}</div>
+            <div style="font-weight:500">${esc(stu.name)}</div>
             <div style="margin-top:2px">${BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes)}</div>
           </div>
         </div>
@@ -3540,9 +3545,9 @@
     return `
       <div class="row-between" style="padding:var(--sp-3) 0; border-bottom:1px solid var(--border); cursor:pointer" onclick="go('students/${stu.id}')">
         <div class="row" style="gap:var(--sp-3)">
-          <div class="avatar">${stu.initials}</div>
+          <div class="avatar">${esc(stu.initials)}</div>
           <div>
-            <div style="font-weight:500">${stu.name}</div>
+            <div style="font-weight:500">${esc(stu.name)}</div>
             <div style="margin-top:2px;display:flex;align-items:center;gap:6px">
               ${enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : ''}
               <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;background:#fef3c7;color:#92400e">Walk-in</span>
@@ -4724,7 +4729,7 @@
         <div class="row-between" style="align-items:flex-start;gap:var(--sp-3)">
           <div style="flex:1;min-width:0">
             <div class="row" style="gap:var(--sp-2);flex-wrap:wrap">
-              <h3 style="margin:0;font-size:15px;font-weight:600">${e.title}</h3>
+              <h3 style="margin:0;font-size:15px;font-weight:600">${esc(e.title)}</h3>
               ${isSC ? `<span class="cv2-pill" style="border-color:#16a34a;color:#16a34a">Smoothcomp</span>` : ''}
               ${past ? `<span class="cv2-pill">Past</span>` : `<span class="cv2-pill c-Beginner">Upcoming</span>`}
             </div>
@@ -4740,7 +4745,7 @@
           </div>
         </div>
         ${reg.length ? `<div class="row" style="gap:6px;flex-wrap:wrap;margin-top:var(--sp-3)">
-          ${reg.map(id => { const s = DB.student(id); return `<span class="cv2-pill">${s.initials} · ${s.name.split(' ')[0]}</span>`; }).join('')}
+          ${reg.map(id => { const s = DB.student(id); return `<span class="cv2-pill">${esc(s.initials)} · ${s.name.split(' ')[0]}</span>`; }).join('')}
         </div>` : ''}
       </div>`;
   }
@@ -4750,9 +4755,9 @@
     const wins = COMPETITION_RESULTS.filter(r => r.studentId === s.id && r.medal === 'gold').length;
     return `<div class="card" style="padding:var(--sp-3) var(--sp-4);cursor:pointer" onclick="go('students/${s.id}')">
       <div class="row" style="gap:var(--sp-3)">
-        <div class="avatar">${s.initials}</div>
+        <div class="avatar">${esc(s.initials)}</div>
         <div style="flex:1">
-          <div style="font-weight:600">${s.name}</div>
+          <div style="font-weight:600">${esc(s.name)}</div>
           <div class="row" style="gap:var(--sp-2);margin-top:2px">${belt}
             <span class="muted" style="font-size:12px">${s.weightKg ? s.weightKg + 'kg' : ''}</span></div>
         </div>
@@ -4862,8 +4867,8 @@
       <div class="card" style="margin-bottom:var(--sp-4)">
         <h3 class="card-title" style="margin-bottom:var(--sp-3)">Log a result</h3>
         <div class="row" style="gap:var(--sp-2);flex-wrap:wrap;align-items:flex-end">
-          <select id="cr-student" class="input" style="width:auto">${squad.map(s => `<option value="${s.id}">${s.name}</option>`).join('') || '<option value="">No squad</option>'}</select>
-          <select id="cr-event" class="input" style="width:auto">${comps.map(e => `<option value="${e.id}">${e.title}</option>`).join('') || '<option value="">No events</option>'}</select>
+          <select id="cr-student" class="input" style="width:auto">${squad.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('') || '<option value="">No squad</option>'}</select>
+          <select id="cr-event" class="input" style="width:auto">${comps.map(e => `<option value="${e.id}">${esc(e.title)}</option>`).join('') || '<option value="">No events</option>'}</select>
           <input id="cr-division" class="input" style="width:auto" placeholder="Division (e.g. Adult Blue -76kg)" />
           <select id="cr-medal" class="input" style="width:auto">
             <option value="none">No medal</option><option value="gold">🥇 Gold</option><option value="silver">🥈 Silver</option><option value="bronze">🥉 Bronze</option>
@@ -5373,7 +5378,7 @@
       style="cursor:pointer;background:${st.bg};border:1px solid ${st.border};border-left:3px solid ${st.border};
       border-radius:var(--r-sm);padding:${compact?'1px 5px':'var(--sp-2) var(--sp-3)'};margin-bottom:var(--sp-1);
       font-size:${compact?'10px':'11px'};line-height:1.3;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
-      ${st.label} ${compact ? '' : `<span style="font-weight:700">${time}</span>`}${e.title}</div>`;
+      ${st.label} ${compact ? '' : `<span style="font-weight:700">${time}</span>`}${esc(e.title)}</div>`;
   }
 
   function scheduleStartOfWeek(date) {
@@ -5449,7 +5454,7 @@
                 <div style="font-weight:700;font-size:12px;color:${isCancelled ? 'var(--danger)' : isCompleted ? 'var(--text-muted)' : 'var(--accent)'}">${timeStr}</div>
                 <div style="font-weight:600;font-size:12px;margin-top:2px;${isCancelled ? 'text-decoration:line-through;color:var(--text-muted)' : ''}">${cls.classType}</div>
                 <div style="margin-top:3px"><span style="font-size:10px;font-weight:600;padding:1px 6px;border-radius:10px;background:var(--surface-alt);color:var(--text-muted)">${getClassAudience(cls)}</span></div>
-                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${inst?.name || '—'}</div>
+                <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${esc(inst?.name || '—')}</div>
                 <div style="font-size:11px;color:var(--text-faint);margin-top:4px">
                   ${isCancelled ? '<span style="color:var(--danger);font-weight:600">Cancelled</span>'
                     : isCompleted ? (isVirtual ? 'no record' : `${attended} attended`)
@@ -5626,7 +5631,7 @@
         const summary  = icsEsc(`${cls.classType}${inst ? ' · ' + inst.name : ''}`);
         const desc     = icsEsc([
           cls.classType,
-          inst ? `Instructor: ${inst.name}` : '',
+          inst ? `Instructor: ${esc(inst.name)}` : '',
           cls.capacity ? `Capacity: ${bookings}/${cls.capacity}` : '',
           cls.id ? `ID: ${cls.id}` : '(template slot)'
         ].filter(Boolean).join('\\n'));
@@ -5726,7 +5731,7 @@
                 <div style="font-size:11px;font-weight:700;color:${isCancelled ? '#ef4444' : '#1a1a1a'}">${timeStr} ${dur ? '· ' + dur : ''}</div>
                 <div style="font-size:11px;font-weight:600;margin-top:2px;${isCancelled ? 'text-decoration:line-through;color:#9ca3af' : ''}">${cls.classType}</div>
                 ${audience ? `<div style="font-size:10px;color:#6b7280;margin-top:1px">${audience}</div>` : ''}
-                ${inst ? `<div style="font-size:10px;color:#6b7280;margin-top:1px">${inst.name}</div>` : ''}
+                ${inst ? `<div style="font-size:10px;color:#6b7280;margin-top:1px">${esc(inst.name)}</div>` : ''}
                 <div style="font-size:10px;color:#9ca3af;margin-top:2px">
                   ${isCancelled ? '<span style="color:#ef4444;font-weight:600">Cancelled</span>'
                     : isCompleted ? 'Completed'
@@ -5775,7 +5780,7 @@
 
   <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid #111827">
     <div>
-      <div style="font-size:20px;font-weight:700">${ACADEMY.name}</div>
+      <div style="font-size:20px;font-weight:700">${esc(ACADEMY.name)}</div>
       <div style="font-size:13px;color:#6b7280;margin-top:2px">Weekly Class Schedule</div>
     </div>
     <div style="text-align:right">
@@ -5789,7 +5794,7 @@
   </div>
 
   <div style="margin-top:24px;padding-top:14px;border-top:1px solid #e5e7eb;font-size:10px;color:#9ca3af;text-align:center">
-    Generated ${new Date().toLocaleDateString()} · ${ACADEMY.name}
+    Generated ${new Date().toLocaleDateString()} · ${esc(ACADEMY.name)}
   </div>
 </body>
 </html>`;
@@ -5873,10 +5878,10 @@
           const enr = DB.enrollment(stu.id, 'sport-bjj');
           return `
             <div class="list-row" onclick="go('students/${stu.id}')" style="cursor:pointer">
-              <div class="avatar">${stu.initials}</div>
+              <div class="avatar">${esc(stu.initials)}</div>
               <div>
-                <div style="font-weight:600">${stu.name}</div>
-                <div class="faint" style="font-size:12px">${stu.contact}</div>
+                <div style="font-weight:600">${esc(stu.name)}</div>
+                <div class="faint" style="font-size:12px">${esc(stu.contact)}</div>
               </div>
               <div>${BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes)}</div>
               <div class="muted" style="font-size:13px">→ ${t(promo.nextLevel.name)}</div>
@@ -5918,13 +5923,13 @@
           const body = encodeURIComponent(`Hi ${stu.name.split(' ')[0]},\n\nWishing you a fantastic ${age}th birthday from everyone at the academy!\n\nKeep training hard 🥋`);
           return `
             <div style="display:flex;align-items:center;gap:10px;padding:5px 0;border-bottom:1px solid var(--border)">
-              <div class="avatar" style="width:30px;height:30px;font-size:11px">${stu.initials}</div>
+              <div class="avatar" style="width:30px;height:30px;font-size:11px">${esc(stu.initials)}</div>
               <div style="flex:1">
-                <span style="font-size:13px;font-weight:600">${stu.name}</span>
+                <span style="font-size:13px;font-weight:600">${esc(stu.name)}</span>
                 <span class="faint" style="font-size:12px;margin-left:6px">turns ${age} · ${monthDay}</span>
               </div>
               <div style="font-size:12px">${label}</div>
-              <a href="mailto:${stu.contact}?subject=${subject}&body=${body}"
+              <a href="mailto:${esc(stu.contact)}?subject=${subject}&body=${body}"
                  style="font-size:11px;padding:3px 8px;border-radius:var(--radius);background:var(--surface-alt);color:var(--text);text-decoration:none;white-space:nowrap"
                  title="Open email draft">✉ Wish</a>
             </div>`;
@@ -6081,7 +6086,7 @@
       ``,
       `Hi,`,
       ``,
-      `Here's a summary of this week at ${ACADEMY.name || 'the academy'}:`,
+      `Here's a summary of this week at ${esc(ACADEMY.name || 'the academy')}:`,
       ``,
       `📊 CLASSES`,
       `  • Classes held / scheduled: ${digestClasses.length}`,
@@ -6103,7 +6108,7 @@
       ``,
       `— openmat.me Academy Management`,
     ].filter(l => l !== undefined).join('\n');
-    const digestSubject = encodeURIComponent(`${ACADEMY.name || 'Academy'} — Weekly Digest ${digestWeekLabel}`);
+    const digestSubject = encodeURIComponent(`${esc(ACADEMY.name || 'Academy')} — Weekly Digest ${digestWeekLabel}`);
     const digestMailto = `mailto:?subject=${digestSubject}&body=${encodeURIComponent(digestBody)}`;
 
     return `
@@ -6144,8 +6149,8 @@
             ? `<div class="muted" style="font-size:13px">No students currently meet criteria.</div>`
             : promotionReady.slice(0,3).map(({stu,promo}) => `
                 <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
-                  <div class="avatar" style="width:28px;height:28px;font-size:11px">${stu.initials}</div>
-                  <span style="font-size:13px;font-weight:600">${stu.name}</span>
+                  <div class="avatar" style="width:28px;height:28px;font-size:11px">${esc(stu.initials)}</div>
+                  <span style="font-size:13px;font-weight:600">${esc(stu.name)}</span>
                   <span style="font-size:12px;color:var(--text-muted)">→ ${t(promo.nextLevel.name)}</span>
                 </div>`).join('')}
           ${promotionReady.length > 3 ? `<div class="faint" style="font-size:12px;margin-top:4px">+${promotionReady.length-3} more</div>` : ''}
@@ -6190,10 +6195,10 @@
             return `
               <div class="list-row" style="grid-template-columns:40px 1fr 1fr auto auto;cursor:pointer"
                    onclick="go('students/${stu.id}')">
-                <div class="avatar">${stu.initials}</div>
+                <div class="avatar">${esc(stu.initials)}</div>
                 <div>
-                  <div style="font-weight:600">${stu.name}</div>
-                  <div class="faint" style="font-size:12px">${stu.contact}</div>
+                  <div style="font-weight:600">${esc(stu.name)}</div>
+                  <div class="faint" style="font-size:12px">${esc(stu.contact)}</div>
                 </div>
                 <div>${enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : ''}</div>
                 <div class="muted" style="font-size:12px">${stu.joinedAt ? 'Joined ' + timeAgo(stu.joinedAt) : ''}</div>
@@ -6283,9 +6288,9 @@
       const dateStr = `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
       return `
         <div class="list-row" style="grid-template-columns:40px 1fr auto auto;cursor:pointer" onclick="go('students/${stu.id}')">
-          <div class="avatar">${stu.initials}</div>
+          <div class="avatar">${esc(stu.initials)}</div>
           <div>
-            <div style="font-weight:600">${stu.name}</div>
+            <div style="font-weight:600">${esc(stu.name)}</div>
             <div class="faint" style="font-size:12px">Annual renewal · ${dateStr}</div>
           </div>
           ${renewalUrgencyBadge(daysUntil)}
@@ -6297,9 +6302,9 @@
       const planLabel = MEMBERSHIP_PLANS.find(p => p.id === plan)?.label || plan;
       return `
         <div class="list-row" style="grid-template-columns:40px 1fr auto auto;cursor:pointer" onclick="go('students/${stu.id}')">
-          <div class="avatar">${stu.initials}</div>
+          <div class="avatar">${esc(stu.initials)}</div>
           <div>
-            <div style="font-weight:600">${stu.name}</div>
+            <div style="font-weight:600">${esc(stu.name)}</div>
             <div class="faint" style="font-size:12px">${planLabel} · ${monthsActive} months active</div>
           </div>
           <span style="background:#f1f3f5;color:#000000;border:1px solid #d4d7dd;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600">Annual?</span>
@@ -6400,7 +6405,7 @@
   function ClassModalCard() {
     const today = new Date().toISOString().slice(0, 10);
     const instructorOpts = INSTRUCTORS.map(i =>
-      `<option value="${i.id}" ${newClassState.instructorId === i.id ? 'selected' : ''}>${i.name}</option>`
+      `<option value="${i.id}" ${newClassState.instructorId === i.id ? 'selected' : ''}>${esc(i.name)}</option>`
     ).join('');
     const typeOpts = CLASS_TYPES.map(ct =>
       `<option value="${ct}" ${newClassState.classType === ct ? 'selected' : ''}>${ct}</option>`
@@ -6607,7 +6612,7 @@
     const available = PRESET_SPORTS.filter(s => !existing.has(s.id));
     if (!available.length) { showToast('All supported sports are already added.'); return; }
     if (document.getElementById('sport-wizard')) return;
-    const sportOpts = available.map(s => `<option value="${s.id}">${s.icon} ${s.name}</option>`).join('');
+    const sportOpts = available.map(s => `<option value="${s.id}">${s.icon} ${esc(s.name)}</option>`).join('');
     document.body.insertAdjacentHTML('beforeend', `
       <div id="sport-wizard" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:var(--sp-5)">
         <div class="card" style="max-width:520px;width:100%">
@@ -6757,7 +6762,7 @@
           <div class="stack" style="gap:var(--sp-4)">
             <div>
               <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Academy name</label>
-              <input id="settings-name" class="input" style="width:100%" value="${org.name || ACADEMY.name}" />
+              <input id="settings-name" class="input" style="width:100%" value="${esc(org.name || ACADEMY.name)}" />
             </div>
             <div>
               <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">Location</label>
@@ -7053,10 +7058,10 @@
                 ).join('');
                 return `
                   <div class="list-row" style="grid-template-columns:40px 1fr 1fr auto">
-                    <div class="avatar">${stu.initials}</div>
+                    <div class="avatar">${esc(stu.initials)}</div>
                     <div>
-                      <div style="font-weight:600">${stu.name}</div>
-                      <div class="faint" style="font-size:12px">${stu.contact}</div>
+                      <div style="font-weight:600">${esc(stu.name)}</div>
+                      <div class="faint" style="font-size:12px">${esc(stu.contact)}</div>
                     </div>
                     <div>${enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : ''}</div>
                     <div>
@@ -7837,8 +7842,8 @@
         if (!stu) return '';
         return `
           <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px solid var(--border)">
-            <div class="avatar" style="width:28px;height:28px;font-size:11px">${stu.initials}</div>
-            <span style="font-size:13px;font-weight:600;flex:1">${stu.name}</span>
+            <div class="avatar" style="width:28px;height:28px;font-size:11px">${esc(stu.initials)}</div>
+            <span style="font-size:13px;font-weight:600;flex:1">${esc(stu.name)}</span>
             <span style="font-size:12px;color:var(--text-muted)">${t(fromLevel?.name || {en:'?'})} → ${t(toLevel?.name || {en:'?'})}</span>
             ${BeltChip(enrSystemId(res.studentId), res.toLevelId, 0)}
             <button class="btn" style="font-size:11px;padding:3px 10px;margin-left:4px"
@@ -7873,10 +7878,10 @@
             <div class="list-row" style="gap:var(--sp-3);cursor:pointer" onclick="gradingToggle('${stu.id}')">
               <input type="checkbox" ${checked ? 'checked' : ''} onclick="event.stopPropagation();gradingToggle('${stu.id}')"
                      style="width:16px;height:16px;accent-color:var(--accent);flex-shrink:0">
-              <div class="avatar">${stu.initials}</div>
+              <div class="avatar">${esc(stu.initials)}</div>
               <div style="flex:1">
-                <div style="font-weight:600">${stu.name}</div>
-                <div class="faint" style="font-size:12px">${stu.contact}</div>
+                <div style="font-weight:600">${esc(stu.name)}</div>
+                <div class="faint" style="font-size:12px">${esc(stu.contact)}</div>
               </div>
               <div>${BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes)}</div>
               <div style="font-size:13px;color:var(--text-muted)">→ ${t(promo.nextLevel.name)}</div>
@@ -7918,9 +7923,9 @@
               <div class="list-row" style="cursor:pointer;display:flex;flex-direction:column;align-items:stretch;gap:var(--sp-2);padding:var(--sp-3) var(--sp-4)"
                    onclick="go('students/${stu.id}')">
                 <div style="display:flex;align-items:center;gap:var(--sp-3)">
-                  <div class="avatar">${stu.initials}</div>
+                  <div class="avatar">${esc(stu.initials)}</div>
                   <div style="flex:1;min-width:0">
-                    <div style="font-weight:600">${stu.name}</div>
+                    <div style="font-weight:600">${esc(stu.name)}</div>
                     <div style="font-size:12px;color:var(--text-muted)">
                       ${subLabel}
                       <span style="margin-left:8px;font-weight:700;color:${barColor}">${overallPct}%</span>
@@ -7968,9 +7973,9 @@
         <div class="list">
           ${beltTestRequests.map(({ stu, enr, req, daysAgo }) => `
             <div class="list-row" style="cursor:pointer" onclick="go('students/${stu.id}')">
-              <div class="avatar">${stu.initials}</div>
+              <div class="avatar">${esc(stu.initials)}</div>
               <div style="flex:1">
-                <div style="font-weight:600">${stu.name}</div>
+                <div style="font-weight:600">${esc(stu.name)}</div>
                 <div class="faint" style="font-size:12px">${stu.contact || ''}</div>
               </div>
               <div>${enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : ''}</div>
@@ -8081,7 +8086,7 @@
     const bulkBody = encodeURIComponent(
       `Hi,\n\nWe noticed you haven't been in recently and wanted to check in.\n\n` +
       `We'd love to see you back on the mat. If anything has come up or you have any questions, feel free to reply to this email.\n\n` +
-      `Your spot is waiting for you!\n\nSee you soon,\n${ACADEMY.name || 'The Team'}`
+      `Your spot is waiting for you!\n\nSee you soon,\n${esc(ACADEMY.name || 'The Team')}`
     );
     const bulkMailto = `mailto:?bcc=${bulkBcc}&subject=${bulkSubject}&body=${bulkBody}`;
 
@@ -8098,7 +8103,7 @@
       const emailBody = encodeURIComponent(
         `Hi ${firstName},\n\nWe noticed it's been a while since your last class and wanted to check in.\n\n` +
         `If you've been busy or something has come up, we completely understand. Your spot is always here when you're ready.\n\n` +
-        `Let us know if there's anything we can do to help you get back on the mat!\n\nSee you soon 🥋\n${ACADEMY.name || 'The Team'}`
+        `Let us know if there's anything we can do to help you get back on the mat!\n\nSee you soon 🥋\n${esc(ACADEMY.name || 'The Team')}`
       );
       const mailtoHref = stu.contact && stu.contact.includes('@')
         ? `mailto:${encodeURIComponent(stu.contact)}?subject=${emailSubject}&body=${emailBody}`
@@ -8122,10 +8127,10 @@
 
       return `
         <div id="retention-row-${stu.id}" class="list-row" data-flagged="${isFlagged ? '1' : '0'}" style="grid-template-columns:40px 1fr auto auto auto auto auto;cursor:pointer;${isFlagged ? 'background:#fffbeb' : ''}" onclick="go('students/${stu.id}')">
-          <div class="avatar">${stu.initials}</div>
+          <div class="avatar">${esc(stu.initials)}</div>
           <div class="rcf-name-col">
             <div style="font-weight:600">
-              ${stu.name}
+              ${esc(stu.name)}
               ${isFlagged ? ' <span style="font-size:11px;color:var(--warn);font-weight:700">● Flagged</span>' : ''}
               ${upcomingHold ? ` <span style="font-size:11px;font-weight:700;color:#6366f1">⏳ Hold ${upcomingHold.startDate}–${upcomingHold.endDate}</span>` : ''}
             </div>
@@ -8167,9 +8172,9 @@
     // Build "On Hold" rows section
     const holdRows = onHoldStudents.map(({ stu, enr, activeHold }) => `
       <div class="list-row" style="grid-template-columns:40px 1fr auto auto;cursor:pointer" onclick="go('students/${stu.id}')">
-        <div class="avatar">${stu.initials}</div>
+        <div class="avatar">${esc(stu.initials)}</div>
         <div>
-          <div style="font-weight:600">${stu.name}</div>
+          <div style="font-weight:600">${esc(stu.name)}</div>
           <div style="font-size:12px;color:var(--text-muted)">
             🏖 ${activeHold.startDate} → ${activeHold.endDate}${activeHold.reason ? ` · ${activeHold.reason}` : ''}
           </div>
@@ -8260,9 +8265,9 @@
             const style = RC_OUTCOME_STYLE[c.outcome] || RC_OUTCOME_STYLE.pending;
             return `
               <div class="list-row" style="grid-template-columns:40px 1fr auto auto auto;cursor:pointer" onclick="go('students/${c.studentId}')">
-                <div class="avatar">${stu.initials}</div>
+                <div class="avatar">${esc(stu.initials)}</div>
                 <div>
-                  <div style="font-weight:600;font-size:14px">${stu.name}</div>
+                  <div style="font-weight:600;font-size:14px">${esc(stu.name)}</div>
                   ${c.notes ? `<div class="faint" style="font-size:12px">${c.notes}</div>` : ''}
                 </div>
                 <div style="font-size:12px;color:var(--text-muted)">${RC_METHOD_ICON[c.method]||'📞'} ${c.method}</div>
@@ -8396,9 +8401,9 @@
         <div class="card" style="margin-bottom:var(--sp-4);cursor:pointer" onclick="go('instructors/${inst.id}')">
           <div style="display:flex;gap:var(--sp-5);align-items:flex-start;flex-wrap:wrap">
             <div style="display:flex;gap:var(--sp-3);align-items:center;min-width:170px">
-              <div class="avatar" style="width:44px;height:44px;font-size:16px;flex-shrink:0">${inst.initials}</div>
+              <div class="avatar" style="width:44px;height:44px;font-size:16px;flex-shrink:0">${esc(inst.initials)}</div>
               <div>
-                <div style="font-weight:700;font-size:15px">${inst.name}</div>
+                <div style="font-weight:700;font-size:15px">${esc(inst.name)}</div>
                 ${classTypes ? `<div class="faint" style="font-size:12px;margin-top:2px">${classTypes}</div>` : ''}
                 <div style="display:flex;gap:3px;margin-top:6px">${dowDots}</div>
               </div>
@@ -8602,9 +8607,9 @@
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div style="display:flex;gap:var(--sp-3);align-items:center">
             <button class="btn btn-secondary" onclick="go('${_ib.route}')" style="font-size:13px">${_ib.label}</button>
-            <div class="avatar" style="width:48px;height:48px;font-size:18px">${inst.initials}</div>
+            <div class="avatar" style="width:48px;height:48px;font-size:18px">${esc(inst.initials)}</div>
             <div>
-              <h1 class="h1" style="margin:0">${inst.name}</h1>
+              <h1 class="h1" style="margin:0">${esc(inst.name)}</h1>
               <div class="faint" style="font-size:13px">${classTypes.join(' · ') || 'No classes yet'}</div>
             </div>
           </div>
@@ -10313,7 +10318,7 @@ ${CONFIG.academyName || 'The Team'}`;
           <div style="margin-top:var(--sp-3);padding-top:var(--sp-3);border-top:1px solid #fde68a">
             <div style="font-size:12px;color:#92400e;font-weight:600;margin-bottom:var(--sp-2)">⚠ No email on file — contact manually:</div>
             <div style="display:flex;flex-wrap:wrap;gap:var(--sp-2)">
-              ${noEmail.map(s => `<span style="font-size:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:2px 8px">${s.name}${s.contact ? ' · ' + s.contact : ''}</span>`).join('')}
+              ${noEmail.map(s => `<span style="font-size:12px;background:#fef3c7;border:1px solid #fde68a;border-radius:4px;padding:2px 8px">${esc(s.name)}${s.contact ? ' · ' + s.contact : ''}</span>`).join('')}
             </div>
           </div>` : ''}
       </div>
@@ -10523,7 +10528,7 @@ ${CONFIG.academyName || 'The Team'}`;
                 ${s.name.charAt(0)}
               </div>
               <div style="flex:1">
-                <a href="#/students/${s.id}" style="font-weight:600;font-size:14px;color:var(--accent);text-decoration:none">${s.name}</a>
+                <a href="#/students/${s.id}" style="font-weight:600;font-size:14px;color:var(--accent);text-decoration:none">${esc(s.name)}</a>
                 <div style="margin-top:2px">${belt}</div>
               </div>
               <button class="btn btn-sm" style="color:var(--danger)" onclick="unregisterStudentFromEvent('${evtId}','${s.id}')">Remove</button>
@@ -10543,7 +10548,7 @@ ${CONFIG.academyName || 'The Team'}`;
                   ${s.name.charAt(0)}
                 </div>
                 <div style="flex:1">
-                  <span style="font-weight:600;font-size:14px">${s.name}</span>
+                  <span style="font-weight:600;font-size:14px">${esc(s.name)}</span>
                   <div style="margin-top:2px">${belt}</div>
                 </div>
                 <button class="btn btn-sm btn-primary" onclick="registerStudentToEvent('${evtId}','${s.id}')">+ Register</button>
@@ -10562,16 +10567,16 @@ ${CONFIG.academyName || 'The Team'}`;
             <div style="font-size:40px;line-height:1">${et.icon}</div>
             <div style="flex:1">
               <div style="display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;margin-bottom:var(--sp-2)">
-                <h1 class="h1" style="margin:0">${evt.title}</h1>
+                <h1 class="h1" style="margin:0">${esc(evt.title)}</h1>
                 <span class="tag" style="background:${et.color}1a;color:${et.color};font-size:12px;font-weight:700">${et.label}</span>
               </div>
               <div style="display:flex;gap:var(--sp-4);flex-wrap:wrap;font-size:13px;color:var(--text-muted)">
                 <span>📅 ${evt.date}${evt.time ? ' · ' + evt.time : ''}</span>
                 <span>⏱ ${durationLabel}</span>
-                ${evt.location ? `<span>📍 ${evt.location}</span>` : ''}
+                ${evt.location ? `<span>📍 ${esc(evt.location)}</span>` : ''}
                 ${evt.capacity ? `<span>👥 ${registered.length}/${evt.capacity} registered</span>` : `<span>👥 ${registered.length} registered</span>`}
               </div>
-              ${evt.notes ? `<div style="margin-top:var(--sp-3);font-size:13px;color:var(--text-body);white-space:pre-wrap">${evt.notes}</div>` : ''}
+              ${evt.notes ? `<div style="margin-top:var(--sp-3);font-size:13px;color:var(--text-body);white-space:pre-wrap">${esc(evt.notes)}</div>` : ''}
             </div>
           </div>
         </div>
@@ -10613,7 +10618,7 @@ ${CONFIG.academyName || 'The Team'}`;
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-bottom:var(--sp-3)">
                 <select id="cr-student-${evtId}" class="input" style="font-size:13px">
                   <option value="">— Student —</option>
-                  ${registered.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+                  ${registered.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
                 </select>
                 <select id="cr-placement-${evtId}" class="input" style="font-size:13px">
                   <option value="">— Placement —</option>
@@ -10679,13 +10684,13 @@ ${CONFIG.academyName || 'The Team'}`;
             <div style="font-size:32px;line-height:1;flex-shrink:0">${et.icon}</div>
             <div style="flex:1;min-width:0">
               <div style="display:flex;align-items:center;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:4px">
-                <span style="font-weight:700;font-size:15px">${evt.title}</span>
+                <span style="font-weight:700;font-size:15px">${esc(evt.title)}</span>
                 <span class="tag" style="background:${et.color}1a;color:${et.color};font-size:11px">${et.label}</span>
                 ${isFull ? `<span class="tag" style="background:#fef3c7;color:#92400e;font-size:11px">Full</span>` : ''}
               </div>
               <div style="font-size:13px;color:var(--text-muted);display:flex;gap:var(--sp-3);flex-wrap:wrap">
                 <span>📅 ${evt.date}${evt.time ? ' · ' + evt.time : ''}</span>
-                ${evt.location ? `<span>📍 ${evt.location}</span>` : ''}
+                ${evt.location ? `<span>📍 ${esc(evt.location)}</span>` : ''}
                 <span>👥 ${regCount}${evt.capacity ? '/' + evt.capacity : ''} registered</span>
               </div>
             </div>
@@ -11273,8 +11278,8 @@ ${CONFIG.academyName || 'The Team'}`;
         <div class="card" style="margin-bottom:var(--sp-3);${isExpired ? 'opacity:0.6' : ''}">
           <div style="display:flex;align-items:flex-start;gap:var(--sp-3)">
             <div style="flex:1">
-              <div style="font-weight:700;font-size:15px;margin-bottom:var(--sp-1)">${pinIcon}${ann.title}</div>
-              <div style="font-size:13px;color:var(--text-body);white-space:pre-wrap;margin-bottom:var(--sp-2)">${ann.body}</div>
+              <div style="font-weight:700;font-size:15px;margin-bottom:var(--sp-1)">${pinIcon}${esc(ann.title)}</div>
+              <div style="font-size:13px;color:var(--text-body);white-space:pre-wrap;margin-bottom:var(--sp-2)">${esc(ann.body)}</div>
               <div style="display:flex;gap:var(--sp-2);flex-wrap:wrap;align-items:center">
                 <span class="faint" style="font-size:11px">Posted ${(ann.createdAt||'').slice(0,10)}</span>
                 ${expLabel}${expiredBadge}
@@ -11432,7 +11437,7 @@ ${CONFIG.academyName || 'The Team'}`;
     });
 
     const instOpts = INSTRUCTORS.map(i =>
-      `<option value="${i.id}" ${templateDraft?.instructorId === i.id ? 'selected' : ''}>${i.name}</option>`
+      `<option value="${i.id}" ${templateDraft?.instructorId === i.id ? 'selected' : ''}>${esc(i.name)}</option>`
     ).join('');
 
     const sportOpts = SPORTS.map(s =>
@@ -11457,7 +11462,7 @@ ${CONFIG.academyName || 'The Team'}`;
             ${tpl.audience ? `<span class="tag" style="background:var(--surface-alt);margin-left:4px;font-size:11px">${tpl.audience}</span>` : ''}
           </div>
           <div style="font-size:13px">${tpl.capacity} cap</div>
-          <div style="font-size:13px;color:var(--text-muted)">${inst?.name || '—'}</div>
+          <div style="font-size:13px;color:var(--text-muted)">${esc(inst?.name || '—')}</div>
           <div style="font-size:11px;color:var(--text-muted)">${sport?.name?.en?.split(' ').map(w=>w[0]).join('') || '?'}</div>
           <div style="display:flex;gap:var(--sp-2)">
             <button class="btn btn-sm" onclick="openTemplateForm(${JSON.stringify(tpl).replace(/"/g,'&quot;')})">Edit</button>
@@ -11502,7 +11507,7 @@ ${CONFIG.academyName || 'The Team'}`;
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Instructor</label>
             <select id="tpl-instructor" class="input" style="width:100%">
               <option value="">— None —</option>
-              ${INSTRUCTORS.map(i=>`<option value="${i.id}" ${templateDraft.instructorId===i.id?'selected':''}>${i.name}</option>`).join('')}
+              ${INSTRUCTORS.map(i=>`<option value="${i.id}" ${templateDraft.instructorId===i.id?'selected':''}>${esc(i.name)}</option>`).join('')}
             </select>
           </div>
           <div>
@@ -12004,7 +12009,7 @@ ${CONFIG.academyName || 'The Team'}`;
     }
 
     function avatar(s) {
-      return `<div style="width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${s.initials}</div>`;
+      return `<div style="width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${esc(s.initials)}</div>`;
     }
 
     // Leaderboard rows
@@ -12046,7 +12051,7 @@ ${CONFIG.academyName || 'The Team'}`;
               <div style="display:flex;align-items:center;gap:8px;cursor:pointer" onclick="go('students/${s.id}')">
                 ${avatar(s)}
                 <div>
-                  <div style="font-weight:600;font-size:13px">${s.name}</div>
+                  <div style="font-weight:600;font-size:13px">${esc(s.name)}</div>
                   <div style="font-size:11px;color:var(--text-muted)">${s.contact || '—'}</div>
                 </div>
               </div>
@@ -12522,7 +12527,7 @@ ${CONFIG.academyName || 'The Team'}`;
                       font-weight:700;color:${checkedIn ? '#fff' : 'var(--accent)'}">
             ${checkedIn ? '✓' : stu.initials}
           </div>
-          <div style="font-size:13px;font-weight:600;color:${nameColor};text-align:center;line-height:1.3;word-break:break-word">${stu.name}</div>
+          <div style="font-size:13px;font-weight:600;color:${nameColor};text-align:center;line-height:1.3;word-break:break-word">${esc(stu.name)}</div>
           ${checkedIn ? '<div style="font-size:11px;color:#16a34a;font-weight:600">Checked in</div>' : ''}
           ${isWalkIn && !checkedIn ? '<div style="font-size:10px;color:var(--text-faint)">Walk-in</div>' : ''}
         </button>`;
@@ -12907,7 +12912,7 @@ ${CONFIG.academyName || 'The Team'}`;
 
     const recipientChips = withEmail.slice(0, 20).map(s =>
       `<span style="display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);border:1px solid var(--border);border-radius:20px;padding:3px 10px 3px 6px;font-size:12px">
-         <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">${s.initials}</span>
+         <span style="width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center">${esc(s.initials)}</span>
          <span style="font-weight:500">${s.name.split(' ')[0]}</span>
        </span>`
     ).join('') + (withEmail.length > 20 ? `<span style="font-size:12px;color:var(--text-muted);padding:4px 8px">+${withEmail.length - 20} more</span>` : '');
@@ -13027,8 +13032,8 @@ ${CONFIG.academyName || 'The Team'}`;
               <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px">
                 ${noEmail.map(s => `
                   <div style="display:flex;align-items:center;gap:8px;padding:4px 0">
-                    <div class="avatar" style="width:28px;height:28px;font-size:10px">${s.initials}</div>
-                    <a href="#/students/${s.id}" style="font-size:13px;color:var(--accent);text-decoration:none">${s.name}</a>
+                    <div class="avatar" style="width:28px;height:28px;font-size:10px">${esc(s.initials)}</div>
+                    <a href="#/students/${s.id}" style="font-size:13px;color:var(--accent);text-decoration:none">${esc(s.name)}</a>
                     <span style="font-size:11px;color:var(--text-faint)">no email on file</span>
                   </div>`).join('')}
               </div>
@@ -13217,9 +13222,9 @@ ${CONFIG.academyName || 'The Team'}`;
       return `<tr>
         <td>
           <div style="display:flex;align-items:center;gap:10px">
-            <div class="avatar" style="width:32px;height:32px;font-size:11px">${s.initials}</div>
+            <div class="avatar" style="width:32px;height:32px;font-size:11px">${esc(s.initials)}</div>
             <div>
-              <a href="#/students/${s.id}" style="font-weight:600;font-size:13px;color:var(--accent);text-decoration:none">${s.name}</a>
+              <a href="#/students/${s.id}" style="font-weight:600;font-size:13px;color:var(--accent);text-decoration:none">${esc(s.name)}</a>
               ${belt ? `<div style="font-size:11px;color:var(--text-muted)">${belt.label}</div>` : ''}
             </div>
           </div>
@@ -13589,7 +13594,7 @@ ${CONFIG.academyName || 'The Team'}`;
     const conditionBg    = { new: '#f0fdf4', good: '#f1f3f5', fair: '#fffbeb', poor: '#fef2f2' };
 
     const studentOptions = STUDENTS.map(s =>
-      `<option value="${s.id}">${s.name}</option>`
+      `<option value="${s.id}">${esc(s.name)}</option>`
     ).join('');
 
     const categorySections = categories.map(cat => {
@@ -13809,9 +13814,9 @@ ${CONFIG.academyName || 'The Team'}`;
             <div style="font-size:12px;color:var(--text-muted)">${l.durationMin} min</div>
           </td>
           <td style="padding:var(--sp-3) var(--sp-2)">
-            ${stu ? `<a href="#/students/${stu.id}" style="font-weight:600;font-size:13px;color:var(--accent);text-decoration:none">${stu.name}</a>` : `<span class="muted">Unknown</span>`}
+            ${stu ? `<a href="#/students/${stu.id}" style="font-weight:600;font-size:13px;color:var(--accent);text-decoration:none">${esc(stu.name)}</a>` : `<span class="muted">Unknown</span>`}
           </td>
-          <td style="padding:var(--sp-3) var(--sp-2);font-size:13px">${inst?.name || '—'}</td>
+          <td style="padding:var(--sp-3) var(--sp-2);font-size:13px">${esc(inst?.name || '—')}</td>
           <td style="padding:var(--sp-3) var(--sp-2);font-size:13px">${l.type}</td>
           <td style="padding:var(--sp-3) var(--sp-2)">${statusBadge(l.status)}</td>
           <td style="padding:var(--sp-3) var(--sp-2);font-size:12px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${l.notes || '—'}</td>
@@ -13838,13 +13843,13 @@ ${CONFIG.academyName || 'The Team'}`;
             <label class="label">Student</label>
             <select id="pl-student" class="input">
               <option value="">Select student…</option>
-              ${STUDENTS.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+              ${STUDENTS.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
             </select>
           </div>
           <div>
             <label class="label">Instructor</label>
             <select id="pl-instructor" class="input">
-              ${INSTRUCTORS.map(i => `<option value="${i.id}">${i.name}</option>`).join('')}
+              ${INSTRUCTORS.map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('')}
             </select>
           </div>
           <div>
@@ -14560,10 +14565,10 @@ ${CONFIG.academyName || 'The Team'}`;
 
       const memberRows = members.map(({ stu, enr }) => `
         <div style="display:flex;align-items:center;gap:var(--sp-3);padding:8px 0;border-bottom:1px solid var(--border)">
-          <div class="avatar" style="width:32px;height:32px;font-size:12px;flex-shrink:0">${stu.initials}</div>
+          <div class="avatar" style="width:32px;height:32px;font-size:12px;flex-shrink:0">${esc(stu.initials)}</div>
           <div style="flex:1;min-width:0">
-            <div style="font-weight:600;font-size:14px;cursor:pointer" onclick="go('students/${stu.id}')">${stu.name}</div>
-            <div style="font-size:11px;color:var(--text-muted)">${stu.contact}</div>
+            <div style="font-weight:600;font-size:14px;cursor:pointer" onclick="go('students/${stu.id}')">${esc(stu.name)}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${esc(stu.contact)}</div>
           </div>
           <div>${BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes)}</div>
           <div style="font-size:13px;color:var(--text-muted);min-width:40px;text-align:right">€${PLAN_PRICE[enr?.membership]||0}/mo</div>
@@ -14596,7 +14601,7 @@ ${CONFIG.academyName || 'The Team'}`;
         <div style="margin-top:var(--sp-3);padding:var(--sp-3);background:var(--surface-alt);border-radius:8px;display:flex;gap:var(--sp-2);align-items:center;flex-wrap:wrap">
           <select id="fgm-student-${g.id}" class="input" style="font-size:13px;padding:4px 10px;width:auto">
             <option value="">— Select student —</option>
-            ${available.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+            ${available.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
           </select>
           <button class="btn btn-primary" style="font-size:12px;padding:4px 12px" onclick="fgAddMember('${g.id}')">Add</button>
           <button class="btn" style="font-size:12px;padding:4px 12px" onclick="fgCloseAddMember()">Cancel</button>
@@ -14915,7 +14920,7 @@ ${CONFIG.academyName || 'The Team'}`;
             <label class="form-label">Student</label>
             <select id="pkg-sell-student" class="form-control" style="min-width:180px">
               <option value="">— select —</option>
-              ${STUDENTS.map(s => `<option value="${s.id}">${s.name}</option>`).join('')}
+              ${STUDENTS.map(s => `<option value="${s.id}">${esc(s.name)}</option>`).join('')}
             </select>
           </div>
           <div>
@@ -14958,7 +14963,7 @@ ${CONFIG.academyName || 'The Team'}`;
         </div>`;
       return `<tr style="border-bottom:1px solid var(--border)">
         <td style="padding:8px">
-          <a href="#/students/${stu.id}" style="font-weight:600;font-size:13px;color:var(--accent);text-decoration:none">${stu.name}</a>
+          <a href="#/students/${stu.id}" style="font-weight:600;font-size:13px;color:var(--accent);text-decoration:none">${esc(stu.name)}</a>
         </td>
         <td style="padding:8px;font-size:13px">${type.name}</td>
         <td style="padding:8px;font-size:12px;color:var(--text-muted)">${sp.purchasedAt}</td>
@@ -15402,7 +15407,7 @@ ${CONFIG.academyName || 'The Team'}`;
               <a href="#/students/${r.s.id}" style="font-size:10px;color:var(--accent);text-decoration:none;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface-alt)">Profile →</a>
               ${!r.docsOk ? `<a href="#/waivers" style="font-size:10px;color:#d97706;text-decoration:none;padding:2px 8px;border:1px solid #fcd34d;border-radius:4px;background:#fffbeb">Docs</a>` : ''}
               ${r.s.contact?.includes('@')
-                ? `<a href="mailto:${r.s.contact}?subject=Welcome to ${ACADEMY.name}!&body=Hi ${r.s.name.split(' ')[0]},%0A%0AWelcome aboard! We%27re excited to have you training with us.%0A%0ASee you on the mat!%0A${ACADEMY.name}"
+                ? `<a href="mailto:${r.s.contact}?subject=Welcome to ${esc(ACADEMY.name)}!&body=Hi ${r.s.name.split(' ')[0]},%0A%0AWelcome aboard! We%27re excited to have you training with us.%0A%0ASee you on the mat!%0A${esc(ACADEMY.name)}"
                      style="font-size:10px;color:var(--text-muted);text-decoration:none;padding:2px 8px;border:1px solid var(--border);border-radius:4px;background:var(--surface-alt)">✉</a>`
                 : ''}
             </div>
