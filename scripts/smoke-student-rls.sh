@@ -18,6 +18,8 @@ chk(){ [ "$2" = "$3" ] && ok "$1" || no "$1" "got '$2' want '$3'"; }
 # an *allowed* write would be 2xx. The staff-count assertion below corroborates
 # denial by effect (no row was actually created).
 denied(){ case "$2" in 4[0-9][0-9]) ok "$1";; *) no "$1" "got '$2' want 4xx (rejected)";; esac; }
+# Strict RLS denial: 401 (anon) or 403 (authed, policy) — not a 400 constraint error.
+rls_denied(){ case "$2" in 401|403) ok "$1";; *) no "$1" "got '$2' want 401/403 (RLS)";; esac; }
 jget(){ python3 -c "import sys,json;d=json.load(sys.stdin);print(d.get('$1','') if isinstance(d,dict) else '')"; }
 jlen(){ python3 -c "import sys,json;d=json.load(sys.stdin);print(len(d) if isinstance(d,list) else -1)"; }
 signup(){ curl -s -X POST "$U/auth/v1/signup" -H "apikey: $K" -H "Content-Type: application/json" -d "{\"email\":\"$1.$(date +%s)-$RANDOM@example.com\",\"password\":\"test123456\"}" | jget access_token; }
@@ -79,6 +81,21 @@ for tbl in prospects student_injuries equipment equipment_loans class_package_ty
   chk "student CANNOT read $tbl" "$(get_body "$TST" "/$tbl?select=id&academy_id=eq.$AID")" "[]"
   denied "student write to $tbl not created" "$(post_code "$TST" "/$tbl" "{\"id\":\"x-$RANDOM\",\"academy_id\":\"$AID\"}")"
 done
+
+# --- P5d: student self-service writes (019) — own only ---
+CB="cls-book-$RANDOM"
+curl -s -o /dev/null -X POST "$U/rest/v1/classes" "${H[@]}" -d "{\"id\":\"$CB\",\"sport_id\":\"sport-bjj\",\"starts_at\":\"2026-06-01T18:00:00Z\",\"duration_min\":60,\"class_type\":\"Fundamentals\",\"capacity\":20,\"status\":\"scheduled\",\"academy_id\":\"$AID\"}"
+chk        "student books OWN class"            "$(post_code "$TST" /bookings "{\"id\":\"bk-$ME-$CB\",\"class_id\":\"$CB\",\"student_id\":\"$ME\",\"status\":\"booked\",\"academy_id\":\"$AID\"}")" 201
+rls_denied "student CANNOT book for OTHER"      "$(post_code "$TST" /bookings "{\"id\":\"bk-x-$RANDOM\",\"class_id\":\"$CB\",\"student_id\":\"$OTHER\",\"status\":\"booked\",\"academy_id\":\"$AID\"}")"
+chk        "student checks in OWN"              "$(post_code "$TST" /attendance "{\"id\":\"at-$CB-$ME\",\"class_id\":\"$CB\",\"student_id\":\"$ME\",\"attended\":true,\"academy_id\":\"$AID\"}")" 201
+rls_denied "student CANNOT check in OTHER"      "$(post_code "$TST" /attendance "{\"id\":\"at-x-$RANDOM\",\"class_id\":\"$CB\",\"student_id\":\"$OTHER\",\"attended\":true,\"academy_id\":\"$AID\"}")"
+chk        "student joins OWN waitlist"         "$(post_code "$TST" /waitlist "{\"id\":\"wl-$CB-$ME\",\"class_id\":\"$CB\",\"student_id\":\"$ME\",\"academy_id\":\"$AID\"}")" 201
+NEWNAME="Renamed-$RANDOM"
+curl -s -o /dev/null -X POST "$U/rest/v1/rpc/update_my_profile" -H "apikey: $K" -H "Authorization: Bearer $TST" -H "Content-Type: application/json" \
+  -d "{\"p_name\":\"$NEWNAME\",\"p_initials\":\"RN\",\"p_contact\":\"r@e.com\",\"p_phone\":\"+1\",\"p_dob\":null,\"p_weight\":80}"
+got=$(get_body "$TST" "/students?select=name&id=eq.$ME"); echo "$got" | grep -q "$NEWNAME" && ok "profile RPC updated own name" || no "profile RPC" "$got"
+# profile RPC must not let a student touch another student's row (own-row only)
+oname=$(get_body "$TS" "/students?select=name&id=eq.$OTHER"); echo "$oname" | grep -q "Other Student" && ok "profile RPC did NOT touch OTHER" || no "profile RPC leaked to OTHER" "$oname"
 
 # --- STAFF still has full access ---
 n=$(get_body "$TS" "/students?select=id&academy_id=eq.$AID" | jlen); [ "$n" -ge 2 ] && ok "staff still sees all students ($n)" || no "staff access" "n=$n"

@@ -756,7 +756,16 @@ function materializeVirtualClass(classId) {
 }
 
 function checkIn(classId) {
-  if (tenantWriteBlocked()) return;
+  if (isStudentTenant()) {
+    sCheckIn(classId).then(r => {
+      if (!r.ok) { showToast(r.error?.code === '23503' ? "This class isn't open yet." : 'Could not check in.'); return; }
+      const ex = ATTENDANCE.find(a => a.classId === classId && a.studentId === currentStudentId);
+      if (ex) ex.attended = true;
+      else ATTENDANCE.push({ classId, studentId: currentStudentId, attended: true, checkedInAt: new Date().toISOString() });
+      document.getElementById('app').innerHTML = renderClassDetail(classId);
+    });
+    return;
+  }
   materializeVirtualClass(classId); // ensure it's in CLASSES for history/streak
   const existing = ATTENDANCE.find(a => a.classId === classId && a.studentId === currentStudentId);
   if (existing) {
@@ -782,8 +791,16 @@ function waitlistPosition(classId, studentId) {
   return idx === -1 ? null : idx + 1;
 }
 function joinWaitlist(classId) {
-  if (tenantWriteBlocked()) return;
   if (isOnWaitlist(classId, currentStudentId)) return;
+  if (isStudentTenant()) {
+    sJoinWaitlist(classId).then(r => {
+      if (!r.ok) { showToast(r.error?.code === '23503' ? "This class isn't open yet." : 'Could not join the waitlist.'); return; }
+      WAITLIST.push({ id: 'wl-' + Date.now(), classId, studentId: currentStudentId, addedAt: new Date().toISOString() });
+      showToast("You're on the waitlist — we'll notify you if a spot opens.");
+      render();
+    });
+    return;
+  }
   materializeVirtualClass(classId);
   WAITLIST.push({ id: 'wl-' + Date.now(), classId, studentId: currentStudentId, addedAt: new Date().toISOString() });
   persistData();
@@ -791,7 +808,16 @@ function joinWaitlist(classId) {
   render();
 }
 function leaveWaitlist(classId) {
-  if (tenantWriteBlocked()) return;
+  if (isStudentTenant()) {
+    sLeaveWaitlist(classId).then(r => {
+      if (!r.ok) { showToast('Could not update the waitlist.'); return; }
+      const i = WAITLIST.findIndex(w => w.classId === classId && w.studentId === currentStudentId);
+      if (i !== -1) WAITLIST.splice(i, 1);
+      showToast('Removed from waitlist');
+      render();
+    });
+    return;
+  }
   const idx = WAITLIST.findIndex(w => w.classId === classId && w.studentId === currentStudentId);
   if (idx !== -1) { WAITLIST.splice(idx, 1); persistData(); }
   showToast('Removed from waitlist');
@@ -1990,9 +2016,7 @@ function renderClassDetail(classId) {
 }
 
 function bookClass(classId) {
-  if (tenantWriteBlocked()) return;
-  materializeVirtualClass(classId); // persist virtual slot so admin can see the booking
-  // Enforce class audience restrictions.
+  // Enforce class audience restrictions (client-side eligibility).
   const cls = CLASSES.find(c => c.id === classId);
   const me = DB.student(currentStudentId);
   if (cls && me && typeof canStudentBook === 'function' && !canStudentBook(me, cls)) {
@@ -2000,6 +2024,17 @@ function bookClass(classId) {
     showToast(`This class is for: ${allowed}. Not available for your profile.`);
     return;
   }
+  if (isStudentTenant()) {
+    sBookClass(classId).then(r => {
+      if (!r.ok) { showToast(r.error?.code === '23503' ? "This class isn't open for booking yet." : 'Could not book — try again.'); return; }
+      if (!BOOKINGS.find(b => b.classId === classId && b.studentId === currentStudentId))
+        BOOKINGS.push({ id: `bk-${currentStudentId}-${classId}`, classId, studentId: currentStudentId, bookedAt: new Date().toISOString(), status: 'booked' });
+      showToast('Booked! See you on the mat 🥋');
+      render();
+    });
+    return;
+  }
+  materializeVirtualClass(classId); // persist virtual slot so admin can see the booking
   const existing = BOOKINGS.find(b => b.classId === classId && b.studentId === currentStudentId);
   if (existing) { existing.status = 'booked'; }
   else {
@@ -3404,7 +3439,6 @@ function histFilterType(type) {
 }
 
 function saveProfileEdits() {
-  if (tenantWriteBlocked()) return;
   const student = STUDENTS.find(s => s.id === currentStudentId);
   if (!student) return;
 
@@ -3415,14 +3449,19 @@ function saveProfileEdits() {
   const weight = parseFloat(document.getElementById('ep-weight').value) || null;
 
   if (!name) { showToast('Name is required'); return; }
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const apply = () => { Object.assign(student, { name, initials, contact: email || student.contact, phone: phone || null, dob, weightKg: weight }); };
 
-  student.name      = name;
-  student.initials  = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  student.contact   = email || student.contact;
-  student.phone     = phone || null;
-  student.dob       = dob;
-  student.weightKg  = weight;
-
+  if (isStudentTenant()) {
+    sUpdateProfile({ name, initials, contact: email || student.contact, phone: phone || null, dob, weightKg: weight }).then(r => {
+      if (!r.ok) { showToast('Could not save profile — try again.'); return; }
+      apply();
+      showToast('Profile updated ✓');
+      setTimeout(() => go('me'), 400);
+    });
+    return;
+  }
+  apply();
   persistData();
   showToast('Profile updated ✓');
   setTimeout(() => go('me'), 400);

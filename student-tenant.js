@@ -78,7 +78,58 @@ async function studentSignOut() {
   STUDENT_CTX.mode = 'demo'; STUDENT_CTX.studentId = null; STUDENT_CTX.academyId = null;
 }
 
+// ---- P5d: student self-service writes (RLS scopes each to my own rows) ------
+// Insert that tolerates a duplicate (already booked/checked-in) as success.
+function _okOrDup(r) {
+  if (!r.error) return { ok: true };
+  if (r.error.code === '23505') return { ok: true, dup: true };
+  console.error('[student] write:', r.error);
+  return { ok: false, error: r.error };
+}
+async function sBookClass(classId) {
+  return _okOrDup(await sb.from('bookings').insert({
+    id: 'bk-' + STUDENT_CTX.studentId + '-' + classId, class_id: classId,
+    student_id: STUDENT_CTX.studentId, status: 'booked',
+    booked_at: new Date().toISOString(), academy_id: STUDENT_CTX.academyId
+  }));
+}
+async function sCancelBooking(classId) {
+  const r = await sb.from('bookings').delete()
+    .eq('class_id', classId).eq('student_id', STUDENT_CTX.studentId).eq('academy_id', STUDENT_CTX.academyId);
+  return { ok: !r.error, error: r.error };
+}
+async function sCheckIn(classId) {
+  return _okOrDup(await sb.from('attendance').insert({
+    id: 'at-' + classId + '-' + STUDENT_CTX.studentId, class_id: classId,
+    student_id: STUDENT_CTX.studentId, attended: true,
+    confirmed_at: new Date().toISOString(), academy_id: STUDENT_CTX.academyId
+  }));
+}
+async function sJoinWaitlist(classId) {
+  return _okOrDup(await sb.from('waitlist').insert({
+    id: 'wl-' + classId + '-' + STUDENT_CTX.studentId, class_id: classId,
+    student_id: STUDENT_CTX.studentId, queued_at: new Date().toISOString(),
+    academy_id: STUDENT_CTX.academyId
+  }));
+}
+async function sLeaveWaitlist(classId) {
+  const r = await sb.from('waitlist').delete()
+    .eq('class_id', classId).eq('student_id', STUDENT_CTX.studentId).eq('academy_id', STUDENT_CTX.academyId);
+  return { ok: !r.error, error: r.error };
+}
+async function sUpdateProfile(p) {
+  const r = await sb.rpc('update_my_profile', {
+    p_name: p.name ?? null, p_initials: p.initials ?? null,
+    p_contact: p.contact ?? null, p_phone: p.phone ?? null,
+    p_dob: p.dob || null, p_weight: p.weightKg ?? null
+  });
+  return { ok: !r.error, error: r.error };
+}
+
 window.STUDENT_CTX = STUDENT_CTX;
 window.isStudentTenant = isStudentTenant;
 window.sModuleEnabled = sModuleEnabled;
 window.studentSignOut = studentSignOut;
+window.sBookClass = sBookClass; window.sCancelBooking = sCancelBooking;
+window.sCheckIn = sCheckIn; window.sJoinWaitlist = sJoinWaitlist;
+window.sLeaveWaitlist = sLeaveWaitlist; window.sUpdateProfile = sUpdateProfile;
