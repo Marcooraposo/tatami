@@ -86,9 +86,9 @@ done
 CB="cls-book-$RANDOM"
 curl -s -o /dev/null -X POST "$U/rest/v1/classes" "${H[@]}" -d "{\"id\":\"$CB\",\"sport_id\":\"sport-bjj\",\"starts_at\":\"2026-06-01T18:00:00Z\",\"duration_min\":60,\"class_type\":\"Fundamentals\",\"capacity\":20,\"status\":\"scheduled\",\"academy_id\":\"$AID\"}"
 chk        "student books OWN class"            "$(post_code "$TST" /bookings "{\"id\":\"bk-$ME-$CB\",\"class_id\":\"$CB\",\"student_id\":\"$ME\",\"status\":\"booked\",\"academy_id\":\"$AID\"}")" 201
-rls_denied "student CANNOT book for OTHER"      "$(post_code "$TST" /bookings "{\"id\":\"bk-x-$RANDOM\",\"class_id\":\"$CB\",\"student_id\":\"$OTHER\",\"status\":\"booked\",\"academy_id\":\"$AID\"}")"
+denied     "student CANNOT book for OTHER"      "$(post_code "$TST" /bookings "{\"id\":\"bk-x-$RANDOM\",\"class_id\":\"$CB\",\"student_id\":\"$OTHER\",\"status\":\"booked\",\"academy_id\":\"$AID\"}")"
 chk        "student checks in OWN"              "$(post_code "$TST" /attendance "{\"id\":\"at-$CB-$ME\",\"class_id\":\"$CB\",\"student_id\":\"$ME\",\"attended\":true,\"academy_id\":\"$AID\"}")" 201
-rls_denied "student CANNOT check in OTHER"      "$(post_code "$TST" /attendance "{\"id\":\"at-x-$RANDOM\",\"class_id\":\"$CB\",\"student_id\":\"$OTHER\",\"attended\":true,\"academy_id\":\"$AID\"}")"
+denied     "student CANNOT check in OTHER"      "$(post_code "$TST" /attendance "{\"id\":\"at-x-$RANDOM\",\"class_id\":\"$CB\",\"student_id\":\"$OTHER\",\"attended\":true,\"academy_id\":\"$AID\"}")"
 chk        "student joins OWN waitlist"         "$(post_code "$TST" /waitlist "{\"id\":\"wl-$CB-$ME\",\"class_id\":\"$CB\",\"student_id\":\"$ME\",\"academy_id\":\"$AID\"}")" 201
 NEWNAME="Renamed-$RANDOM"
 curl -s -o /dev/null -X POST "$U/rest/v1/rpc/update_my_profile" -H "apikey: $K" -H "Authorization: Bearer $TST" -H "Content-Type: application/json" \
