@@ -5967,15 +5967,6 @@
     // --- Action items (inbox) ---
     const dashActionItems = [];
 
-    // Belt test requests from student notes (loaded at boot)
-    Object.entries(STUDENT_NOTES).forEach(([studentId, notes]) => {
-      const req = (notes || []).find(n => n.type === '🥋' && (n.text || '').includes('requested belt test'));
-      if (req) {
-        const stu = STUDENTS.find(s => s.id === studentId);
-        if (stu) dashActionItems.push({ icon: '🥋', label: stu.name + ' requested a belt test', sub: timeAgo(req.createdAt), onclick: "go('grading')" });
-      }
-    });
-
     // Students returning from training hold today
     let dashHolds = [];
     try { dashHolds = JSON.parse(localStorage.getItem('tatami_holds')) || []; } catch {}
@@ -7790,37 +7781,6 @@
     const sportId = gradingActiveSportId();
     const grading = DB.grading(DB.sport(sportId)?.defaultGradingSystemId || ACADEMY.sportConfigs[0]?.gradingSystemId);
 
-    // Belt test requests — read from shared localStorage key (written by student.html)
-    const beltTestRequests = (() => {
-      try {
-        const notes = JSON.parse(localStorage.getItem('tatami_student_notes') || '{}');
-        const results = [];
-        Object.entries(notes).forEach(([studentId, studentNotes]) => {
-          const req = (studentNotes || []).find(n => n.type === '🥋' && n.text && n.text.includes('belt test'));
-          if (!req) return;
-          const stu = DB.student(studentId);
-          if (!stu) return;
-          const daysAgo = Math.floor((new Date(CONFIG.today).getTime() - new Date(req.createdAt).getTime()) / 86400000);
-          if (daysAgo > 60) return; // ignore very stale requests
-          const enr = ENROLLMENTS.find(e => e.studentId === studentId);
-          results.push({ stu, enr, req, daysAgo });
-        });
-        return results.sort((a, b) => new Date(b.req.createdAt) - new Date(a.req.createdAt));
-      } catch { return []; }
-    })();
-
-    function clearBeltTestRequest(studentId) {
-      try {
-        const notes = JSON.parse(localStorage.getItem('tatami_student_notes') || '{}');
-        if (notes[studentId]) {
-          notes[studentId] = notes[studentId].filter(n => !(n.type === '🥋' && n.text && n.text.includes('belt test')));
-          localStorage.setItem('tatami_student_notes', JSON.stringify(notes));
-        }
-      } catch {}
-      document.getElementById('content').innerHTML = GradingScreen();
-    }
-    window.clearBeltTestRequest = clearBeltTestRequest;
-
     // Gather all promotion-ready students
     const ready = STUDENTS.map(stu => {
       const promo = computePromotionStatus(stu.id, sportId);
@@ -7962,33 +7922,8 @@
         StatCard('★', 'Ready to promote', ready.length, ''),
         StatCard('✓', 'Total promoted', GRADING_SESSIONS.reduce((n,s)=>n+s.results.length,0),
           GRADING_SESSIONS.length + ' session' + (GRADING_SESSIONS.length !== 1 ? 's' : '')),
-        StatCard('◉', 'Selected', selectedCount, 'for this session'),
-        StatCard('🥋', 'Test requests', beltTestRequests.length, 'from students', null,
-          { accent: beltTestRequests.length > 0, valueColor: beltTestRequests.length > 0 ? 'var(--accent)' : '' })
+        StatCard('◉', 'Selected', selectedCount, 'for this session')
       ])}
-
-      ${beltTestRequests.length > 0 ? `
-      <h3 class="h3" style="margin-bottom:var(--sp-3)">🥋 Student belt test requests</h3>
-      <div class="card" style="padding:0;margin-bottom:var(--sp-5)">
-        <div class="list">
-          ${beltTestRequests.map(({ stu, enr, req, daysAgo }) => `
-            <div class="list-row" style="cursor:pointer" onclick="go('students/${stu.id}')">
-              <div class="avatar">${esc(stu.initials)}</div>
-              <div style="flex:1">
-                <div style="font-weight:600">${esc(stu.name)}</div>
-                <div class="faint" style="font-size:12px">${stu.contact || ''}</div>
-              </div>
-              <div>${enr ? BeltChip(enr.gradingSystemId, enr.currentLevelId, enr.currentStripes) : ''}</div>
-              <div style="font-size:12px;color:var(--text-muted);text-align:right;white-space:nowrap">
-                ${daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : daysAgo + 'd ago'}
-              </div>
-              <div onclick="event.stopPropagation()">
-                <button class="btn btn-sm" title="Dismiss request"
-                  onclick="clearBeltTestRequest('${stu.id}')">✕ Dismiss</button>
-              </div>
-            </div>`).join('')}
-        </div>
-      </div>` : ''}
 
       <h3 class="h3" style="margin-bottom:var(--sp-3)">Promotion candidates</h3>
       <div class="card" style="padding:0;margin-bottom:var(--sp-5)">

@@ -1120,40 +1120,6 @@ function renderHoldCard() {
   `;
 }
 
-// ─── Belt Test Request ────────────────────────────────────────────────────────
-const STUDENT_NOTES_KEY = 'tatami_student_notes';
-
-function getBeltTestRequestDate(studentId) {
-  try {
-    const notes = JSON.parse(localStorage.getItem(STUDENT_NOTES_KEY) || '{}');
-    const studentNotes = notes[studentId] || [];
-    const req = studentNotes.find(n => n.type === '🥋' && n.text && n.text.includes('belt test'));
-    return req ? req.createdAt : null;
-  } catch { return null; }
-}
-
-function requestBeltTest(studentId, studentName) {
-  if (tenantWriteBlocked()) return;
-  const existing = getBeltTestRequestDate(studentId);
-  if (existing) {
-    showToast('Request already sent on ' + new Date(existing).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }));
-    return;
-  }
-  try {
-    const notes = JSON.parse(localStorage.getItem(STUDENT_NOTES_KEY) || '{}');
-    if (!notes[studentId]) notes[studentId] = [];
-    notes[studentId].unshift({
-      id: 'btr-' + Date.now(),
-      type: '🥋',
-      text: 'Student requested belt test evaluation',
-      createdAt: new Date().toISOString(),
-    });
-    localStorage.setItem(STUDENT_NOTES_KEY, JSON.stringify(notes));
-    showToast('Belt test request sent to your instructor!');
-    render(); // refresh to show "request sent" state
-  } catch { showToast('Could not send request — try again.'); }
-}
-
 // ─── Login Screen ─────────────────────────────────────────────────────────────
 function renderLogin() {
   const studentRows = STUDENTS.map(s => `
@@ -2599,24 +2565,14 @@ function renderMe() {
         promotionProgressCard = `
           <div class="section-hd">Progress to ${nextLvlName}</div>
           <div class="card" style="padding:16px 20px">
-            ${isReady ? (() => {
-              const reqDate = getBeltTestRequestDate(currentStudentId);
-              const reqLabel = reqDate
-                ? `<span style="font-size:11px;color:var(--success);font-weight:600">✓ Request sent ${new Date(reqDate).toLocaleDateString('en-GB', { day:'numeric', month:'short' })}</span>`
-                : `<button onclick="requestBeltTest('${currentStudentId}','${student.name.replace(/'/g,"\\'")}')"
-                     style="background:var(--success);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">
-                     🥋 Request belt test
-                   </button>`;
-              return `
-              <div style="background:var(--success-bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            ${isReady ? `
+              <div style="background:var(--success-bg);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
                 <span style="font-size:20px;flex-shrink:0">🎖</span>
                 <div style="flex:1;min-width:0">
-                  <div style="font-size:13px;font-weight:700;color:var(--success)">You may be ready for promotion!</div>
-                  <div style="font-size:11px;color:var(--success);margin-top:1px">Notify your instructor to schedule a grading session.</div>
+                  <div style="font-size:13px;font-weight:700;color:var(--success)">You're on track for promotion!</div>
+                  <div style="font-size:11px;color:var(--success);margin-top:1px">Your coach reviews progress and schedules gradings.</div>
                 </div>
-                ${reqLabel}
-              </div>`;
-            })() : ''}
+              </div>` : ''}
             <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">
               <span style="font-size:12px;color:var(--text-muted)">Working towards</span>
               <span style="font-size:12px;font-weight:700;padding:2px 10px;border-radius:20px;
