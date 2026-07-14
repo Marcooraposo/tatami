@@ -25,7 +25,7 @@ const ENV = {
 
 // Production hostnames — the live, customer-facing deploys.
 // Add a custom domain here later if you point one at the prod project.
-const PROD_HOSTS = ['tatami-dusky.vercel.app'];
+const PROD_HOSTS = ['tatami-dusky.vercel.app', 'openmat.me', 'www.openmat.me'];
 
 function resolveEnv() {
   const host = (typeof location !== 'undefined' && location.hostname) || '';
