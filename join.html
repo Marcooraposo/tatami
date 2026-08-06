@@ -121,6 +121,37 @@
 
   function deadView(text) { root.innerHTML = `${brand}<div class="msg err">${esc(text)}</div>`; }
 
+  // Already signed in? Never claim silently. An invite is single-use and binds
+  // to whoever redeems it, so auto-claiming would let anyone who happens to
+  // have a session open (an admin checking the link, a shared browser) burn the
+  // invite and attach it to the wrong account.
+  function confirmView(session) {
+    const who = (session.user && session.user.email) || 'your current account';
+    const acad = PREVIEW && PREVIEW.academy_name;
+    const role = PREVIEW && (ROLE_LABEL[PREVIEW.role] || 'a member');
+    const invitedTo = (PREVIEW && PREVIEW.email) ? PREVIEW.email : null;
+    const mismatch = invitedTo && invitedTo.toLowerCase() !== String(who).toLowerCase();
+    const prefill = (PREVIEW && PREVIEW.name) ? esc(PREVIEW.name) : '';
+
+    root.innerHTML = `
+      ${brand}
+      <h1 style="font-size:18px;margin:0 0 var(--sp-2)">${acad ? `Join ${esc(acad)}` : 'Accept your invite'}</h1>
+      <p class="muted" style="margin-bottom:var(--sp-4)">
+        This invite is for ${esc(role)}. You're signed in as <strong>${esc(who)}</strong>.
+      </p>
+      ${mismatch ? `<div class="msg err" style="margin-bottom:var(--sp-4)">
+        Heads up — this invite was sent to <strong>${esc(invitedTo)}</strong>.
+        Accepting now links it to ${esc(who)} instead.</div>` : ''}
+      <label for="fullname">Your name</label>
+      <input id="fullname" class="input" type="text" placeholder="Your full name"
+             value="${prefill}" style="margin-bottom:var(--sp-3)" />
+      <button class="btn btn-full" id="b-accept">Accept invite</button>
+      <button class="btn btn-secondary btn-full" id="b-switch">Use a different account</button>
+      <div id="msg"></div>`;
+    $('b-accept').onclick = claim;
+    $('b-switch').onclick = async () => { await sb.auth.signOut(); authView(); };
+  }
+
   async function init() {
     if (!TOKEN) { deadView('This invite link is invalid or incomplete.'); return; }
     // Resolve the invite first so a dead link fails clearly instead of after
@@ -133,7 +164,7 @@
       if (data.expired) { deadView('This invite has expired. Ask your academy for a new link.'); return; }
     }
     const { data: { session } } = await sb.auth.getSession();
-    if (session) claim(); else authView();
+    if (session) confirmView(session); else authView();
   }
   init();
   </script>

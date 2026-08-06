@@ -58,9 +58,13 @@ begin
 end $$;
 
 -- ---- claim with an invitee-supplied name -----------------------------------
--- Replace the 1-arg forms outright: keeping both would make a 1-arg call
--- ambiguous once a defaulted 2-arg version exists.
+-- Replace the 1-arg forms outright. `create or replace` with an extra defaulted
+-- parameter does NOT replace the old function — it creates a second overload,
+-- and a 1-arg call then fails with PGRST203 "could not choose the best
+-- candidate". Every claim function must be dropped first, including the student
+-- one (still called with a single argument by older clients).
 drop function if exists claim_staff_invite(text);
+drop function if exists claim_student_invite(text);
 drop function if exists claim_invite(text);
 
 create or replace function claim_staff_invite(p_token text, p_name text default null)
