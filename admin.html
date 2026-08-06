@@ -526,6 +526,27 @@
   function getDemoPreset() { try { return localStorage.getItem('tatami_demo_preset'); } catch { return null; } }
   function effectivePreset() { return getDemoPreset() || 'full'; }
   function setDemoPreset(p) { try { localStorage.setItem('tatami_demo_preset', p); } catch {} removeDemoPicker(); go('dashboard'); }
+  // ---- role gating (P6a) ---------------------------------------------------
+  // Routes only an academy admin/owner may open. Instructors get students,
+  // schedule, curriculum, grading and competition; finance, team management,
+  // analytics, comms and settings are withheld.
+  const ADMIN_ONLY_ROUTES = [
+    'instructors', 'memberships', 'discounts', 'billing', 'packages',
+    'analytics', 'ratings', 'announcements', 'settings', 'prospects',
+    'equipment', 'renewals', 'waivers', 'referrals', 'retention',
+    'onboarding-pipeline', 'promotion-rules', 'setup'
+  ];
+  // Demo mode has no membership row and must keep every screen reachable.
+  function isAdminUser() { return (typeof tIsAdmin === 'function') ? tIsAdmin() : true; }
+  function isRouteAllowed(id) { return isAdminUser() || !ADMIN_ONLY_ROUTES.includes(id); }
+
+  // Assignable staff: revoked members and non-teaching admins stay out of the
+  // class dropdowns, but their rows survive so past classes still show a name.
+  function teachingInstructors() {
+    return INSTRUCTORS.filter(i => i.status !== 'revoked' && i.teaches !== false);
+  }
+  window.teachingInstructors = teachingInstructors;
+
   function isNavEnabled(id) {
     // Tenant mode (real academy): per-academy module toggles (registry-driven).
     if (typeof isTenant === 'function' && isTenant()) {
@@ -623,6 +644,8 @@
     // Module gating: redirect away from disabled sections.
     const _fallback = (typeof isTenant === 'function' && isTenant()) ? 'students' : 'dashboard';
     if (!isNavEnabled(route.section)) { route.section = _fallback; route.params = []; }
+    // Role gating: an instructor hand-typing #/billing lands on their fallback.
+    if (!isRouteAllowed(route.section)) { route.section = _fallback; route.params = []; }
     if (isTenant() && route.section === 'dashboard') { route.section = 'students'; route.params = []; }
     document.title = `openmat.me — ${t(UI.appName)} · ${t(UI.nav[route.section] || UI.appName)}`;
     document.getElementById('app').innerHTML = `
@@ -673,7 +696,7 @@
       case 'private-lessons':   content.innerHTML = PrivateLessonsScreen();  break;
       case 'instructors':
         if (route.params.length) content.innerHTML = InstructorDetail(route.params[0]);
-        else content.innerHTML = InstructorScreen();
+        else { content.innerHTML = InstructorScreen(); loadTeamPanel(); }
         break;
       case 'billing':           content.innerHTML = BillingScreen();         break;
       case 'analytics':         content.innerHTML = AnalyticsScreen();       break;
@@ -871,15 +894,15 @@
         items: [
           { id: 'students',             label: 'Students',    icon: '◉' },
           { id: 'families',             label: 'Families',    icon: '👪' },
-          { id: 'instructors',          label: 'Instructors', icon: '👤' },
+          { id: 'instructors',          label: 'Team',        icon: '👤', admin: true },
         ]
       },
       {
         id: 'finance-group', label: 'Finance', icon: '💳',
         items: [
-          { id: 'memberships', label: 'Memberships', icon: '◈' },
-          { id: 'discounts',   label: 'Discounts',   icon: '%' },
-          { id: 'billing',     label: 'Billing',     icon: '💳' },
+          { id: 'memberships', label: 'Memberships', icon: '◈', admin: true },
+          { id: 'discounts',   label: 'Discounts',   icon: '%',  admin: true },
+          { id: 'billing',     label: 'Billing',     icon: '💳', admin: true },
         ]
       },
       {
@@ -901,20 +924,24 @@
       {
         id: 'insights-group', label: 'Insights', icon: '📊',
         items: [
-          { id: 'analytics',     label: 'Analytics',     icon: '📊' },
+          { id: 'analytics',     label: 'Analytics',      icon: '📊', admin: true },
           { id: 'attendance-log',label: 'Attendance Log', icon: '✓' },
-          { id: 'ratings',       label: 'Feedback',       icon: '⭐' },
+          { id: 'ratings',       label: 'Feedback',       icon: '⭐', admin: true },
           { id: 'goals',         label: 'Goals',          icon: '◎' },
         ]
       },
       {
         id: 'comms-group', label: 'Comms', icon: '📢',
         items: [
-          { id: 'announcements', label: 'Announcements', icon: '📢' },
+          { id: 'announcements', label: 'Announcements', icon: '📢', admin: true },
         ]
       },
     ];
 
+    // Role gating: instructors don't see finance, team, analytics or comms.
+    // Cosmetic only — RLS (migration 020) is the real boundary, and the router
+    // guards these routes too so a hand-typed hash can't reach them.
+    if (!isAdminUser()) groups.forEach(g => { g.items = g.items.filter(i => !i.admin); });
     // Demo module gating: drop disabled items, then drop now-empty groups.
     groups.forEach(g => { g.items = g.items.filter(i => isNavEnabled(i.id)); });
     const visibleGroups = groups.filter(g => g.items.length);
@@ -962,11 +989,12 @@
             <span>Dashboard</span>
           </div>
           ${visibleGroups.map(renderGroup).join('')}
+          ${isAdminUser() ? `
           <div style="height:1px;background:var(--border);margin:var(--sp-2) 0"></div>
           <div class="nav-item ${active === 'settings' ? 'active' : ''}" onclick="go('settings')">
             <span class="nav-icon">${navIcon('settings')}</span>
             <span>Settings</span>
-          </div>
+          </div>` : ''}
         </nav>
       </aside>
     `;
@@ -2964,7 +2992,7 @@
     const typeOpts = CLASS_TYPES.map(ct =>
       `<option value="${ct}" ${rt.classType === ct ? 'selected' : ''}>${ct}</option>`
     ).join('');
-    const instOpts = INSTRUCTORS.map(i =>
+    const instOpts = teachingInstructors().map(i =>
       `<option value="${i.id}" ${rt.instructorId === i.id ? 'selected' : ''}>${esc(i.name)}</option>`
     ).join('');
 
@@ -3140,7 +3168,7 @@
                 ${!isCompleted && !isCancelled
                   ? `<select style="font-size:13px;border:1px solid var(--border);border-radius:var(--r-sm);padding:2px 6px;margin-left:4px;font-family:var(--font);color:var(--text);background:var(--surface)"
                        onchange="updateClassInstructor('${cls.id}', this.value)">
-                       ${INSTRUCTORS.map(i => `<option value="${i.id}" ${i.id === cls.instructorId ? 'selected' : ''}>${esc(i.name)}</option>`).join('')}
+                       ${teachingInstructors().map(i => `<option value="${i.id}" ${i.id === cls.instructorId ? 'selected' : ''}>${esc(i.name)}</option>`).join('')}
                      </select>`
                   : ` ${esc(inst?.name || '—')}`}
               </span>
@@ -6395,7 +6423,7 @@
   }
   function ClassModalCard() {
     const today = new Date().toISOString().slice(0, 10);
-    const instructorOpts = INSTRUCTORS.map(i =>
+    const instructorOpts = teachingInstructors().map(i =>
       `<option value="${i.id}" ${newClassState.instructorId === i.id ? 'selected' : ''}>${esc(i.name)}</option>`
     ).join('');
     const typeOpts = CLASS_TYPES.map(ct =>
@@ -8224,53 +8252,136 @@
 
   // ---------- Instructor workload -------------------------------------------
 
+  // ---------- Team: invite-first staff creation (P6a) ------------------------
+  // A team member is never typed into existence: inviting creates the pending
+  // instructor profile AND the invite that grants academy_members access on
+  // claim. Demo mode has no backend, so it keeps the old local-only behaviour.
   function openInstructorForm() {
-    if (document.getElementById('inst-form')) return;
     const sportOpts = ACADEMY.sportConfigs.map(sc => { const sp = DB.sport(sc.sportId);
       return `<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;margin-right:var(--sp-3)">
         <input type="checkbox" data-inst-sport value="${sc.sportId}" checked> ${sp ? t(sp.name) : sc.sportId}</label>`; }).join('');
-    document.body.insertAdjacentHTML('beforeend', `
-      <div id="inst-form" style="position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:var(--sp-5)">
-        <div class="card" style="max-width:460px;width:100%">
-          <h3 class="card-title" style="margin-bottom:var(--sp-4)">${t({en:'Add instructor',pt:'Adicionar professor'})}</h3>
-          <div class="stack" style="gap:var(--sp-4)">
-            <div>
-              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Full name',pt:'Nome completo'})} *</label>
-              <input id="inst-name" class="input" style="width:100%" placeholder="e.g. Rui Almeida" />
-            </div>
-            <div>
-              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Pay rate (€/hour)',pt:'Valor/hora (€)'})}</label>
-              <input id="inst-rate" type="number" class="input" style="width:120px" value="25" min="0" />
-            </div>
-            <div>
-              <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Sports',pt:'Modalidades'})}</label>
-              <div>${sportOpts}</div>
-            </div>
+    openAppModal('inst-form', `
+      <div class="card" style="max-width:460px;width:100%;margin:0 auto" onclick="event.stopPropagation()">
+        ${modalHead(t({ en: 'Invite team member', pt: 'Convidar membro' }), 'inst-form')}
+        <div class="stack" style="gap:var(--sp-4)">
+          <div>
+            <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Full name',pt:'Nome completo'})} *</label>
+            <input id="inst-name" class="input" style="width:100%" placeholder="e.g. Rui Almeida" />
           </div>
-          <div class="row-between" style="margin-top:var(--sp-5)">
-            <button class="btn btn-secondary" onclick="document.getElementById('inst-form').remove()">${t({en:'Cancel',pt:'Cancelar'})}</button>
-            <button class="btn" onclick="saveInstructor()">${t({en:'Add instructor',pt:'Adicionar'})}</button>
+          <div>
+            <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Email',pt:'Email'})}</label>
+            <input id="inst-email" class="input" type="email" style="width:100%" placeholder="rui@academy.com" />
+            <div class="faint" style="font-size:12px;margin-top:4px">${t({en:'Where you\'ll send the invite link.',pt:'Para onde enviar o convite.'})}</div>
           </div>
+          <div>
+            <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Role',pt:'Função'})}</label>
+            <select id="inst-role" class="input" style="width:100%">
+              <option value="instructor">${t({en:'Instructor — students, classes, curriculum',pt:'Professor — alunos, aulas, currículo'})}</option>
+              <option value="admin">${t({en:'Admin — full access incl. finance & team',pt:'Admin — acesso total'})}</option>
+            </select>
+          </div>
+          <label style="display:inline-flex;align-items:center;gap:6px;font-size:13px">
+            <input type="checkbox" id="inst-teaches" checked> ${t({en:'Teaches classes (can be assigned to the schedule)',pt:'Dá aulas'})}
+          </label>
+          <div>
+            <label style="display:block;font-weight:600;font-size:13px;margin-bottom:var(--sp-2)">${t({en:'Sports',pt:'Modalidades'})}</label>
+            <div>${sportOpts}</div>
+          </div>
+        </div>
+        <div class="row-between" style="margin-top:var(--sp-5)">
+          <button class="btn btn-secondary" onclick="closeAppModal('inst-form')">${t({en:'Cancel',pt:'Cancelar'})}</button>
+          <button class="btn" onclick="saveInstructor()">${t({en:'Create invite',pt:'Criar convite'})}</button>
         </div>
       </div>`);
     setTimeout(() => document.getElementById('inst-name')?.focus(), 0);
   }
-  function saveInstructor() {
+
+  async function saveInstructor() {
     const name = (document.getElementById('inst-name').value || '').trim();
     if (!name) { showToast('Enter a name.'); return; }
-    const rate = parseFloat(document.getElementById('inst-rate').value) || 0;
+    const email    = (document.getElementById('inst-email')?.value || '').trim();
+    const role     = document.getElementById('inst-role')?.value || 'instructor';
+    const teaches  = !!document.getElementById('inst-teaches')?.checked;
     const sportIds = [...document.querySelectorAll('input[data-inst-sport]:checked')].map(c => c.value);
     const initials = name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
-    const inst = { id: 'inst-' + Date.now(), name, initials, sportIds, payRate: rate };
-    INSTRUCTORS.push(inst);
+
+    if (typeof isTenant === 'function' && isTenant()) {
+      const res = await tInviteStaff({ name, email, role, teaches });
+      if (!res.ok) { showToast(res.error ? 'Could not create invite — run migration 020.' : 'Invites need a logged-in academy.'); return; }
+      // Persist the sports selection onto the row the RPC just created.
+      if (sportIds.length) await sb.from('instructors').update({ sport_ids: sportIds }).eq('academy_id', TENANT.academyId).eq('name', name);
+      closeAppModal('inst-form');
+      showInviteLink(name, res.url);
+      if (typeof tHydrate === 'function') await tHydrate();
+      renderApp();
+      return;
+    }
+    // Demo: local-only, no accounts involved.
+    INSTRUCTORS.push({ id: 'inst-' + Date.now(), name, initials, sportIds, payRate: 25, status: 'active', teaches });
     persistData();
-    if (typeof isTenant === 'function' && isTenant()) tSaveInstructor(inst);
-    document.getElementById('inst-form')?.remove();
-    showToast('Instructor added ✓');
+    closeAppModal('inst-form');
+    showToast('Team member added ✓');
     renderApp();
   }
+
+  // Shows the generated invite link with a copy button (email delivery is not
+  // wired yet — the admin sends the link themselves).
+  function showInviteLink(name, url) {
+    openAppModal('inv-link', `
+      <div class="card" style="max-width:520px;width:100%;margin:0 auto" onclick="event.stopPropagation()">
+        ${modalHead(t({ en: 'Invite created', pt: 'Convite criado' }), 'inv-link')}
+        <p class="faint" style="font-size:13px;margin-bottom:var(--sp-3)">
+          ${t({en:'Send this link to',pt:'Envie este link a'})} <strong>${esc(name)}</strong>.
+          ${t({en:'It expires in 30 days and can be used once.',pt:'Expira em 30 dias e só pode ser usado uma vez.'})}
+        </p>
+        <input class="input" style="width:100%;font-family:monospace;font-size:12px" readonly value="${esc(url)}"
+               onclick="this.select()" id="inv-link-field" />
+        <div class="row-between" style="margin-top:var(--sp-5)">
+          <button class="btn btn-secondary" onclick="closeAppModal('inv-link')">${t({en:'Done',pt:'Concluído'})}</button>
+          <button class="btn" onclick="copyInviteLink(this)">${t({en:'Copy link',pt:'Copiar link'})}</button>
+        </div>
+      </div>`);
+  }
+  function copyInviteLink(btn) {
+    const f = document.getElementById('inv-link-field');
+    if (!f) return;
+    const done = () => { const o = btn.textContent; btn.textContent = '✓ Copied'; setTimeout(() => { btn.textContent = o; }, 1800); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(f.value).then(done).catch(() => { f.select(); document.execCommand('copy'); done(); });
+    } else { f.select(); document.execCommand('copy'); done(); }
+  }
+
+  // Re-invite an instructor row that has no account yet (legacy or unclaimed).
+  async function reinviteInstructor(instId, name) {
+    const email = prompt('Email for ' + name + ' (optional):', '') || '';
+    const res = await tInviteExistingStaff(instId, email);
+    if (!res.ok) { showToast(res.error ? (res.error.message || 'Could not create invite.') : 'Needs a logged-in academy.'); return; }
+    showInviteLink(name, res.url);
+  }
+
+  async function changeMemberRole(userId, role) {
+    const res = await tSetMemberRole(userId, role);
+    if (!res.ok) { showToast(res.error?.message || 'Could not change role.'); renderApp(); return; }
+    showToast('Role updated ✓');
+    await loadTeamPanel();
+  }
+
+  async function revokeTeamMember(instId, name) {
+    if (!confirm('Revoke access for ' + name + '?\n\nThey lose access immediately. Past classes keep their name.')) return;
+    const res = await tRevokeInstructor(instId);
+    if (!res.ok) { showToast(res.error?.message || 'Could not revoke.'); return; }
+    showToast('Access revoked ✓');
+    if (typeof tHydrate === 'function') await tHydrate();
+    await loadTeamPanel();
+  }
+
   window.openInstructorForm = openInstructorForm;
   window.saveInstructor = saveInstructor;
+  window.showInviteLink = showInviteLink;
+  window.copyInviteLink = copyInviteLink;
+  window.reinviteInstructor = reinviteInstructor;
+  window.changeMemberRole = changeMemberRole;
+  window.revokeTeamMember = revokeTeamMember;
 
   function InstructorScreen() {
     const today      = new Date(CONFIG.today);
@@ -8385,24 +8496,99 @@
         </div>`;
     }
 
+    // Team access panel is tenant-only (demo has no accounts) and loads async.
+    const teamPanel = (typeof isTenant === 'function' && isTenant())
+      ? `<h3 class="h3" style="margin-bottom:var(--sp-3)">${t({en:'Access & roles',pt:'Acessos e funções'})}</h3>
+         <div class="card" style="padding:0;margin-bottom:var(--sp-5)">
+           <div class="list" id="team-panel"><div class="list-row"><span class="faint">Loading team…</span></div></div>
+         </div>` : '';
+
     return `
       <div style="max-width:960px;margin:0 auto">
         <div class="row-between" style="margin-bottom:var(--sp-5)">
           <div>
-            <h1 class="h1" style="margin-bottom:var(--sp-1)">${tr('screen.instructors')}</h1>
-            <p class="muted">Workload and attendance summary per instructor.</p>
+            <h1 class="h1" style="margin-bottom:var(--sp-1)">${t({en:'Team',pt:'Equipa'})}</h1>
+            <p class="muted">Who can access this academy, and their teaching workload.</p>
           </div>
-          <button class="btn" onclick="openInstructorForm()">+ ${t({en:'Add instructor',pt:'Adicionar professor'})}</button>
+          <button class="btn" onclick="openInstructorForm()">+ ${t({en:'Invite team member',pt:'Convidar membro'})}</button>
         </div>
         ${StatGrid([
-          StatCard('', 'Instructors', INSTRUCTORS.length, ''),
+          StatCard('', 'Team members', INSTRUCTORS.length, ''),
           StatCard('', 'Classes this month', totalClassesThisMonth, ''),
           StatCard('', 'Hours this month', Math.round(totalHoursThisMonth), ''),
           StatCard('', 'Check-ins this month', totalAttendedThisMonth, '')
         ])}
+        ${teamPanel}
+        <h3 class="h3" style="margin-bottom:var(--sp-3)">${t({en:'Workload',pt:'Carga horária'})}</h3>
         ${stats.map(s => InstructorCard(s)).join('')}
       </div>`;
   }
+
+  // ---------- Team access panel (P6a) ---------------------------------------
+  // Reads the roster through list_academy_members (admin-gated RPC), so it
+  // shows membership role + whether the invite has been claimed — things the
+  // in-memory INSTRUCTORS array doesn't carry.
+  const ROLE_BADGE = {
+    owner:      { label: 'Owner',      bg: 'var(--accent)',    fg: '#fff' },
+    admin:      { label: 'Admin',      bg: 'var(--accent)',    fg: '#fff' },
+    instructor: { label: 'Instructor', bg: 'var(--bg-alt)',    fg: 'var(--text-muted)' }
+  };
+  function teamRow(m) {
+    const badge   = ROLE_BADGE[m.role] || ROLE_BADGE.instructor;
+    const pending = m.status === 'pending' || !m.user_id;
+    const revoked = m.status === 'revoked';
+    const isOwner = m.role === 'owner';
+    const isSelf  = m.user_id && TENANT.userId && m.user_id === TENANT.userId;
+
+    const statusChip = revoked
+      ? `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--danger-bg);color:var(--danger)">Revoked</span>`
+      : pending
+        ? `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--warn-bg,var(--bg-alt));color:var(--warn,var(--text-muted))">Invite pending</span>`
+        : `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:var(--success-bg);color:var(--success)">Active</span>`;
+
+    // Owner is immutable; you can't change or revoke your own access.
+    const roleControl = (isOwner || revoked || pending || isSelf)
+      ? `<span style="font-size:11px;padding:2px 8px;border-radius:99px;background:${badge.bg};color:${badge.fg}">${badge.label}</span>`
+      : `<select class="input" style="font-size:12px;padding:4px 8px;width:auto"
+             onchange="changeMemberRole('${esc(m.user_id)}', this.value)">
+           <option value="instructor" ${m.role === 'instructor' ? 'selected' : ''}>Instructor</option>
+           <option value="admin"      ${m.role === 'admin' ? 'selected' : ''}>Admin</option>
+         </select>`;
+
+    const actions = revoked ? ''
+      : pending
+        ? `<button class="btn btn-sm btn-secondary" onclick="reinviteInstructor('${esc(m.instructor_id)}','${esc(m.name)}')">Resend invite</button>`
+        : isOwner || isSelf ? ''
+          : `<button class="btn btn-sm btn-secondary" onclick="revokeTeamMember('${esc(m.instructor_id)}','${esc(m.name)}')">Revoke</button>`;
+
+    return `
+      <div class="list-row" style="${revoked ? 'opacity:.55' : ''}">
+        <div class="avatar">${esc(m.initials || '?')}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600">${esc(m.name)}${isSelf ? ' <span class="faint" style="font-weight:400;font-size:12px">(you)</span>' : ''}</div>
+          <div class="faint" style="font-size:12px">${esc(m.email || 'No email on file')}</div>
+        </div>
+        <div>${statusChip}</div>
+        <div>${roleControl}</div>
+        <div onclick="event.stopPropagation()">${actions}</div>
+      </div>`;
+  }
+
+  async function loadTeamPanel() {
+    const el = document.getElementById('team-panel');
+    if (!el) return;
+    const res = await tListMembers();
+    if (!res.ok) {
+      el.innerHTML = `<div class="list-row"><span class="faint">${
+        res.error ? 'Could not load the team — run migration 020.' : 'Sign in to manage team access.'
+      }</span></div>`;
+      return;
+    }
+    el.innerHTML = res.rows.length
+      ? res.rows.map(teamRow).join('')
+      : `<div class="list-row"><span class="faint">No team members yet — invite one above.</span></div>`;
+  }
+  window.loadTeamPanel = loadTeamPanel;
 
   // ---------- Instructor Detail -----------------------------------------------
 
@@ -11371,7 +11557,7 @@ ${CONFIG.academyName || 'The Team'}`;
       return a.time.localeCompare(b.time);
     });
 
-    const instOpts = INSTRUCTORS.map(i =>
+    const instOpts = teachingInstructors().map(i =>
       `<option value="${i.id}" ${templateDraft?.instructorId === i.id ? 'selected' : ''}>${esc(i.name)}</option>`
     ).join('');
 
@@ -11442,7 +11628,7 @@ ${CONFIG.academyName || 'The Team'}`;
             <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px">Instructor</label>
             <select id="tpl-instructor" class="input" style="width:100%">
               <option value="">— None —</option>
-              ${INSTRUCTORS.map(i=>`<option value="${i.id}" ${templateDraft.instructorId===i.id?'selected':''}>${esc(i.name)}</option>`).join('')}
+              ${teachingInstructors().map(i=>`<option value="${i.id}" ${templateDraft.instructorId===i.id?'selected':''}>${esc(i.name)}</option>`).join('')}
             </select>
           </div>
           <div>
@@ -13784,7 +13970,7 @@ ${CONFIG.academyName || 'The Team'}`;
           <div>
             <label class="label">Instructor</label>
             <select id="pl-instructor" class="input">
-              ${INSTRUCTORS.map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('')}
+              ${teachingInstructors().map(i => `<option value="${i.id}">${esc(i.name)}</option>`).join('')}
             </select>
           </div>
           <div>

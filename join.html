@@ -48,13 +48,17 @@
   function showMsg(kind, text) { const el = $('msg'); if (el) { el.className = 'msg ' + kind; el.textContent = text; } }
   function creds() { return { email: ($('email').value || '').trim(), password: ($('password').value || '') }; }
 
+  // One link type for both staff and student invites — claim_invite resolves
+  // which it is and returns { academy_id, kind }.
   async function claim() {
     root.innerHTML = `${brand}<div class="muted">Linking your account…</div>`;
-    const { data, error } = await sb.rpc('claim_student_invite', { p_token: TOKEN });
+    const { data, error } = await sb.rpc('claim_invite', { p_token: TOKEN });
     if (error) { authView(error.message); return; }
-    try { localStorage.setItem('tatami_active_academy', data); } catch {}
+    const academyId = (data && data.academy_id) || data;
+    const isStaff = !!(data && data.kind === 'staff');
+    try { localStorage.setItem('tatami_active_academy', academyId); } catch {}
     root.innerHTML = `${brand}<div class="msg ok">You're in! Opening your academy…</div>`;
-    location.href = '/student';
+    location.href = isStaff ? '/admin' : '/student';
   }
 
   async function signIn() {

@@ -86,11 +86,21 @@ function enrollmentToDb(e) {
 }
 
 function instructorFromDb(r) {
-  return { id: r.id, name: r.name, initials: r.initials, sportIds: r.sport_ids || [], payRate: r.pay_rate };
+  return { id: r.id, name: r.name, initials: r.initials, sportIds: r.sport_ids || [],
+    payRate: r.pay_rate, status: r.status || 'active', teaches: r.teaches !== false,
+    userId: r.user_id || null, email: r.email || null };
+}
+// team_directory (migration 020) — what an instructor may see: no pay_rate,
+// no email. Same in-memory shape so the schedule screens are unchanged.
+function instructorFromDirectory(r) {
+  return { id: r.id, name: r.name, initials: r.initials, sportIds: r.sport_ids || [],
+    payRate: null, status: r.status || 'active', teaches: r.teaches !== false,
+    userId: null, email: null };
 }
 function instructorToDb(i) {
   return { id: i.id, name: i.name, initials: i.initials, sport_ids: i.sportIds || [],
-    pay_rate: i.payRate ?? null, academy_id: TENANT.academyId };
+    pay_rate: i.payRate ?? null, academy_id: TENANT.academyId,
+    status: i.status || 'active', teaches: i.teaches !== false };
 }
 function templateFromDb(r) {
   return { id: r.id, dow: r.dow, time: r.time, durationMin: r.duration_min, classType: r.class_type,
@@ -177,7 +187,11 @@ async function tHydrate() {
   const [stu, enr, inst, tpl, cls, bk, att, wl, gl, ev, cr] = await Promise.all([
     sb.from('students').select('*').eq('academy_id', aid),
     sb.from('enrollments').select('*').eq('academy_id', aid),
-    sb.from('instructors').select('*').eq('academy_id', aid),
+    // instructors is admin-only after 020 (it carries pay_rate); instructors
+    // read the same roster through team_directory, which omits pay and email.
+    (tIsAdmin()
+      ? sb.from('instructors').select('*').eq('academy_id', aid)
+      : sb.from('team_directory').select('*').eq('academy_id', aid)),
     sb.from('recurring_templates').select('*').eq('academy_id', aid),
     sb.from('classes').select('*').eq('academy_id', aid),
     sb.from('bookings').select('*').eq('academy_id', aid),
@@ -189,7 +203,7 @@ async function tHydrate() {
   ]);
   if (typeof STUDENTS !== 'undefined')            _replace(STUDENTS, (stu.data || []).map(studentFromDb));
   if (typeof ENROLLMENTS !== 'undefined')         _replace(ENROLLMENTS, (enr.data || []).map(enrollmentFromDb));
-  if (typeof INSTRUCTORS !== 'undefined')         _replace(INSTRUCTORS, (inst.data || []).map(instructorFromDb));
+  if (typeof INSTRUCTORS !== 'undefined')         _replace(INSTRUCTORS, (inst.data || []).map(tIsAdmin() ? instructorFromDb : instructorFromDirectory));
   if (typeof RECURRING_TEMPLATES !== 'undefined') _replace(RECURRING_TEMPLATES, (tpl.data || []).map(templateFromDb));
   if (typeof CLASSES !== 'undefined')             _replace(CLASSES, (cls.data || []).map(classFromDb));
   if (typeof BOOKINGS !== 'undefined')            _replace(BOOKINGS, (bk.data || []).map(bookingFromDb));
@@ -429,9 +443,69 @@ async function tInitFeatures(enabledIds) {
   return { ok: !r.error, error: r.error };
 }
 
+// ---- P6a: staff roles + team management ------------------------------------
+// Demo mode has no membership row, so it behaves as an admin — the showcase
+// must keep every screen reachable. In tenant mode the role comes from
+// academy_members via initTenant(). These gate the UI only; RLS (migration 020)
+// is the real boundary.
+function tIsAdmin()   { return !isTenant() || ['owner', 'admin'].includes(TENANT.role); }
+function tCanTeach()  { return !isTenant() || ['owner', 'admin', 'instructor'].includes(TENANT.role); }
+
+const STAFF_JOIN_URL = t => location.origin + '/join#token=' + t;
+
+// Invite a NEW team member: creates the pending instructor profile + the invite.
+async function tInviteStaff({ name, email, role = 'instructor', teaches = true }) {
+  if (!isTenant()) return { ok: false, demo: true };
+  const r = await sb.rpc('invite_staff', {
+    p_academy_id: TENANT.academyId, p_name: name, p_email: email || null,
+    p_role: role, p_teaches: teaches
+  });
+  if (r.error) { console.error('[tenant] invite staff (run migration 020?):', r.error); return { ok: false, error: r.error }; }
+  return { ok: true, token: r.data, url: STAFF_JOIN_URL(r.data) };
+}
+
+// Re-invite an existing instructor row (legacy rows, or an unclaimed invite).
+async function tInviteExistingStaff(instructorId, email, role = 'instructor') {
+  if (!isTenant()) return { ok: false, demo: true };
+  const r = await sb.rpc('invite_existing_staff', {
+    p_instructor_id: instructorId, p_email: email || null, p_role: role
+  });
+  if (r.error) { console.error('[tenant] re-invite staff:', r.error); return { ok: false, error: r.error }; }
+  return { ok: true, token: r.data, url: STAFF_JOIN_URL(r.data) };
+}
+
+// Admin-only roster: instructor profile + membership role + link status.
+async function tListMembers() {
+  if (!isTenant()) return { ok: false, demo: true, rows: [] };
+  const r = await sb.rpc('list_academy_members', { p_academy_id: TENANT.academyId });
+  if (r.error) { console.error('[tenant] list members:', r.error); return { ok: false, error: r.error, rows: [] }; }
+  return { ok: true, rows: r.data || [] };
+}
+
+async function tSetMemberRole(userId, role) {
+  if (!isTenant()) return { ok: false, demo: true };
+  const r = await sb.rpc('set_member_role', {
+    p_academy_id: TENANT.academyId, p_user_id: userId, p_role: role
+  });
+  if (r.error) console.error('[tenant] set role:', r.error);
+  return { ok: !r.error, error: r.error };
+}
+
+// Works for both claimed members and pending invitees.
+async function tRevokeInstructor(instructorId) {
+  if (!isTenant()) return { ok: false, demo: true };
+  const r = await sb.rpc('revoke_instructor', { p_instructor_id: instructorId });
+  if (r.error) console.error('[tenant] revoke:', r.error);
+  return { ok: !r.error, error: r.error };
+}
+
 window.TENANT = TENANT; window.isTenant = isTenant;
 window.tenantSignOut = tenantSignOut; window.switchAcademy = switchAcademy;
 window.tCreateStudentInvite = tCreateStudentInvite;
+window.tIsAdmin = tIsAdmin; window.tCanTeach = tCanTeach;
+window.tInviteStaff = tInviteStaff; window.tInviteExistingStaff = tInviteExistingStaff;
+window.tListMembers = tListMembers; window.tSetMemberRole = tSetMemberRole;
+window.tRevokeInstructor = tRevokeInstructor;
 window.MODULE_REGISTRY = MODULE_REGISTRY; window.isModuleEnabled = isModuleEnabled;
 window.toggleableModules = toggleableModules; window.moduleMeta = moduleMeta;
 window.tSetModuleEnabled = tSetModuleEnabled; window.tInitFeatures = tInitFeatures;
