@@ -15885,7 +15885,9 @@ ${CONFIG.academyName || 'The Team'}`;
     renderApp();
     // First-run module picker: brand-new academy that has never configured
     // modules (only fires once academy_features exists — see migration 013).
-    if (isTenant() && typeof featuresUnconfigured === 'function'
+    // Owner/admin only: picking modules writes academy_features, which is
+    // admin-gated by RLS — an invited instructor would get a silent 403.
+    if (isTenant() && isAdminUser() && typeof featuresUnconfigured === 'function'
         && featuresUnconfigured() && !modulesOnboarded()) {
       showOnboardingModules();
     }

@@ -47,12 +47,24 @@
 
   function showMsg(kind, text) { const el = $('msg'); if (el) { el.className = 'msg ' + kind; el.textContent = text; } }
   function creds() { return { email: ($('email').value || '').trim(), password: ($('password').value || '') }; }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // What this token is for — resolved before sign-in so the page can name the
+  // academy and role, and prefill the name the inviter entered.
+  let PREVIEW = null;
+  const ROLE_LABEL = { admin: 'an Admin', instructor: 'an Instructor', student: 'a Student' };
+  function fullName() { return ($('fullname')?.value || '').trim(); }
 
   // One link type for both staff and student invites — claim_invite resolves
   // which it is and returns { academy_id, kind }.
   async function claim() {
+    const name = fullName();
     root.innerHTML = `${brand}<div class="muted">Linking your account…</div>`;
-    const { data, error } = await sb.rpc('claim_invite', { p_token: TOKEN });
+    let { data, error } = await sb.rpc('claim_invite', { p_token: TOKEN, p_name: name || null });
+    // Pre-021 the RPC has no p_name parameter; fall back so joining still works.
+    if (error && error.code === 'PGRST202') {
+      ({ data, error } = await sb.rpc('claim_invite', { p_token: TOKEN }));
+    }
     if (error) { authView(error.message); return; }
     const academyId = (data && data.academy_id) || data;
     const isStaff = !!(data && data.kind === 'staff');
@@ -79,10 +91,21 @@
   }
 
   function authView(errText) {
+    const acad = PREVIEW && PREVIEW.academy_name;
+    const role = PREVIEW && (ROLE_LABEL[PREVIEW.role] || 'a member');
+    const heading = acad ? `Join ${esc(acad)}` : 'Join your academy';
+    const sub = acad
+      ? `You've been invited as ${esc(role)}. Create an account (or sign in) to accept.`
+      : 'Create an account (or sign in) to link this invite to you.';
+    const prefill = (PREVIEW && PREVIEW.name) ? esc(PREVIEW.name) : '';
+
     root.innerHTML = `
       ${brand}
-      <h1 style="font-size:18px;margin:0 0 var(--sp-2)">Join your academy</h1>
-      <p class="muted" style="margin-bottom:var(--sp-4)">Create an account (or sign in) to link this invite to you.</p>
+      <h1 style="font-size:18px;margin:0 0 var(--sp-2)">${heading}</h1>
+      <p class="muted" style="margin-bottom:var(--sp-4)">${sub}</p>
+      <label for="fullname">Your name</label>
+      <input id="fullname" class="input" type="text" placeholder="Your full name"
+             value="${prefill}" style="margin-bottom:var(--sp-3)" />
       <label for="email">Email</label>
       <input id="email" class="input" type="email" placeholder="you@email.com" style="margin-bottom:var(--sp-3)" />
       <label for="password">Password</label>
@@ -96,8 +119,19 @@
     if (errText) showMsg('err', errText);
   }
 
+  function deadView(text) { root.innerHTML = `${brand}<div class="msg err">${esc(text)}</div>`; }
+
   async function init() {
-    if (!TOKEN) { root.innerHTML = `${brand}<div class="msg err">This invite link is invalid or incomplete.</div>`; return; }
+    if (!TOKEN) { deadView('This invite link is invalid or incomplete.'); return; }
+    // Resolve the invite first so a dead link fails clearly instead of after
+    // the invitee has gone to the trouble of creating an account.
+    const { data, error } = await sb.rpc('invite_preview', { p_token: TOKEN });
+    if (!error && data) {
+      PREVIEW = data;
+      if (data.kind === 'invalid') { deadView('This invite link is not valid.'); return; }
+      if (data.used)    { deadView('This invite has already been used. Ask your academy for a new link.'); return; }
+      if (data.expired) { deadView('This invite has expired. Ask your academy for a new link.'); return; }
+    }
     const { data: { session } } = await sb.auth.getSession();
     if (session) claim(); else authView();
   }
